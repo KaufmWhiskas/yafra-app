@@ -1,9 +1,9 @@
 import { StyleSheet, TextInput, Switch, Text, FlatList, Modal, Button, KeyboardAvoidingView, View, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
-import * as Crypto from 'expo-crypto';
 import * as Location from 'expo-location';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { supabase } from './supabase.js';
 
 import RestaurantCard from "./RestaurantCard.jsx"
 
@@ -21,24 +21,29 @@ function HomeScreen({navigation}) {
   const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setRestaurantData(restaurants)
-      setIsLoading(false)
-    }, 3000);
-
-    async function getUserLocation() {
-      let {status} = await Location.requestForegroundPermissionsAsync()
-        if(status !== 'granted') {
-          setLocationError("Permission to access location was denied")
-          return;
-        } else {
-          let currentLocation = await Location.getCurrentPositionAsync({});
-          setLocation(currentLocation);
-        }
+    async function fetchRestaurants() {
+      const {data, error} = await supabase.from('restaurants_test').select('*');
+      if (error) {
+        console.error("Error feetching!", error);
+      } else {
+        setRestaurantData(data);
+      }
+      setIsLoading(false);
     }
 
+    async function getUserLocation() {
+    let {status} = await Location.requestForegroundPermissionsAsync()
+      if(status !== 'granted') {
+        setLocationError("Permission to access location was denied")
+        return;
+      } else {
+        let currentLocation = await Location.getCurrentPositionAsync({});
+        setLocation(currentLocation);
+      }
+    }
+
+    fetchRestaurants();
     getUserLocation();
-    
   }, []);
 
 
@@ -54,7 +59,8 @@ function HomeScreen({navigation}) {
       <FlatList
         style={styles.scrollView}
         data={restaurantData}
-        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({item}) => <RestaurantCard {...item} onPressDetail={() => navigation.navigate('Details', { name: item.name, cuisine: item.cuisine, rating: item.rating})} />}
         ListHeaderComponent={
       <View style={{ paddingTop: 50}}>
@@ -112,13 +118,6 @@ export default function Navigator() {
     </NavigationContainer>
   )
 }
-
-
-const restaurants = [
-  {id: Crypto.randomUUID(), name: "Luigi's Pizzeria", cuisine:"Pizza", rating: 3.9, isOpen: true, image: placeholderImg},
-  {id: Crypto.randomUUID(), name: "Michael's 3 Star Seafood Spot", cuisine:"Fish and Chips", rating: 2, isOpen: false, image: placeholderImg},
-  {id: Crypto.randomUUID(), name: "Mehmed's Kebab Kingdom", cuisine:"Kebab", rating: 5, isOpen: true, image: placeholderImg},
-]
 
 const styles = StyleSheet.create({
   scrollView: {
