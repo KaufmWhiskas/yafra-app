@@ -1,4 +1,11 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, .yarnrc, yarn.lock",
+    "app.json": "babel.config.js, metro.config.js, index.js, eslint.config.js",
+    ".gitignore": ".prettierrc.json, .env"
+  }
 }
