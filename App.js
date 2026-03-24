@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import MainNavigator from './src/navigation/MainNavigator';
+import { COLORS } from './src/constants/theme';
 
 export default function App() {
   return (
