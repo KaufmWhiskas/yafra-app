@@ -11,11 +11,13 @@ import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
+import * as Location from 'expo-location';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -24,6 +26,18 @@ export default function MapScreen() {
       setIsLoading(false);
     }
     loadData();
+  }, []);
+
+  useEffect(() => {
+    async function requestLocation() {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status === 'granted') {
+        setHasLocationPermission(true);
+      }
+    }
+
+    requestLocation();
   }, []);
 
   if (isLoading) {
@@ -69,6 +83,9 @@ export default function MapScreen() {
         <MapView
           testID="mock-map"
           style={styles.map}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          toolbarEnabled={false}
           initialRegion={{
             latitude: 49.469805794737454, // Placeholder coordinates
             longitude: 8.422159691397045,
@@ -76,12 +93,6 @@ export default function MapScreen() {
             longitudeDelta: 0.0421,
           }}
         >
-          <Marker
-            coordinate={{ latitude: 49.4698, longitude: 8.4221 }}
-            title="Center Pin"
-            pinColor="blue"
-          />
-
           {/* Loop through the restaurants array and create a Marker for each one */}
           {restaurants
             .filter(

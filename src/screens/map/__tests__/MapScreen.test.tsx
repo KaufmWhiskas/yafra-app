@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
-import { Marker } from 'react-native-maps';
+import { requestForegroundPermissionsAsync } from 'expo-location';
 
 jest.mock('../../../services/supabase', () => ({
   getMockRestaurants: jest.fn(() =>
@@ -21,10 +21,12 @@ jest.mock('react-native-maps', () => {
   //import won't work here jest moves it to the top which crashes it
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
-  const MockMapView = (probs) => (
-    <View testID="mock-map">{probs.children}</View>
+  const MockMapView = (props: { children?: React.ReactNode }) => (
+    <View testID="mock-map">{props.children}</View>
   );
-  const MockMarker = (probs) => <View testID={probs.testID} />;
+  const MockMarker = (props: { testID?: string }) => (
+    <View testID={props.testID} />
+  );
 
   return {
     __esModule: true,
@@ -32,6 +34,15 @@ jest.mock('react-native-maps', () => {
     Marker: MockMarker,
   };
 });
+
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ status: 'granted' }),
+  ),
+  getCurrentPositionAsync: jest.fn(() =>
+    Promise.resolve({ coords: { latitude: 49.46, longitude: 8.42 } }),
+  ),
+}));
 
 describe('MapScreen Toggle Feature', () => {
   it('renders the map by default after loading', async () => {
@@ -68,5 +79,13 @@ describe('MapScreen Toggle Feature', () => {
 
     const markers = getAllByTestId('restaurant-marker');
     expect(markers.length).toBeGreaterThan(0);
+  });
+
+  it('requests location permissions', async () => {
+    render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(requestForegroundPermissionsAsync).toHaveBeenCalled();
+    });
   });
 });

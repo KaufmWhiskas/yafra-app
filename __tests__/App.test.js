@@ -32,6 +32,15 @@ jest.mock('../src/services/supabase', () => ({
   ),
 }));
 
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ status: 'granted' }),
+  ),
+  getCurrentPositionAsync: jest.fn(() =>
+    Promise.resolve({ coords: { latitude: 49.46, longitude: 8.42 } }),
+  ),
+}));
+
 describe('<App />', () => {
   it('renders the main tab navigator and initial screen', async () => {
     render(<App />);
