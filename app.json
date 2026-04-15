@@ -20,10 +20,21 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.kaufmirwhiskas.yafra",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBn6B2GnKhuaxSxseWZun5m766HP6Cw1Yo"
+        }
       }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a46eda2f-9fa6-45f3-af16-3f28afe1939d"
+      }
     }
   }
 }

@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import MapView from 'react-native-maps';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
+import { Restaurant } from '../../types';
 
 export default function MapScreen() {
-  const [restaurants, setRestaurants] = useState([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
 
@@ -33,14 +40,25 @@ export default function MapScreen() {
       <View style={styles.toggleContainer}>
         <TouchableOpacity
           style={[styles.toggleBtn, viewMode === 'map' && styles.activeBtn]}
-          onPress={() => setViewMode('map')}>
-          <Text style={[styles.toggleText, viewMode === 'map' && styles.activeText]}>Map View</Text>
+          onPress={() => setViewMode('map')}
+        >
+          <Text
+            style={[styles.toggleText, viewMode === 'map' && styles.activeText]}
+          >
+            Map View
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.toggleBtn, viewMode === 'list' && styles.activeBtn]}
-          onPress={() => setViewMode('list')}>
-          <Text style={[styles.toggleText, viewMode === 'list' && styles.activeText]}>
+          onPress={() => setViewMode('list')}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              viewMode === 'list' && styles.activeText,
+            ]}
+          >
             List View
           </Text>
         </TouchableOpacity>
@@ -57,7 +75,33 @@ export default function MapScreen() {
             latitudeDelta: 0.0922,
             longitudeDelta: 0.0421,
           }}
-        />
+        >
+          <Marker
+            coordinate={{ latitude: 49.4698, longitude: 8.4221 }}
+            title="Center Pin"
+            pinColor="blue"
+          />
+
+          {/* Loop through the restaurants array and create a Marker for each one */}
+          {restaurants
+            .filter(
+              (r) =>
+                typeof r.latitude === 'number' &&
+                typeof r.longitude === 'number',
+            )
+            .map((restaurant) => (
+              <Marker
+                key={restaurant.id}
+                testID="restaurant-marker"
+                coordinate={{
+                  latitude: restaurant.latitude,
+                  longitude: restaurant.longitude,
+                }}
+                title={restaurant.name}
+                description={restaurant.cuisine}
+              />
+            ))}
+        </MapView>
       ) : (
         <FlatList
           testID="list-view"

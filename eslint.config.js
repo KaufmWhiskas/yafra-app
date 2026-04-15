@@ -3,6 +3,7 @@ import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import tseslint from 'typescript-eslint';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,14 +14,10 @@ const compat = new FlatCompat({
 });
 
 export default [
-  // This translates the old "expo" config into the new flat format
   ...compat.extends('eslint-config-expo'),
-
-  // Prettier must be an object, not spread, usually placed at the end
-  prettier,
-
+  ...tseslint.configs.strict,
   {
-    files: ['**/*.test.js', '__tests__/**/*.js'],
+    files: ['**/*.test.js', '**/*.test.ts', '**/*.test.tsx', '__tests__/**/*'],
     languageOptions: {
       globals: {
         describe: 'readonly',
@@ -32,4 +29,11 @@ export default [
       },
     },
   },
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  prettier,
 ];
