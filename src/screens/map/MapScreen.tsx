@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
 import * as Location from 'expo-location';
+import ViewToggle from '../../components/ui/ViewToggle';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -50,34 +45,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      {/* MAP / LIST TOGGLE UI */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, viewMode === 'map' && styles.activeBtn]}
-          onPress={() => setViewMode('map')}
-        >
-          <Text
-            style={[styles.toggleText, viewMode === 'map' && styles.activeText]}
-          >
-            Map View
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.toggleBtn, viewMode === 'list' && styles.activeBtn]}
-          onPress={() => setViewMode('list')}
-        >
-          <Text
-            style={[
-              styles.toggleText,
-              viewMode === 'list' && styles.activeText,
-            ]}
-          >
-            List View
-          </Text>
-        </TouchableOpacity>
-      </View>
-
+      <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       {/* CONDITIONAL RENDERING BASED ON STATE */}
       {viewMode === 'map' ? (
         <MapView
