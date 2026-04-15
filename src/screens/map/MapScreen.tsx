@@ -107,36 +107,6 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    position: 'absolute',
-    top: 50,
-    alignSelf: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.largeRadius,
-    padding: 4,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  toggleBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: SIZES.largeRadius,
-  },
-  activeBtn: {
-    backgroundColor: COLORS.primary,
-  },
-  toggleText: {
-    color: COLORS.text,
-    fontWeight: '600',
-  },
-  activeText: {
-    color: COLORS.surface,
-  },
   listContent: {
     paddingTop: 120,
     paddingHorizontal: SIZES.padding,
