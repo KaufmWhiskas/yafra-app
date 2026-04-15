@@ -8,7 +8,7 @@ import RestaurantCard from '../../components/ui/RestaurantCard';
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
+  const [viewMode, setViewMode] = useState('map');
 
   useEffect(() => {
     async function loadData() {
@@ -52,8 +52,8 @@ export default function MapScreen() {
           testID="mock-map"
           style={styles.map}
           initialRegion={{
-            latitude: 37.78825, // Placeholder coordinates
-            longitude: -122.4324,
+            latitude: 49.469805794737454, // Placeholder coordinates
+            longitude: 8.422159691397045,
             latitudeDelta: 0.0922,
             longitudeDelta: 0.0421,
           }}
@@ -64,7 +64,7 @@ export default function MapScreen() {
           contentContainerStyle={styles.listContent}
           data={restaurants}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <RestaurantCard restaurantItem={item} />}
+          renderItem={({ item }) => <RestaurantCard item={item} />}
         />
       )}
     </View>
@@ -87,12 +87,12 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: 'row',
     position: 'absolute',
-    top: 50, // Avoid safe area / notch
+    top: 50,
     alignSelf: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.largeRadius,
     padding: 4,
-    zIndex: 10, // Ensure it sits above the map
+    zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
   },
   listContent: {
-    paddingTop: 120, // Push list down so toggle doesn't cover first item
+    paddingTop: 120,
     paddingHorizontal: SIZES.padding,
   },
   listItem: {

@@ -11,7 +11,7 @@ describe('RestaurantCard', () => {
       rating: 4.5,
     };
 
-    const { getByText } = render(<RestaurantCard restaurantItem={mockRestaurant} />);
+    const { getByText } = render(<RestaurantCard item={mockRestaurant} />);
 
     expect(getByText('Burger King')).toBeTruthy();
     expect(getByText('Fast Food')).toBeTruthy();

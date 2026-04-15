@@ -1,13 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SIZES } from '../../constants/theme';
+import { Restaurant } from '../../types';
 
-export default function RestaurantCard({ restaurantItem }) {
+interface RestaurantCardProps {
+  item: Restaurant;
+}
+
+export default function RestaurantCard({ item }: RestaurantCardProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{restaurantItem.name}</Text>
-      <Text>{restaurantItem.cuisine}</Text>
-      <Text>{restaurantItem.rating.toFixed(1)}</Text>
+      <Text style={styles.title}>{item.name}</Text>
+      <Text>{item.cuisine}</Text>
+      <Text>{item.rating ? item.rating.toFixed(1) : 'No Rating'}</Text>
     </View>
   );
 }
