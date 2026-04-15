@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import MapView from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
+import RestaurantCard from '../../components/ui/RestaurantCard';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState([]);
@@ -63,12 +64,7 @@ export default function MapScreen() {
           contentContainerStyle={styles.listContent}
           data={restaurants}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <Text style={styles.listTitle}>{item.name}</Text>
-              <Text>{item.cuisine}</Text>
-            </View>
-          )}
+          renderItem={({ item }) => <RestaurantCard restaurantItem={item} />}
         />
       )}
     </View>
