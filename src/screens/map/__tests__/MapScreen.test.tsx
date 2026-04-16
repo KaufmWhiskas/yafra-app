@@ -2,7 +2,6 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
 import { requestForegroundPermissionsAsync } from 'expo-location';
-import { get } from 'react-native/Libraries/NativeComponent/NativeComponentRegistry';
 
 jest.mock('../../../services/supabase', () => ({
   getMockRestaurants: jest.fn(() =>

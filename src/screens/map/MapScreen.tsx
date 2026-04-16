@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import MapView, { Callout, Marker } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
-import * as Location from 'expo-location';
 import ViewToggle from '../../components/ui/ViewToggle';
+import { useLocation } from '../../hooks/useLocation';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
-  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
+  const { hasLocationPermission } = useLocation();
 
   useEffect(() => {
     async function loadData() {
@@ -23,18 +23,6 @@ export default function MapScreen() {
       setIsLoading(false);
     }
     loadData();
-  }, []);
-
-  useEffect(() => {
-    async function requestLocation() {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status === 'granted') {
-        setHasLocationPermission(true);
-      }
-    }
-
-    requestLocation();
   }, []);
 
   if (isLoading) {
@@ -80,7 +68,7 @@ export default function MapScreen() {
                     longitude: restaurant.longitude,
                   }}
                   onPress={(e) => {
-                    e.stopPropagation();
+                    e?.stopPropagation?.();
                     setSelectedRestaurant(restaurant);
                   }}
                 />
