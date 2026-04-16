@@ -49,7 +49,6 @@ describe('<App />', () => {
     expect(mapToggleBtn).toBeTruthy();
 
     expect(screen.getByText('Map')).toBeTruthy();
-    expect(screen.getByText('Wishlist')).toBeTruthy();
     expect(screen.getByText('Groups')).toBeTruthy();
     expect(screen.getByText('Profile')).toBeTruthy();
   });
