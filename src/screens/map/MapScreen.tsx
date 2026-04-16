@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Callout, Marker } from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
@@ -13,6 +13,8 @@ export default function MapScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<Restaurant | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -46,41 +48,51 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
-      {/* CONDITIONAL RENDERING BASED ON STATE */}
+
       {viewMode === 'map' ? (
-        <MapView
-          testID="mock-map"
-          style={styles.map}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-          toolbarEnabled={false}
-          initialRegion={{
-            latitude: 49.469805794737454, // Placeholder coordinates
-            longitude: 8.422159691397045,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
-        >
-          {/* Loop through the restaurants array and create a Marker for each one */}
-          {restaurants
-            .filter(
-              (r) =>
-                typeof r.latitude === 'number' &&
-                typeof r.longitude === 'number',
-            )
-            .map((restaurant) => (
-              <Marker
-                key={restaurant.id}
-                testID="restaurant-marker"
-                coordinate={{
-                  latitude: restaurant.latitude,
-                  longitude: restaurant.longitude,
-                }}
-                title={restaurant.name}
-                description={restaurant.cuisine}
-              />
-            ))}
-        </MapView>
+        <>
+          <MapView
+            testID="mock-map"
+            style={styles.map}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            toolbarEnabled={false}
+            initialRegion={{
+              latitude: 49.469805794737454,
+              longitude: 8.422159691397045,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+            onPress={() => setSelectedRestaurant(null)}
+          >
+            {restaurants
+              .filter(
+                (r) =>
+                  typeof r.latitude === 'number' &&
+                  typeof r.longitude === 'number',
+              )
+              .map((restaurant) => (
+                <Marker
+                  key={restaurant.id}
+                  testID="restaurant-marker"
+                  coordinate={{
+                    latitude: restaurant.latitude,
+                    longitude: restaurant.longitude,
+                  }}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setSelectedRestaurant(restaurant);
+                  }}
+                />
+              ))}
+          </MapView>
+
+          {selectedRestaurant && (
+            <View testID="floating-preview-card" style={styles.floatingCard}>
+              <RestaurantCard item={selectedRestaurant} />
+            </View>
+          )}
+        </>
       ) : (
         <FlatList
           testID="list-view"
@@ -121,5 +133,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     color: COLORS.text,
+  },
+  floatingCard: {
+    position: 'absolute',
+    bottom: 20,
+    left: SIZES.padding,
+    right: SIZES.padding,
+    zIndex: 10,
+    elevation: 10,
   },
 });

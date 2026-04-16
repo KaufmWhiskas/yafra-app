@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
 import { requestForegroundPermissionsAsync } from 'expo-location';
+import { get } from 'react-native/Libraries/NativeComponent/NativeComponentRegistry';
 
 jest.mock('../../../services/supabase', () => ({
   getMockRestaurants: jest.fn(() =>
@@ -21,11 +22,16 @@ jest.mock('react-native-maps', () => {
   //import won't work here jest moves it to the top which crashes it
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
-  const MockMapView = (props: { children?: React.ReactNode }) => (
-    <View testID="mock-map">{props.children}</View>
+  const MockMapView = (props: {
+    children?: React.ReactNode;
+    onPress?: () => void;
+  }) => (
+    <View testID="mock-map" onPress={props.onPress}>
+      {props.children}
+    </View>
   );
-  const MockMarker = (props: { testID?: string }) => (
-    <View testID={props.testID} />
+  const MockMarker = (props: { testID?: string; onPress?: () => void }) => (
+    <View testID={props.testID} onPress={props.onPress} />
   );
 
   return {
@@ -87,5 +93,22 @@ describe('MapScreen Toggle Feature', () => {
     await waitFor(() => {
       expect(requestForegroundPermissionsAsync).toHaveBeenCalled();
     });
+  });
+
+  it('floating ui card appears on press', async () => {
+    const { getByText, getByTestId, queryByTestId } = render(<MapScreen />);
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const marker = getByTestId('restaurant-marker');
+    fireEvent.press(marker);
+
+    const floatingCard = getByTestId('floating-preview-card');
+    expect(floatingCard).toBeTruthy();
+
+    const map = getByTestId('mock-map');
+    fireEvent.press(map);
+
+    expect(queryByTestId('floating-preview-card')).toBeNull();
   });
 });
