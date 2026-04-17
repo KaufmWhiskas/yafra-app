@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { getMockRestaurants } from '../../services/supabase';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
+import RestaurantMap from '../../components/map/RestaurantMap';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -15,6 +15,10 @@ export default function MapScreen() {
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
   const { hasLocationPermission } = useLocation();
+
+  const handleReviewPress = (restaurant: Restaurant) => {
+    console.log('Navigating to review for:', restaurant.name);
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -38,56 +42,35 @@ export default function MapScreen() {
       <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
 
       {viewMode === 'map' ? (
-        <>
-          <MapView
-            testID="mock-map"
-            style={styles.map}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            toolbarEnabled={false}
-            initialRegion={{
-              latitude: 49.469805794737454,
-              longitude: 8.422159691397045,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-            onPress={() => setSelectedRestaurant(null)}
-          >
-            {restaurants
-              .filter(
-                (r) =>
-                  typeof r.latitude === 'number' &&
-                  typeof r.longitude === 'number',
-              )
-              .map((restaurant) => (
-                <Marker
-                  key={restaurant.id}
-                  testID="restaurant-marker"
-                  coordinate={{
-                    latitude: restaurant.latitude,
-                    longitude: restaurant.longitude,
-                  }}
-                  onPress={(e) => {
-                    e?.stopPropagation?.();
-                    setSelectedRestaurant(restaurant);
-                  }}
-                />
-              ))}
-          </MapView>
-
-          {selectedRestaurant && (
-            <View testID="floating-preview-card" style={styles.floatingCard}>
-              <RestaurantCard item={selectedRestaurant} />
-            </View>
-          )}
-        </>
+        <RestaurantMap
+          restaurants={restaurants}
+          selectedRestaurant={selectedRestaurant}
+          onRestaurantSelect={setSelectedRestaurant}
+          onMapPress={() => setSelectedRestaurant(null)}
+          initialRegion={{
+            latitude: 49.469805794737454,
+            longitude: 8.422159691397045,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          toolbarEnabled={false}
+          testID="mock-map"
+          onPressReview={handleReviewPress}
+        />
       ) : (
         <FlatList
           testID="list-view"
           contentContainerStyle={styles.listContent}
           data={restaurants}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <RestaurantCard item={item} />}
+          renderItem={({ item }) => (
+            <RestaurantCard
+              item={item}
+              onPressReview={() => handleReviewPress(item)}
+            />
+          )}
         />
       )}
     </View>
@@ -104,9 +87,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  map: {
-    flex: 1,
-  },
   listContent: {
     paddingTop: 120,
     paddingHorizontal: SIZES.padding,
@@ -121,13 +101,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     color: COLORS.text,
-  },
-  floatingCard: {
-    position: 'absolute',
-    bottom: 20,
-    left: SIZES.padding,
-    right: SIZES.padding,
-    zIndex: 10,
-    elevation: 10,
   },
 });
