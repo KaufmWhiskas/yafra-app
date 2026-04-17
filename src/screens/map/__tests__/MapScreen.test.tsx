@@ -40,6 +40,17 @@ jest.mock('react-native-maps', () => {
   };
 });
 
+const mockNavigate = jest.fn();
+
+jest.mock('@react-navigation/native', () => {
+  return {
+    ...jest.requireActual('@react-navigation/native'),
+    useNavigation: () => ({
+      navigate: mockNavigate,
+    }),
+  };
+});
+
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(() =>
     Promise.resolve({ status: 'granted' }),
@@ -50,6 +61,9 @@ jest.mock('expo-location', () => ({
 }));
 
 describe('MapScreen Toggle Feature', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+  });
   it('renders the map by default after loading', async () => {
     const { findByText, getByTestId } = render(<MapScreen />);
 
@@ -109,5 +123,24 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(map);
 
     expect(queryByTestId('floating-preview-card')).toBeNull();
+  });
+
+  it('navigates to ReviewScreen when Add Review button is pressed', async () => {
+    const { getByText, getByTestId } = render(<MapScreen />);
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const marker = getByTestId('restaurant-marker');
+    fireEvent.press(marker);
+
+    const reviewButton = getByText('Add Review');
+    fireEvent.press(reviewButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
+      restaurant: expect.objectContaining({
+        id: '1',
+        name: 'Test Burger',
+      }),
+    });
   });
 });

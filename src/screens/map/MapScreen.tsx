@@ -7,6 +7,9 @@ import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -15,9 +18,11 @@ export default function MapScreen() {
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
   const { hasLocationPermission } = useLocation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleReviewPress = (restaurant: Restaurant) => {
-    console.log('Navigating to review for:', restaurant.name);
+    navigation.navigate('ReviewScreen', { restaurant });
   };
 
   useEffect(() => {
