@@ -6,24 +6,45 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { COLORS, SIZES } from '../../constants/theme';
 
+/**
+ * Screen allowing users to submit a rating and text review for a restaurant.
+ */
 export default function ReviewScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'ReviewScreen'>>();
+  const navigation = useNavigation();
   const { restaurant } = route.params;
 
   const [rating, setRating] = useState('');
   const [reviewText, setReviewText] = useState('');
 
+  /**
+   * Validates inputs and "submits" the review before navigating back.
+   */
   const handleSubmitReview = () => {
-    // TODO: Implement review submission
+    const numericRating = Number(rating);
+
+    // Guard: Ensure rating is a valid number between 1 and 5
+    if (
+      !rating ||
+      isNaN(Number(rating)) ||
+      numericRating < 1 ||
+      numericRating > 5
+    ) {
+      return;
+    }
+
+    // TODO: This will call the Supabase backend
     console.log('Submitting review:', {
-      rating,
-      reviewText,
-      restaurantId: restaurant.id,
+      rating: Number(rating),
+      description: reviewText,
+      restaurant_id: restaurant.id,
     });
+
+    navigation.goBack();
   };
 
   return (

@@ -1,6 +1,8 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import ReviewScreen from '../ReviewScreen';
+
+const mockGoBack = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   return {
@@ -11,12 +13,16 @@ jest.mock('@react-navigation/native', () => {
       },
     }),
     useNavigation: () => ({
-      goBack: jest.fn(),
+      goBack: mockGoBack,
     }),
   };
 });
 
-describe('ReviewScreen UI', () => {
+describe('ReviewScreen Submission Logic', () => {
+  beforeEach(() => {
+    mockGoBack.mockClear();
+  });
+
   it('renders the restaurant name and a review form', () => {
     const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
 
@@ -26,5 +32,33 @@ describe('ReviewScreen UI', () => {
     expect(getByPlaceholderText('Write your review here...')).toBeTruthy();
 
     expect(getByText('Submit Review')).toBeTruthy();
+  });
+
+  it('navigates back after submitting a review', async () => {
+    const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Rating (1-5)'), '4');
+    fireEvent.changeText(
+      getByPlaceholderText('Write your review here...'),
+      'Great food!',
+    );
+
+    fireEvent.press(getByText('Submit Review'));
+
+    await waitFor(() => {
+      expect(mockGoBack).toHaveBeenCalled();
+    });
+  });
+
+  it('does not navigate back if rating is missing (validation)', () => {
+    const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
+
+    fireEvent.changeText(
+      getByPlaceholderText('Write your review here...'),
+      'No rating given',
+    );
+    fireEvent.press(getByText('Submit Review'));
+
+    expect(mockGoBack).not.toHaveBeenCalled();
   });
 });
