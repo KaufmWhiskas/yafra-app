@@ -9,6 +9,7 @@ import {
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { COLORS, SIZES } from '../../constants/theme';
+import { submitReview } from '../../services/reviewService';
 
 /**
  * Screen allowing users to submit a rating and text review for a restaurant.
@@ -24,27 +25,31 @@ export default function ReviewScreen() {
   /**
    * Validates inputs and "submits" the review before navigating back.
    */
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     const numericRating = Number(rating);
 
     // Guard: Ensure rating is a valid number between 1 and 5
     if (
       !rating ||
-      isNaN(Number(rating)) ||
+      isNaN(numericRating) ||
       numericRating < 1 ||
       numericRating > 5
     ) {
       return;
     }
 
-    // TODO: This will call the Supabase backend
-    console.log('Submitting review:', {
-      rating: Number(rating),
-      description: reviewText,
-      restaurant_id: restaurant.id,
-    });
+    try {
+      await submitReview({
+        restaurant_id: restaurant.id,
+        rating: numericRating,
+        description: reviewText,
+      });
 
-    navigation.goBack();
+      navigation.goBack();
+    } catch (error) {
+      // We will handle the error differently soon:tm:, I SWEAR
+      console.error('Error submitting review:', error);
+    }
   };
 
   return (

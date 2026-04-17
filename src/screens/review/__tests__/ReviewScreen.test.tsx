@@ -1,8 +1,13 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import ReviewScreen from '../ReviewScreen';
+import { submitReview } from '../../../services/reviewService';
 
 const mockGoBack = jest.fn();
+
+jest.mock('../../../services/reviewService', () => ({
+  submitReview: jest.fn(() => Promise.resolve({ success: true })),
+}));
 
 jest.mock('@react-navigation/native', () => {
   return {
@@ -60,5 +65,25 @@ describe('ReviewScreen Submission Logic', () => {
     fireEvent.press(getByText('Submit Review'));
 
     expect(mockGoBack).not.toHaveBeenCalled();
+  });
+
+  it('calls the submitReview service with correct data', async () => {
+    const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Rating (1-5)'), '5');
+    fireEvent.changeText(
+      getByPlaceholderText('Write your review here...'),
+      'Best test burger ever!',
+    );
+
+    fireEvent.press(getByText('Submit Review'));
+
+    await waitFor(() => {
+      expect(submitReview).toHaveBeenCalledWith({
+        restaurant_id: '1',
+        rating: 5,
+        description: 'Best test burger ever!',
+      });
+    });
   });
 });
