@@ -5,9 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SIZES } from '../../constants/theme';
+import { login } from '../../services/authService';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 
@@ -21,8 +23,15 @@ export default function LoginScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const handleLogin = () => {
-    // TODO: Call Supabase login
+  const handleLogin = async () => {
+    try {
+      await login(email.trim(), password);
+    } catch (error) {
+      Alert.alert(
+        'Login Failed',
+        error instanceof Error ? error.message : 'An error occurred',
+      );
+    }
   };
 
   const handleSignUp = () => {
@@ -45,6 +54,7 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         keyboardType="email-address"
         placeholderTextColor={COLORS.textLight}
+        autoCapitalize="none"
       />
 
       <TextInput
@@ -54,6 +64,8 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
         placeholderTextColor={COLORS.textLight}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
 
       <TouchableOpacity
