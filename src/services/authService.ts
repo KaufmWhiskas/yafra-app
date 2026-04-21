@@ -30,3 +30,23 @@ export async function register(
 
   return data;
 }
+
+/**
+ * Authenticates an existing user with the backend provider.
+ * @param email - The users registered email address.
+ * @param password - The users password.
+ * @returns The authentication data including user and session details.
+ * @throws Will throw an error if authentication fails (e.g., invalid credentials).
+ */
+export async function login(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
