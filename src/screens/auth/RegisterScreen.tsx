@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,25 +16,39 @@ import { RootStackParamList } from '../../types/navigation';
 
 /**
  * Provides the user interface for new account creation.
- * Captures email and password, and allows navigation back to the login flow.
+ * Captures email, display name, and password, and allows navigation back to the login flow.
  */
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      console.error('Passwords do not match');
+      Alert.alert('Validation Error', 'Passwords do not match');
       return;
     }
 
     try {
-      await register(email, password);
+      await register(email.trim(), password, displayName.trim());
+      Alert.alert(
+        'Verification Email Sent',
+        'Please check your email to verify your account.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ],
+      );
     } catch (error) {
-      console.error('Registration failed:', error);
+      Alert.alert(
+        'Registration Failed',
+        error instanceof Error ? error.message : 'An error occurred',
+      );
     }
   };
 
@@ -65,11 +80,21 @@ export default function RegisterScreen() {
 
       <TextInput
         style={styles.input}
+        placeholder="Display Name"
+        placeholderTextColor={COLORS.textLight}
+        value={displayName}
+        onChangeText={setDisplayName}
+      />
+
+      <TextInput
+        style={styles.input}
         placeholder="Password"
         placeholderTextColor={COLORS.textLight}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
       />
 
       <TextInput
@@ -79,6 +104,8 @@ export default function RegisterScreen() {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
       />
 
       <TouchableOpacity

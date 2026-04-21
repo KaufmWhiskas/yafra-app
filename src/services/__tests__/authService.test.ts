@@ -26,11 +26,16 @@ describe('Auth Service', () => {
         error: null,
       });
 
-      await register('test@example.com', 'reallySecurePassword123');
+      await register('test@example.com', 'reallySecurePassword123', 'TestUser');
 
       expect(supabase.auth.signUp).toHaveBeenCalledWith({
         email: 'test@example.com',
         password: 'reallySecurePassword123',
+        options: {
+          data: {
+            display_name: 'TestUser',
+          },
+        },
       });
     });
 
@@ -41,7 +46,7 @@ describe('Auth Service', () => {
       });
 
       await expect(
-        register('test@example.com', 'reallySecurePassword123'),
+        register('test@example.com', 'reallySecurePassword123', 'TestUser'),
       ).rejects.toThrow('Registration failed');
     });
   });
