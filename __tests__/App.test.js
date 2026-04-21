@@ -18,6 +18,14 @@ jest.mock('react-native-maps', () => {
   };
 });
 
+jest.mock('../src/context/AuthContext', () => ({
+  AuthProvider: ({ children }) => <>{children}</>,
+  useAuth: () => ({
+    session: { user: { id: 'test-user-123' } },
+    isLoading: false,
+  }),
+}));
+
 jest.mock('../src/services/supabase', () => ({
   getMockRestaurants: jest.fn(() =>
     Promise.resolve([
