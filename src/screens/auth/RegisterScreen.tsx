@@ -9,6 +9,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
+import { register } from '../../services/authService';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 /**
  * Provides the user interface for new account creation.
@@ -18,10 +21,20 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const handleRegister = () => {
-    console.log('Register pressed:', { email, password, confirmPassword });
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      console.error('Passwords do not match');
+      return;
+    }
+
+    try {
+      await register(email, password);
+    } catch (error) {
+      console.error('Registration failed:', error);
+    }
   };
 
   const handleLogin = () => {
