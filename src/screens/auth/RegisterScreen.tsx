@@ -9,61 +9,64 @@ import {
 import { COLORS, SIZES } from '../../constants/theme';
 
 /**
- * Provides a user interface for existing users to authenticate
- * Includes links for registration and password recovery (soon:tm:)
+ * Provides the user interface for new account creation.
+ * Captures email and password, and allows navigation back to the login flow.
  */
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleRegister = () => {
+    console.log('Register pressed:', { email, password, confirmPassword });
+  };
 
   const handleLogin = () => {
-    console.log('Login pressed:', { email, password });
-  };
-
-  const handleSignUp = () => {
-    console.log('Sign up pressed');
-  };
-
-  const handleForgotPassword = () => {
-    console.log('Forgot password pressed');
+    console.log('Already have an account? Login pressed');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Register</Text>
 
       <TextInput
         style={styles.input}
         placeholder="E-mail"
+        placeholderTextColor={COLORS.textLight}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
-        placeholderTextColor={COLORS.textLight}
+        autoCapitalize="none"
       />
 
       <TextInput
         style={styles.input}
         placeholder="Password"
+        placeholderTextColor={COLORS.textLight}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Confirm Password"
         placeholderTextColor={COLORS.textLight}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
       />
 
       <TouchableOpacity
-        style={styles.loginButton}
-        onPress={handleLogin}
-        testID="login-submit-button"
+        style={styles.actionButton}
+        onPress={handleRegister}
+        testID="register-submit-button"
       >
-        <Text style={styles.loginButtonText}>Login</Text>
+        <Text style={styles.actionButtonText}>Register</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={handleSignUp}>
-        <Text style={styles.linkText}>Don't have an account?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleForgotPassword}>
-        <Text style={styles.linkText}>Forgot Password</Text>
+      <TouchableOpacity onPress={handleLogin}>
+        <Text style={styles.linkText}>Already have an account? Login</Text>
       </TouchableOpacity>
     </View>
   );
@@ -78,27 +81,27 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: SIZES.padding * 2,
-    color: COLORS.text,
   },
   input: {
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     marginBottom: SIZES.padding,
-    fontSize: 16,
     color: COLORS.text,
+    fontSize: 16,
   },
-  loginButton: {
+  actionButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radius,
     padding: SIZES.padding,
+    borderRadius: SIZES.radius,
     alignItems: 'center',
-    marginBottom: SIZES.padding * 1.5,
+    marginBottom: SIZES.padding,
   },
-  loginButtonText: {
+  actionButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -106,7 +109,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: COLORS.primary,
     textAlign: 'center',
-    marginBottom: SIZES.padding,
     fontSize: 14,
   },
 });
