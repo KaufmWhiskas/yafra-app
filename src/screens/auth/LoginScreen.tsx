@@ -6,7 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS, SIZES } from '../../constants/theme';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 
 /**
  * Provides a user interface for existing users to authenticate
@@ -15,17 +18,20 @@ import { COLORS, SIZES } from '../../constants/theme';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleLogin = () => {
-    console.log('Login pressed:', { email, password });
+    // TODO: Call Supabase login
   };
 
   const handleSignUp = () => {
-    console.log('Sign up pressed');
+    navigation.navigate('Register');
   };
 
   const handleForgotPassword = () => {
-    console.log('Forgot password pressed');
+    // TODO: Navigate to ForgotPassword screen when implemented
+    navigation.navigate('ForgotPassword' as never);
   };
 
   return (

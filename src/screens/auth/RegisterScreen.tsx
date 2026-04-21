@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS, SIZES } from '../../constants/theme';
 
 /**
@@ -16,13 +17,14 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const navigation = useNavigation();
 
   const handleRegister = () => {
     console.log('Register pressed:', { email, password, confirmPassword });
   };
 
   const handleLogin = () => {
-    console.log('Already have an account? Login pressed');
+    navigation.goBack();
   };
 
   return (

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import TabNavigator from './TabNavigator';
 import ReviewScreen from '../screens/review/ReviewScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -30,7 +31,10 @@ export default function MainNavigator() {
             />
           </>
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

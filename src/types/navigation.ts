@@ -4,6 +4,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   ReviewScreen: { restaurant: Restaurant };
   Login: undefined;
+  Register: undefined;
 };
 
 export type TabParamList = {
