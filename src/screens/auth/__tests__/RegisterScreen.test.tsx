@@ -38,4 +38,12 @@ describe('RegisterScreen Navigation', () => {
 
     expect(mockGoBack).toHaveBeenCalled();
   });
+
+  it('navigates back when top-right close button is pressed', () => {
+    const { getByTestId } = render(<RegisterScreen />);
+
+    fireEvent.press(getByTestId('close-back-button'));
+
+    expect(mockGoBack).toHaveBeenCalled();
+  });
 });

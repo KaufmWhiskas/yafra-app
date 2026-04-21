@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 
 /**
@@ -29,6 +30,14 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={handleLogin}
+        testID="close-back-button"
+      >
+        <Ionicons name="close" size={28} color={COLORS.text} />
+      </TouchableOpacity>
+
       <Text style={styles.title}>Register</Text>
 
       <TextInput
@@ -80,6 +89,12 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
     backgroundColor: COLORS.background,
     justifyContent: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: SIZES.padding,
+    zIndex: 1,
   },
   title: {
     fontSize: 28,
