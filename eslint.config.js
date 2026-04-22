@@ -14,6 +14,9 @@ const compat = new FlatCompat({
 });
 
 export default [
+  {
+    ignores: ['supabase/**'],
+  },
   ...compat.extends('eslint-config-expo'),
   ...tseslint.configs.strict,
   {
