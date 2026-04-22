@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { getMockRestaurants } from '../../services/supabase';
+import { fetchRestaurants } from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
@@ -11,13 +11,17 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 
+/**
+ * Displays a map and list view of restaurants fetched from the database.
+ * Allows users to toggle between map and list views, select restaurants, and navigate to reviews.
+ */
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
-  const { hasLocationPermission } = useLocation();
+  const { hasLocationPermission } = useLocation(); // will use this soon:tm:
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -27,9 +31,15 @@ export default function MapScreen() {
 
   useEffect(() => {
     async function loadData() {
-      const data = await getMockRestaurants();
-      setRestaurants(data);
-      setIsLoading(false);
+      try {
+        const data = await fetchRestaurants();
+        setRestaurants(data || []);
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error);
+        setRestaurants([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     loadData();
   }, []);
@@ -37,7 +47,7 @@ export default function MapScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <Text>Loading mock data from Supabase...</Text>
+        <Text>Loading restaurants from database...</Text>
       </View>
     );
   }

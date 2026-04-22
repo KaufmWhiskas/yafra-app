@@ -1,10 +1,13 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
+import { fetchRestaurants } from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
 
-jest.mock('../../../services/supabase', () => ({
-  getMockRestaurants: jest.fn(() =>
+const mockFetchRestaurants = jest.fn();
+
+jest.mock('../../../services/restaurantService', () => ({
+  fetchRestaurants: jest.fn(() =>
     Promise.resolve([
       {
         id: '1',
@@ -63,7 +66,17 @@ jest.mock('expo-location', () => ({
 describe('MapScreen Toggle Feature', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    jest.clearAllMocks();
   });
+
+  it('calls fetchRestaurants when the component mounts', async () => {
+    render(<MapScreen />);
+
+    await waitFor(() => {
+      expect(fetchRestaurants).toHaveBeenCalled();
+    });
+  });
+
   it('renders the map by default after loading', async () => {
     const { findByText, getByTestId } = render(<MapScreen />);
 
@@ -91,11 +104,13 @@ describe('MapScreen Toggle Feature', () => {
     expect(queryByTestId('list-view')).toBeNull();
   });
 
-  it('renders markers on the map for each restaurant', async () => {
+  it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
     const { getByText, getAllByTestId } = render(<MapScreen />);
 
     await waitFor(() => expect(getByText('Map View')).toBeTruthy());
 
+    // Verify fetchRestaurants was called and markers are rendered based on returned data
+    expect(fetchRestaurants).toHaveBeenCalled();
     const markers = getAllByTestId('restaurant-marker');
     expect(markers.length).toBeGreaterThan(0);
   });
