@@ -1,4 +1,4 @@
-import { register, login } from '../authService';
+import { register, login, logout } from '../authService';
 import { supabase } from '../supabase';
 
 jest.mock('../supabase', () => ({
@@ -77,5 +77,27 @@ describe('Login test', () => {
     await expect(
       login('test@example.com', 'securePassword123'),
     ).rejects.toThrow('Invalid login credentials');
+  });
+});
+
+describe('Logout', () => {
+  it('verifies supabase.auth.signOut is called successfully', async () => {
+    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    });
+
+    await logout();
+
+    expect(supabase.auth.signOut).toHaveBeenCalled();
+  });
+
+  it('throws an error if supabase.auth.signOut fails', async () => {
+    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
+      data: { user: null, session: null },
+      error: new Error('Logout failed'),
+    });
+
+    await expect(logout()).rejects.toThrow('Logout failed');
   });
 });

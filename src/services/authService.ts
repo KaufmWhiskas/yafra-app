@@ -50,3 +50,15 @@ export async function login(email: string, password: string) {
 
   return data;
 }
+
+/**
+ * Logs out the currently authenticated user.
+ * @throws Will throw an error if the logout fails.
+ */
+export async function logout() {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw error;
+  }
+}
