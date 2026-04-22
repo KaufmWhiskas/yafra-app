@@ -6,6 +6,7 @@ jest.mock('../supabase', () => ({
     auth: {
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
+      signOut: jest.fn(),
     },
   },
 }));
