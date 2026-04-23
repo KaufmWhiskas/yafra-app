@@ -26,8 +26,8 @@ jest.mock('../src/context/AuthContext', () => ({
   }),
 }));
 
-jest.mock('../src/services/supabase', () => ({
-  getMockRestaurants: jest.fn(() =>
+jest.mock('../src/services/restaurantService', () => ({
+  fetchRestaurants: jest.fn(() =>
     Promise.resolve([
       {
         id: '1',

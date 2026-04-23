@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
-import { fetchRestaurants } from '../../../services/restaurantService';
+import {
+  fetchRestaurants,
+  triggerIngest,
+} from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
-
-const mockFetchRestaurants = jest.fn();
 
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurants: jest.fn(() =>
@@ -18,6 +19,7 @@ jest.mock('../../../services/restaurantService', () => ({
       },
     ]),
   ),
+  triggerIngest: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('react-native-maps', () => {
@@ -27,8 +29,13 @@ jest.mock('react-native-maps', () => {
   const MockMapView = (props: {
     children?: React.ReactNode;
     onPress?: () => void;
+    onRegionChangeComplete?: (region: any) => void;
   }) => (
-    <View testID="mock-map" onPress={props.onPress}>
+    <View
+      testID="mock-map"
+      onPress={props.onPress}
+      onRegionChangeComplete={props.onRegionChangeComplete}
+    >
       {props.children}
     </View>
   );
@@ -156,6 +163,31 @@ describe('MapScreen Toggle Feature', () => {
         id: '1',
         name: 'Test Burger',
       }),
+    });
+  });
+
+  it('calls triggerIngest with calculated BoundingBox on region change', async () => {
+    const { getByTestId, getByText } = render(<MapScreen />);
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const mapElement = getByTestId('mock-map');
+    const dummyRegion = {
+      latitude: 47.35,
+      longitude: 8.55,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.2,
+    };
+
+    fireEvent(mapElement, 'regionChangeComplete', dummyRegion);
+
+    await waitFor(() => {
+      expect(triggerIngest).toHaveBeenCalledWith({
+        minLat: 47.3, // 47.35 - (0.1 / 2)
+        maxLat: 47.4, // 47.35 + (0.1 / 2)
+        minLon: 8.45, // 8.55 - (0.2 / 2)
+        maxLon: 8.65, // 8.55 + (0.2 / 2)
+      });
     });
   });
 });

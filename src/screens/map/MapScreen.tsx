@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { fetchRestaurants } from '../../services/restaurantService';
+import {
+  fetchRestaurants,
+  triggerIngest,
+} from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { Restaurant } from '../../types';
@@ -10,6 +14,7 @@ import RestaurantMap from '../../components/map/RestaurantMap';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
+import { Region } from 'react-native-maps';
 
 /**
  * Displays a map and list view of restaurants fetched from the database.
@@ -27,6 +32,36 @@ export default function MapScreen() {
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
+  };
+
+  const loadData = async () => {
+    try {
+      const data = await fetchRestaurants();
+      setRestaurants(data || []);
+    } catch (error) {
+      console.error('Failed to fetch restaurants:', error);
+      setRestaurants([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegionChangeComplete = async (region: Region) => {
+    const bbox = {
+      minLat: region.latitude - region.latitudeDelta / 2,
+      maxLat: region.latitude + region.latitudeDelta / 2,
+      minLon: region.longitude - region.longitudeDelta / 2,
+      maxLon: region.longitude + region.longitudeDelta / 2,
+    };
+
+    try {
+      // Trigger the ingest and then refresh the data
+      await triggerIngest(bbox);
+      await loadData();
+    } catch (error) {
+      // Silently fail for now, but could add user-facing feedback
+      console.error('Failed to ingest or refresh restaurants:', error);
+    }
   };
 
   useEffect(() => {
@@ -73,6 +108,7 @@ export default function MapScreen() {
           toolbarEnabled={false}
           testID="mock-map"
           onPressReview={handleReviewPress}
+          onRegionChangeComplete={handleRegionChangeComplete}
         />
       ) : (
         <FlatList

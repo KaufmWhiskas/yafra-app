@@ -1,5 +1,6 @@
 {
   "editor.formatOnSave": true,
+  "json.schemaDownload.enable": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.expand": false,
@@ -16,5 +17,6 @@
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
-  "cSpell.words": ["Bbox"]
+  "cSpell.words": ["Bbox"],
+  "cSpell.ignoreWords": ["apikey"]
 }
