@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { fetchRestaurants } from '../../services/restaurantService';
 import {
   fetchRestaurants,
   triggerIngest,
@@ -65,17 +64,6 @@ export default function MapScreen() {
   };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await fetchRestaurants();
-        setRestaurants(data || []);
-      } catch (error) {
-        console.error('Failed to fetch restaurants:', error);
-        setRestaurants([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
     loadData();
   }, []);
 

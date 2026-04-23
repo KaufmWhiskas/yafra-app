@@ -15,6 +15,7 @@ interface RestaurantMapProps {
   toolbarEnabled?: boolean;
   testID?: string;
   onPressReview?: (restaurant: Restaurant) => void;
+  onRegionChangeComplete?: (region: Region) => void;
 }
 
 export default function RestaurantMap({
@@ -28,6 +29,7 @@ export default function RestaurantMap({
   toolbarEnabled = false,
   testID = 'restaurant-map',
   onPressReview,
+  onRegionChangeComplete,
 }: RestaurantMapProps) {
   return (
     <>
@@ -39,6 +41,7 @@ export default function RestaurantMap({
         toolbarEnabled={toolbarEnabled}
         initialRegion={initialRegion}
         onPress={onMapPress}
+        onRegionChangeComplete={onRegionChangeComplete}
       >
         {restaurants
           .filter(
