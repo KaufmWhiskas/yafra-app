@@ -1,6 +1,9 @@
 import { assertEquals } from "@std/assert";
 import { BoundingBox } from "./scanner.ts";
-import { fetchAndStoreRestaurants } from "./service.ts";
+import {
+  fetchAndStoreRestaurants,
+  OrchestratorDatabaseClient,
+} from "./service.ts";
 import { RestaurantRecord } from "./parser.ts";
 
 const TEST_BBOX: BoundingBox = {
@@ -16,24 +19,6 @@ interface MockDbState {
   insertedHistory: { bbox: string }[];
 }
 
-/** Strict interface for the mocked Supabase client */
-export interface MockSupabaseOrchestrator {
-  from: (table: string) => {
-    select?: (columns: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => Promise<
-        { data: { last_scan_date: string }[] | null; error: Error | null }
-      >;
-    };
-    insert?: (data: { bbox: string }) => Promise<{ error: Error | null }>;
-    upsert?: (
-      data: RestaurantRecord | RestaurantRecord[],
-    ) => Promise<{ error: Error | null }>;
-  };
-}
-
 /** * Factory that creates a mock Supabase client for the orchestrator service
  * and exposes its internal state for assertions.
  */
@@ -42,13 +27,13 @@ function createServiceMockSupabase(
     data: { last_scan_date: string }[] | null;
     error: Error | null;
   },
-) {
+): { state: MockDbState; client: OrchestratorDatabaseClient } {
   const state: MockDbState = {
     upsertedRestaurants: [],
     insertedHistory: [],
   };
 
-  const client: MockSupabaseOrchestrator = {
+  const client: OrchestratorDatabaseClient = {
     from: (table: string) => {
       if (table === "scan_history") {
         return {
@@ -60,16 +45,23 @@ function createServiceMockSupabase(
             state.insertedHistory.push(data);
             return Promise.resolve({ error: null });
           },
+          upsert: () =>
+            Promise.resolve({ error: new Error("Not implemented") }),
         };
       }
       if (table === "restaurants") {
         return {
-          upsert: (data: RestaurantRecord | RestaurantRecord[]) => {
-            if (Array.isArray(data)) {
-              state.upsertedRestaurants.push(...data);
-            } else {
-              state.upsertedRestaurants.push(data);
-            }
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: null,
+                error: new Error("Not implemented"),
+              }),
+          }),
+          insert: () =>
+            Promise.resolve({ error: new Error("Not implemented") }),
+          upsert: (data: RestaurantRecord[]) => {
+            state.upsertedRestaurants.push(...data);
             return Promise.resolve({ error: null });
           },
         };

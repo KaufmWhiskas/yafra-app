@@ -19,7 +19,7 @@ interface GeoJSONPoint {
   coordinates: [number, number];
 }
 
-interface RestaurantRecord {
+export interface RestaurantRecord {
   name: string;
   cuisine: string;
   location: GeoJSONPoint;
