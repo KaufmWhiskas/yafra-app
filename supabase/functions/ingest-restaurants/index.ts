@@ -1,32 +1,76 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+/**
+ * @fileoverview Entry point for the ingest-restaurants Supabase Edge Function.
+ * Handles incoming HTTP requests, validates bounding box parameters, and
+ * orchestrates the fetching and storing of restaurant data from OpenStreetMap.
+ */
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "@supabase/supabase-js";
+import {
+  fetchAndStoreRestaurants,
+  OrchestratorDatabaseClient,
+} from "./service.ts";
+import { BoundingBox } from "./scanner.ts";
 
-console.log("Hello from Functions!")
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
+/**
+ * Main HTTP request handler and entry point for the Edge Function.
+ */
 Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  try {
+    const body = await req.json();
+    const bbox: BoundingBox = body.bbox;
 
-/* To invoke locally:
+    if (
+      !bbox ||
+      typeof bbox.minLat !== "number" ||
+      typeof bbox.minLon !== "number" ||
+      typeof bbox.maxLat !== "number" ||
+      typeof bbox.maxLon !== "number"
+    ) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Invalid bbox payload. Expected minLat, minLon, maxLat, maxLon as numbers.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const authHeader = req.headers.get("Authorization") ?? "";
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/ingest-restaurants' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
-*/
+    await fetchAndStoreRestaurants(
+      bbox,
+      supabaseClient as unknown as OrchestratorDatabaseClient,
+    );
+
+    return new Response(JSON.stringify({ message: "Scan complete" }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    const error = err as Error;
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
