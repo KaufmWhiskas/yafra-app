@@ -3,6 +3,7 @@ import { BoundingBox } from "./scanner.ts";
 import {
   fetchAndStoreRestaurants,
   OrchestratorDatabaseClient,
+  RestaurantFetcher,
 } from "./service.ts";
 import { RestaurantRecord } from "./parser.ts";
 
@@ -89,12 +90,14 @@ Deno.test("fetchAndStoreRestaurants() exits early if shouldSkipScan is true", as
 
   let fetchCalled = false;
 
-  const mockFetch = ((_input: string | URL | Request, _init?: RequestInit) => {
-    fetchCalled = true;
-    return Promise.resolve(new Response());
-  }) as typeof fetch;
+  const mockFetcher: RestaurantFetcher = {
+    fetchRestaurants: async () => {
+      fetchCalled = true;
+      return [];
+    },
+  };
 
-  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetch);
+  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
 
   assertEquals(
     fetchCalled,
@@ -113,23 +116,18 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
 
   let fetchCalled = false;
 
-  const mockFetch = ((_input: string | URL | Request, _init?: RequestInit) => {
-    fetchCalled = true;
-    const mockOsmData = {
-      elements: [
-        {
-          type: "node",
-          id: 1,
-          lat: 47.35,
-          lon: 8.55,
-          tags: { name: "Test Cafe", cuisine: "coffee" },
-        },
-      ],
-    };
-    return Promise.resolve(new Response(JSON.stringify(mockOsmData)));
-  }) as typeof fetch;
+  const mockFetcher: RestaurantFetcher = {
+    fetchRestaurants: async () => {
+      fetchCalled = true;
+      return [{
+        name: "Test Cafe",
+        cuisine: "coffee",
+        location: "POINT(8.55 47.35)",
+      }];
+    },
+  };
 
-  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetch);
+  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
 
   assertEquals(fetchCalled, true, "Fetch should be called if scan is needed");
   assertEquals(

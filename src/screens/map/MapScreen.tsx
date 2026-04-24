@@ -37,6 +37,12 @@ export default function MapScreen() {
   const loadData = async () => {
     try {
       const data = await fetchRestaurants();
+
+      // --- TO REMOVE SOON:tm: - Debugging logs for invisible markers ---
+      console.log('Fetched count:', data?.length);
+      console.log('Sample item:', data?.[0]);
+      // -----------------------------------------------------------------
+
       setRestaurants(data || []);
     } catch (error) {
       console.error('Failed to fetch restaurants:', error);
