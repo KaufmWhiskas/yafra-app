@@ -17,6 +17,7 @@ const TEST_BBOX: BoundingBox = {
 interface MockDbState {
   upsertedRestaurants: RestaurantRecord[];
   insertedHistory: { bbox: string }[];
+  upsertOptions?: { onConflict: string };
 }
 
 /** * Factory that creates a mock Supabase client for the orchestrator service
@@ -60,8 +61,12 @@ function createServiceMockSupabase(
           }),
           insert: () =>
             Promise.resolve({ error: new Error("Not implemented") }),
-          upsert: (data: RestaurantRecord[]) => {
+          upsert: (
+            data: RestaurantRecord[],
+            options?: { onConflict: string },
+          ) => {
             state.upsertedRestaurants.push(...data);
+            state.upsertOptions = options;
             return Promise.resolve({ error: null });
           },
         };
@@ -136,5 +141,10 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
     state.insertedHistory.length,
     1,
     "Should have logged the new scan in history",
+  );
+  assertEquals(
+    state.upsertOptions?.onConflict,
+    "name,location",
+    "Should specify onConflict constraint",
   );
 });

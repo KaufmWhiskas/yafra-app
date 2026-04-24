@@ -14,15 +14,10 @@ interface OSMData {
   elements?: OSMElement[];
 }
 
-interface GeoJSONPoint {
-  type: "Point";
-  coordinates: [number, number];
-}
-
 export interface RestaurantRecord {
   name: string;
   cuisine: string;
-  location: GeoJSONPoint;
+  location: string;
 }
 
 /**
@@ -45,10 +40,7 @@ export function parseOSMData(osmData: OSMData): RestaurantRecord[] {
       return {
         name,
         cuisine,
-        location: {
-          type: "Point",
-          coordinates: [element.lon, element.lat],
-        },
+        location: `POINT(${element.lon} ${element.lat})`,
       };
     });
 }

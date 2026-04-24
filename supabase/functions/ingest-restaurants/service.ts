@@ -11,7 +11,10 @@ export interface OrchestratorDatabaseClient {
       }>;
     };
     insert: (data: { bbox: string }) => Promise<{ error: Error | null }>;
-    upsert: (data: RestaurantRecord[]) => Promise<{ error: Error | null }>;
+    upsert: (
+      data: RestaurantRecord[],
+      options?: { onConflict: string },
+    ) => Promise<{ error: Error | null }>;
   };
 }
 
@@ -64,6 +67,7 @@ export async function fetchAndStoreRestaurants(
   if (restaurants.length > 0) {
     const { error: upsertError } = await supabase.from("restaurants").upsert(
       restaurants,
+      { onConflict: "name,location" },
     );
     if (upsertError) throw upsertError;
   }

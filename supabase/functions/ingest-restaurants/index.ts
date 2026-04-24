@@ -4,6 +4,8 @@
  * orchestrates the fetching and storing of restaurant data from OpenStreetMap.
  */
 
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// Use the npm: specifier to prevent deployment module resolution issues
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   fetchAndStoreRestaurants,
@@ -50,11 +52,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const authHeader = req.headers.get("Authorization") ?? "";
 
-    const supabaseClient = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     await fetchAndStoreRestaurants(
       bbox,
@@ -68,7 +67,6 @@ Deno.serve(async (req) => {
   } catch (err) {
     const error = err as Error;
     console.error("Ingest Function Error:", error);
-
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

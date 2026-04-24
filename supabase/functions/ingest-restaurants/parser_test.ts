@@ -22,5 +22,5 @@ Deno.test("parseOSMData() should transform OSM nodes into Restaurant records", (
 
   assertEquals(result.length, 1);
   assertEquals(result[0].name, "Test Bistro");
-  assertEquals(result[0].location.type, "Point");
+  assertEquals(result[0].location, "POINT(8.5417 47.3769)");
 });
