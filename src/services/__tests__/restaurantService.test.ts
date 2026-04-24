@@ -34,60 +34,80 @@ describe("Restaurant Service", () => {
         },
       ];
 
-      const mockSelect = jest.fn().mockResolvedValue({
+      const mockLteLon = jest.fn().mockResolvedValue({
         data: mockRestaurants,
         error: null,
       });
+      const mockGteLon = jest.fn(() => ({ lte: mockLteLon }));
+      const mockLteLat = jest.fn(() => ({ gte: mockGteLon }));
+      const mockGteLat = jest.fn(() => ({ lte: mockLteLat }));
+      const mockSelect = jest.fn(() => ({ gte: mockGteLat }));
       (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
-      const result = await fetchRestaurants();
+      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
+      const result = await fetchRestaurants(bbox);
 
       expect(supabase.from).toHaveBeenCalledWith("restaurants");
       expect(mockSelect).toHaveBeenCalledWith("*");
+      // Check latitude filters
+      expect(mockGteLat).toHaveBeenCalledWith("latitude", bbox.minLat);
+      expect(mockLteLat).toHaveBeenCalledWith("latitude", bbox.maxLat);
+      // Check longitude filters
+      expect(mockGteLon).toHaveBeenCalledWith("longitude", bbox.minLon);
+      expect(mockLteLon).toHaveBeenCalledWith("longitude", bbox.maxLon);
       expect(result).toEqual(mockRestaurants);
     });
 
     it("throws an error if the database query fails", async () => {
       const errorMessage = "Database connection failed";
 
-      const mockSelect = jest.fn().mockResolvedValue({
-        data: null,
-        error: new Error(errorMessage),
+      const mockSelect = jest.fn().mockReturnValue({
+        gte: jest.fn().mockReturnValue({
+          lte: jest.fn().mockReturnValue({
+            gte: jest.fn().mockReturnValue({
+              lte: jest.fn().mockResolvedValue({
+                data: null,
+                error: new Error(errorMessage),
+              }),
+            }),
+          }),
+        }),
       });
       (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
-      await expect(fetchRestaurants()).rejects.toThrow(errorMessage);
+      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
+      await expect(fetchRestaurants(bbox)).rejects.toThrow(errorMessage);
     });
   });
+});
 
-  describe("triggerIngest", () => {
-    it("invokes the ingest-restaurants edge function with the correct bounding box", async () => {
-      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: { message: "Scan complete" },
-        error: null,
-      });
-
-      await triggerIngest(bbox);
-
-      expect(supabase.functions.invoke).toHaveBeenCalledWith(
-        "ingest-restaurants",
-        {
-          body: { bbox },
-        },
-      );
+describe("triggerIngest", () => {
+  it("invokes the ingest-restaurants edge function with the correct bounding box", async () => {
+    const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { message: "Scan complete" },
+      error: null,
     });
 
-    it("throws an error if the edge function invocation fails", async () => {
-      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
-      const errorMessage = "Function invocation failed";
+    await triggerIngest(bbox);
 
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: null,
-        error: new Error(errorMessage),
-      });
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      "ingest-restaurants",
+      {
+        body: { bbox },
+      },
+    );
+  });
 
-      await expect(triggerIngest(bbox)).rejects.toThrow(errorMessage);
+  it("throws an error if the edge function invocation fails", async () => {
+    const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
+    const errorMessage = "Function invocation failed";
+
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: null,
+      error: new Error(errorMessage),
     });
+
+    await expect(triggerIngest(bbox)).rejects.toThrow(errorMessage);
   });
 });

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
 
 /**
  * Represents a geographic bounding box for map-based queries.
@@ -15,8 +15,14 @@ interface BoundingBox {
  * @returns A promise resolving to an array of restaurant records.
  * @throws Will throw an error if the database query fails.
  */
-export async function fetchRestaurants() {
-  const { data, error } = await supabase.from('restaurants').select('*');
+export async function fetchRestaurants(bbox: BoundingBox) {
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .gte("latitude", bbox.minLat)
+    .lte("latitude", bbox.maxLat)
+    .gte("longitude", bbox.minLon)
+    .lte("longitude", bbox.maxLon);
 
   if (error) {
     throw error;
@@ -31,9 +37,12 @@ export async function fetchRestaurants() {
  * @throws Will throw an error if the function invocation fails.
  */
 export async function triggerIngest(bbox: BoundingBox) {
-  const { data, error } = await supabase.functions.invoke('ingest-restaurants', {
-    body: { bbox },
-  });
+  const { data, error } = await supabase.functions.invoke(
+    "ingest-restaurants",
+    {
+      body: { bbox },
+    },
+  );
 
   if (error) {
     throw error;

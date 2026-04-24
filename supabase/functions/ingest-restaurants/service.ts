@@ -12,7 +12,7 @@ export interface OrchestratorDatabaseClient {
     };
     insert: (data: { bbox: string }) => Promise<{ error: Error | null }>;
     upsert: (
-      data: any,
+      data: RestaurantRecord[] | { bbox: string; last_scan_date: string },
       options?: { onConflict: string },
     ) => Promise<{ error: Error | null }>;
   };

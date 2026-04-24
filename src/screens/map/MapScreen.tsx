@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
+import { BoundingBox, getRegionBBox } from '../../utils/geo';
 
 /**
  * Displays a map and list view of restaurants fetched from the database.
@@ -34,9 +35,17 @@ export default function MapScreen() {
     navigation.navigate('ReviewScreen', { restaurant });
   };
 
-  const loadData = async () => {
+  const initialRegion: Region = {
+    latitude: 49.469805794737454,
+    longitude: 8.422159691397045,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  };
+
+  const loadData = async (bbox?: BoundingBox) => {
     try {
-      const data = await fetchRestaurants();
+      if (!bbox) return;
+      const data = await fetchRestaurants(bbox);
 
       // --- TO REMOVE SOON:tm: - Debugging logs for invisible markers ---
       console.log('Fetched count:', data?.length);
@@ -47,23 +56,16 @@ export default function MapScreen() {
     } catch (error) {
       console.error('Failed to fetch restaurants:', error);
       setRestaurants([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleRegionChangeComplete = async (region: Region) => {
-    const bbox = {
-      minLat: region.latitude - region.latitudeDelta / 2,
-      maxLat: region.latitude + region.latitudeDelta / 2,
-      minLon: region.longitude - region.longitudeDelta / 2,
-      maxLon: region.longitude + region.longitudeDelta / 2,
-    };
+    const bbox = getRegionBBox(region);
 
     try {
       // Trigger the ingest and then refresh the data
       await triggerIngest(bbox);
-      await loadData();
+      await loadData(bbox);
     } catch (error) {
       // Silently fail for now, but could add user-facing feedback
       console.error('Failed to ingest or refresh restaurants:', error);
@@ -71,8 +73,8 @@ export default function MapScreen() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (
@@ -92,12 +94,7 @@ export default function MapScreen() {
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={setSelectedRestaurant}
           onMapPress={() => setSelectedRestaurant(null)}
-          initialRegion={{
-            latitude: 49.469805794737454,
-            longitude: 8.422159691397045,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-          }}
+          initialRegion={initialRegion}
           showsUserLocation={true}
           showsMyLocationButton={true}
           toolbarEnabled={false}

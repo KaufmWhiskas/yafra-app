@@ -12,6 +12,7 @@ import {
   OrchestratorDatabaseClient,
 } from "./service.ts";
 import { BoundingBox } from "./scanner.ts";
+import { overpassFetcher } from "./overpass_fetcher.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,7 @@ Deno.serve(async (req) => {
     await fetchAndStoreRestaurants(
       bbox,
       supabaseClient as unknown as OrchestratorDatabaseClient,
+      overpassFetcher,
     );
 
     return new Response(JSON.stringify({ message: "Scan complete" }), {
