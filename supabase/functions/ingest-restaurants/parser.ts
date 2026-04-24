@@ -30,17 +30,23 @@ export function parseOSMData(osmData: OSMData): RestaurantRecord[] {
     return [];
   }
 
+  const seen = new Set<string>();
+
   return osmData.elements
     .filter((element): element is OSMElement =>
       element.type === "node" && !!element.tags?.name
     )
-    .map((element): RestaurantRecord => {
+    .reduce((acc: RestaurantRecord[], element) => {
       const name = element.tags?.name ?? "";
       const cuisine = element.tags?.cuisine ?? "";
-      return {
-        name,
-        cuisine,
-        location: `POINT(${element.lon} ${element.lat})`,
-      };
-    });
+      const location = `POINT(${element.lon} ${element.lat})`;
+      const key = `${name}|${location}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        acc.push({ name, cuisine, location });
+      }
+
+      return acc;
+    }, []);
 }
