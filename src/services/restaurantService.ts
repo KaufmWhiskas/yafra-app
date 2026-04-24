@@ -32,6 +32,26 @@ export async function fetchRestaurants(bbox: BoundingBox) {
 }
 
 /**
+ * Fetches detailed high-fidelity data (Pro SKU) for a specific restaurant from Google Places.
+ * @param googlePlaceId The Google Place ID of the restaurant.
+ * @throws Will throw an error if the function invocation fails.
+ */
+export async function fetchRestaurantDetails(googlePlaceId: string) {
+  const { data, error } = await supabase.functions.invoke(
+    "fetch-place-details",
+    {
+      body: { googlePlaceId },
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Triggers the Supabase Edge Function to ingest restaurants for a given area.
  * @param bbox The geographic bounding box to scan.
  * @throws Will throw an error if the function invocation fails.

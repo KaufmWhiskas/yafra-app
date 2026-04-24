@@ -45,8 +45,13 @@ function createServiceMockSupabase(
           }),
           insert: () =>
             Promise.resolve({ error: new Error("Not implemented") }),
-          upsert: (data: any, options?: { onConflict: string }) => {
-            state.insertedHistory.push(data);
+          upsert: (
+            data: RestaurantRecord[] | { bbox: string; last_scan_date: string },
+            _options?: { onConflict: string },
+          ) => {
+            state.insertedHistory.push(
+              data as { bbox: string; last_scan_date: string },
+            );
             return Promise.resolve({ error: null });
           },
         };
@@ -63,10 +68,10 @@ function createServiceMockSupabase(
           insert: () =>
             Promise.resolve({ error: new Error("Not implemented") }),
           upsert: (
-            data: any,
+            data: RestaurantRecord[] | { bbox: string; last_scan_date: string },
             options?: { onConflict: string },
           ) => {
-            state.upsertedRestaurants.push(...data);
+            state.upsertedRestaurants.push(...(data as RestaurantRecord[]));
             state.upsertOptions = options;
             return Promise.resolve({ error: null });
           },
@@ -91,9 +96,9 @@ Deno.test("fetchAndStoreRestaurants() exits early if shouldSkipScan is true", as
   let fetchCalled = false;
 
   const mockFetcher: RestaurantFetcher = {
-    fetchRestaurants: async () => {
+    fetchRestaurants: () => {
       fetchCalled = true;
-      return [];
+      return Promise.resolve([]);
     },
   };
 
@@ -117,13 +122,13 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
   let fetchCalled = false;
 
   const mockFetcher: RestaurantFetcher = {
-    fetchRestaurants: async () => {
+    fetchRestaurants: () => {
       fetchCalled = true;
-      return [{
+      return Promise.resolve([{
         name: "Test Cafe",
         cuisine: "coffee",
         location: "POINT(8.55 47.35)",
-      }];
+      }]);
     },
   };
 
@@ -142,7 +147,7 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
   );
   assertEquals(
     state.upsertOptions?.onConflict,
-    "name,location",
+    "google_place_id",
     "Should specify onConflict constraint",
   );
 });

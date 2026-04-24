@@ -18,6 +18,7 @@ export interface RestaurantRecord {
   name: string;
   cuisine: string;
   location: string;
+  google_place_id?: string;
 }
 
 /**

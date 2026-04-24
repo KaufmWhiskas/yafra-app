@@ -85,6 +85,7 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
         cuisine: "",
         location:
           `POINT(${place.location.longitude} ${place.location.latitude})`,
+        google_place_id: place.id,
       }));
     },
   };

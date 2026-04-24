@@ -45,7 +45,7 @@ export async function fetchAndStoreRestaurants(
   if (restaurants.length > 0) {
     const { error: upsertError } = await supabase.from("restaurants").upsert(
       restaurants,
-      { onConflict: "name,location" },
+      { onConflict: "google_place_id" },
     );
     if (upsertError) throw upsertError;
   }

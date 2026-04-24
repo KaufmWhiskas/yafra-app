@@ -1,4 +1,8 @@
-import { fetchRestaurants, triggerIngest } from "../restaurantService";
+import {
+  fetchRestaurantDetails,
+  fetchRestaurants,
+  triggerIngest,
+} from "../restaurantService";
 import { supabase } from "../supabase";
 
 jest.mock("../supabase", () => ({
@@ -109,5 +113,25 @@ describe("triggerIngest", () => {
     });
 
     await expect(triggerIngest(bbox)).rejects.toThrow(errorMessage);
+  });
+});
+
+describe("fetchRestaurantDetails", () => {
+  it("invokes the fetch-place-details edge function with the correct googlePlaceId", async () => {
+    const mockDetails = { rating: 4.5, price_level: 2 };
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: mockDetails,
+      error: null,
+    });
+
+    const result = await fetchRestaurantDetails("place_123");
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      "fetch-place-details",
+      {
+        body: { googlePlaceId: "place_123" },
+      },
+    );
+    expect(result).toEqual(mockDetails);
   });
 });

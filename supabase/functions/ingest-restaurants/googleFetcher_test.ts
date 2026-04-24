@@ -65,6 +65,7 @@ Deno.test("createGoogleFetcher() should correctly parse Google API response into
     assertEquals(results.length, 1);
     assertEquals(results[0].name, "Google Bistro");
     assertEquals(results[0].location, "POINT(8.5417 47.3769)");
+    assertEquals(results[0].google_place_id, "place_123");
   } finally {
     globalThis.fetch = originalFetch;
   }
