@@ -19,20 +19,30 @@ describe('SearchBar', () => {
     expect(getByPlaceholderText('Search places...')).toBeTruthy();
   });
 
-  it('calls getPlacePredictions from searchService as the user types', async () => {
+  it('debounces calls to getPlacePredictions as the user types', async () => {
+    jest.useFakeTimers();
     (getPlacePredictions as jest.Mock).mockResolvedValue([]);
     const { getByPlaceholderText } = render(
       <SearchBar onPlaceSelect={jest.fn()} />,
     );
 
-    fireEvent.changeText(getByPlaceholderText('Search places...'), 'Piz');
+    const input = getByPlaceholderText('Search places...');
+    fireEvent.changeText(input, 'Piz');
+    fireEvent.changeText(input, 'Pizza');
+
+    expect(getPlacePredictions).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(500);
 
     await waitFor(() => {
+      expect(getPlacePredictions).toHaveBeenCalledTimes(1);
       expect(getPlacePredictions).toHaveBeenCalledWith(
-        'Piz',
+        'Pizza',
         expect.any(String), // We expect the component to generate a sessionToken
       );
     });
+
+    jest.useRealTimers();
   });
 
   it('displays the returned predictions in a list', async () => {

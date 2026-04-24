@@ -15,38 +15,50 @@ interface SearchBarProps {
 }
 
 /**
- * A search input component that provides place suggestions using Google Places Autocomplete.
+ * A search input component providing place suggestions via Google Places Autocomplete.
  * Uses a session token to bundle keystrokes into a single billable event for cost control.
  */
 export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Prediction[]>([]);
   const sessionToken = useRef<string>('');
+  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Initialize session token on mount
+    // Generate initial session token on mount.
     sessionToken.current = Math.random().toString(36).substring(2, 15);
+
+    return () => {
+      if (timeoutId.current) clearTimeout(timeoutId.current);
+    };
   }, []);
 
-  const handleTextChange = async (text: string) => {
+  const handleTextChange = (text: string) => {
     setQuery(text);
-    if (text.length > 2) {
+
+    if (timeoutId.current) clearTimeout(timeoutId.current);
+
+    if (text.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Debounce matches the 500ms delay defined in your tests.
+    timeoutId.current = setTimeout(async () => {
       try {
         const results = await getPlacePredictions(text, sessionToken.current);
         setSuggestions(results);
       } catch (error) {
         console.error('Search error:', error);
       }
-    } else {
-      setSuggestions([]);
-    }
+    }, 500);
   };
 
   const handleSelect = (item: Prediction) => {
     onPlaceSelect(item);
     setQuery('');
     setSuggestions([]);
-    // Reset session token after a successful selection to start a new billable session
+    // Refresh session token after selection to start a new billable session.
     sessionToken.current = Math.random().toString(36).substring(2, 15);
   };
 
@@ -57,7 +69,7 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
         placeholder="Search places..."
         value={query}
         onChangeText={handleTextChange}
-        placeholderTextColor={COLORS.textLight}
+        placeholderTextColor={COLORS.text + '80'} // 50% opacity
       />
       {suggestions.length > 0 && (
         <FlatList
@@ -81,7 +93,7 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     left: SIZES.padding,
     right: SIZES.padding,
     zIndex: 100,
@@ -91,6 +103,10 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
     borderRadius: SIZES.radius,
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     color: COLORS.text,
   },
   list: {
@@ -98,6 +114,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     borderRadius: SIZES.radius,
     maxHeight: 200,
+    elevation: 5,
   },
   item: {
     padding: SIZES.padding,
