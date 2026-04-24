@@ -42,12 +42,12 @@ function createServiceMockSupabase(
             eq: (_col: string, _val: string) =>
               Promise.resolve(scanHistoryResponse),
           }),
-          insert: (data: { bbox: string }) => {
+          insert: () =>
+            Promise.resolve({ error: new Error("Not implemented") }),
+          upsert: (data: any, options?: { onConflict: string }) => {
             state.insertedHistory.push(data);
             return Promise.resolve({ error: null });
           },
-          upsert: () =>
-            Promise.resolve({ error: new Error("Not implemented") }),
         };
       }
       if (table === "restaurants") {
@@ -62,7 +62,7 @@ function createServiceMockSupabase(
           insert: () =>
             Promise.resolve({ error: new Error("Not implemented") }),
           upsert: (
-            data: RestaurantRecord[],
+            data: any,
             options?: { onConflict: string },
           ) => {
             state.upsertedRestaurants.push(...data);

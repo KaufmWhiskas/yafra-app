@@ -12,7 +12,7 @@ export interface OrchestratorDatabaseClient {
     };
     insert: (data: { bbox: string }) => Promise<{ error: Error | null }>;
     upsert: (
-      data: RestaurantRecord[],
+      data: any,
       options?: { onConflict: string },
     ) => Promise<{ error: Error | null }>;
   };
@@ -74,9 +74,10 @@ export async function fetchAndStoreRestaurants(
 
   const bboxString =
     `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
-  const { error: historyError } = await supabase.from("scan_history").insert({
-    bbox: bboxString,
-  });
+  const { error: historyError } = await supabase.from("scan_history").upsert(
+    { bbox: bboxString, last_scan_date: new Date().toISOString() },
+    { onConflict: "bbox" },
+  );
 
   if (historyError) throw historyError;
 }
