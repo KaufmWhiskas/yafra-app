@@ -12,7 +12,7 @@ import {
   OrchestratorDatabaseClient,
 } from "./service.ts";
 import { BoundingBox } from "./scanner.ts";
-import { overpassFetcher } from "./overpass_fetcher.ts";
+import { createGoogleFetcher } from "./googleFetcher.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,13 +53,19 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const googleApiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+
+    if (!googleApiKey) {
+      throw new Error("Missing GOOGLE_PLACES_API_KEY environment variable");
+    }
 
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const googleFetcher = createGoogleFetcher(googleApiKey);
 
     await fetchAndStoreRestaurants(
       bbox,
       supabaseClient as unknown as OrchestratorDatabaseClient,
-      overpassFetcher,
+      googleFetcher,
     );
 
     return new Response(JSON.stringify({ message: "Scan complete" }), {
