@@ -11,10 +11,12 @@ import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
+import SearchBar from '../../components/ui/SearchBar'; // Added import
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
+import { Prediction } from '../../services/searchService'; // Added import
 import {
   BoundingBox,
   getRegionBBox,
@@ -22,21 +24,24 @@ import {
   Coordinate,
 } from '../../utils/geo';
 
-/**
- * Displays a map and list view of restaurants fetched from the database.
- * Allows users to toggle between map and list views, select restaurants, and navigate to reviews.
- */
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
-  // eslint-disable-next-line
-  const { hasLocationPermission } = useLocation(); // will use this soon:tm:
+
+  // New state to control map position
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 49.469805794737454,
+    longitude: 8.422159691397045,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+
+  const { hasLocationPermission } = useLocation();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
   const lastScannedLocation = useRef<Coordinate | null>(null);
 
   const handleReviewPress = (restaurant: Restaurant) => {
@@ -45,7 +50,6 @@ export default function MapScreen() {
 
   const handleRestaurantSelect = async (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant);
-
     if (restaurant.google_place_id) {
       try {
         const details = await fetchRestaurantDetails(
@@ -60,23 +64,27 @@ export default function MapScreen() {
     }
   };
 
-  const initialRegion: Region = {
-    latitude: 49.469805794737454,
-    longitude: 8.422159691397045,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
+  // New handler for search selection
+  const handleSearchSelect = async (place: Prediction) => {
+    try {
+      const details = await fetchRestaurantDetails(place.placeId);
+      if (details.location) {
+        setMapRegion({
+          latitude: details.location.latitude,
+          longitude: details.location.longitude,
+          latitudeDelta: 0.0922, // Keep zoom level
+          longitudeDelta: 0.0421,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch place details from search:', error);
+    }
   };
 
   const loadData = async (bbox?: BoundingBox) => {
     try {
       if (!bbox) return;
       const data = await fetchRestaurants(bbox);
-
-      // --- TO REMOVE SOON:tm: - Debugging logs for invisible markers ---
-      console.log('Fetched count:', data?.length);
-      console.log('Sample item:', data?.[0]);
-      // -----------------------------------------------------------------
-
       setRestaurants(data || []);
     } catch (error) {
       console.error('Failed to fetch restaurants:', error);
@@ -85,6 +93,7 @@ export default function MapScreen() {
   };
 
   const handleRegionChangeComplete = async (region: Region) => {
+    setMapRegion(region); // Ensure state stays in sync with user gestures
     const currentCoord: Coordinate = {
       latitude: region.latitude,
       longitude: region.longitude,
@@ -99,21 +108,18 @@ export default function MapScreen() {
     }
 
     lastScannedLocation.current = currentCoord;
-
     const bbox = getRegionBBox(region);
 
     try {
-      // Trigger the ingest and then refresh the data
       await triggerIngest(bbox);
       await loadData(bbox);
     } catch (error) {
-      // Silently fail for now, but could add user-facing feedback
       console.error('Failed to ingest or refresh restaurants:', error);
     }
   };
 
   useEffect(() => {
-    loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
+    loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
@@ -126,6 +132,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      <SearchBar onPlaceSelect={handleSearchSelect} />
       <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
 
       {viewMode === 'map' ? (
@@ -134,7 +141,7 @@ export default function MapScreen() {
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => setSelectedRestaurant(null)}
-          initialRegion={initialRegion}
+          region={mapRegion} // Use controlled region
           showsUserLocation={true}
           showsMyLocationButton={true}
           toolbarEnabled={false}
@@ -173,16 +180,5 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 120,
     paddingHorizontal: SIZES.padding,
-  },
-  listItem: {
-    backgroundColor: COLORS.surface,
-    padding: SIZES.padding,
-    marginBottom: SIZES.base,
-    borderRadius: SIZES.radius,
-  },
-  listTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: COLORS.text,
   },
 });

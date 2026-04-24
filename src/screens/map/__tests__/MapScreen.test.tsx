@@ -26,6 +26,29 @@ jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurantDetails: jest.fn(),
 }));
 
+jest.mock('../../../components/ui/SearchBar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require('react-native');
+
+  interface MockSearchBarProps {
+    onPlaceSelect: (place: { placeId: string; description: string }) => void;
+  }
+
+  return function MockSearchBar(props: MockSearchBarProps) {
+    const MockView = View as React.ElementType;
+    return (
+      <MockView testID="mock-search-bar" onPlaceSelect={props.onPlaceSelect} />
+    );
+  };
+});
+
+interface Region {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
+
 jest.mock('react-native-maps', () => {
   //import won't work here jest moves it to the top which crashes it
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -33,12 +56,14 @@ jest.mock('react-native-maps', () => {
   const MockMapView = (props: {
     children?: React.ReactNode;
     onPress?: () => void;
-    onRegionChangeComplete?: (region: any) => void;
+    onRegionChangeComplete?: (region: Region) => void;
+    region?: Region;
   }) => (
     <View
       testID="mock-map"
       onPress={props.onPress}
       onRegionChangeComplete={props.onRegionChangeComplete}
+      region={props.region}
     >
       {props.children}
     </View>
@@ -226,17 +251,27 @@ describe('MapScreen Toggle Feature', () => {
       const { getByTestId, getByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
       const mapElement = getByTestId('mock-map');
-      
-      const initialRegion = { latitude: 47.35, longitude: 8.55, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+
+      const initialRegion = {
+        latitude: 47.35,
+        longitude: 8.55,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      };
       fireEvent(mapElement, 'regionChangeComplete', initialRegion);
-      
+
       // Wait for the first ingest to fire (initial scan)
       await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
 
       // Mock distance to be 400 meters (0.4 km)
       (calculateDistance as jest.Mock).mockReturnValue(0.4);
 
-      const newRegion = { latitude: 47.351, longitude: 8.551, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      const newRegion = {
+        latitude: 47.351,
+        longitude: 8.551,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      };
       fireEvent(mapElement, 'regionChangeComplete', newRegion);
 
       // It should still be exactly 1
@@ -247,21 +282,65 @@ describe('MapScreen Toggle Feature', () => {
       const { getByTestId, getByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
       const mapElement = getByTestId('mock-map');
-      
-      const initialRegion = { latitude: 47.35, longitude: 8.55, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+
+      const initialRegion = {
+        latitude: 47.35,
+        longitude: 8.55,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      };
       fireEvent(mapElement, 'regionChangeComplete', initialRegion);
-      
+
       await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
 
       // Mock distance to be 600 meters (0.6 km)
       (calculateDistance as jest.Mock).mockReturnValue(0.6);
 
-      const newRegion = { latitude: 47.36, longitude: 8.56, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      const newRegion = {
+        latitude: 47.36,
+        longitude: 8.56,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      };
       fireEvent(mapElement, 'regionChangeComplete', newRegion);
 
       await waitFor(() => {
         expect(triggerIngest).toHaveBeenCalledTimes(2);
       });
+    });
+  });
+
+  describe('Search Integration', () => {
+    it('renders the SearchBar component', async () => {
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+      expect(getByTestId('mock-search-bar')).toBeTruthy();
+    });
+
+    it('fetches place details and updates map region on place selection', async () => {
+      (fetchRestaurantDetails as jest.Mock).mockResolvedValueOnce({
+        location: { latitude: 50.1109, longitude: 8.6821 }, // Coordinates for Frankfurt
+      });
+
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+      const searchBar = getByTestId('mock-search-bar');
+
+      // Simulate user selecting a place from the SearchBar
+      fireEvent(searchBar, 'placeSelect', {
+        placeId: 'search_123',
+        description: 'Frankfurt, Germany',
+      });
+
+      await waitFor(() => {
+        expect(fetchRestaurantDetails).toHaveBeenCalledWith('search_123');
+      });
+
+      // Assert the Map component received the new region coordinates
+      const map = getByTestId('mock-map');
+      expect(map.props.region.latitude).toBeCloseTo(50.1109);
+      expect(map.props.region.longitude).toBeCloseTo(8.6821);
     });
   });
 });

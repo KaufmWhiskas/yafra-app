@@ -9,7 +9,7 @@ interface RestaurantMapProps {
   selectedRestaurant: Restaurant | null;
   onRestaurantSelect: (restaurant: Restaurant) => void;
   onMapPress: () => void;
-  initialRegion: Region;
+  region: Region;
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
   toolbarEnabled?: boolean;
@@ -23,7 +23,7 @@ export default function RestaurantMap({
   selectedRestaurant,
   onRestaurantSelect,
   onMapPress,
-  initialRegion,
+  region,
   showsUserLocation = true,
   showsMyLocationButton = true,
   toolbarEnabled = false,
@@ -39,7 +39,7 @@ export default function RestaurantMap({
         showsUserLocation={showsUserLocation}
         showsMyLocationButton={showsMyLocationButton}
         toolbarEnabled={toolbarEnabled}
-        initialRegion={initialRegion}
+        region={region}
         onPress={onMapPress}
         onRegionChangeComplete={onRegionChangeComplete}
       >

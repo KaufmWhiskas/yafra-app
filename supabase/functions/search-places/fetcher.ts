@@ -48,3 +48,17 @@ export async function fetchPredictions(
     placeId: suggestion.placePrediction.place,
   }));
 }
+
+export async function fetchProDetails(placeId: string, apiKey: string) {
+  const url = `https://places.googleapis.com/v1/places/${placeId}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      // Added 'location' to the Field Mask
+      "X-Goog-FieldMask":
+        "rating,priceLevel,regularOpeningHours,reviews,location",
+    },
+  });
+  return response.json();
+}
