@@ -6,6 +6,7 @@ import {
   triggerIngest,
 } from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
+import { calculateDistance } from '../../../utils/geo';
 
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurants: jest.fn(() =>
@@ -60,6 +61,11 @@ jest.mock('@react-navigation/native', () => {
     }),
   };
 });
+
+jest.mock('../../../utils/geo', () => ({
+  ...jest.requireActual('../../../utils/geo'),
+  calculateDistance: jest.fn(),
+}));
 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(() =>
@@ -187,6 +193,50 @@ describe('MapScreen Toggle Feature', () => {
         maxLat: 47.35 + 0.1 / 2,
         minLon: 8.55 - 0.2 / 2,
         maxLon: 8.55 + 0.2 / 2,
+      });
+    });
+  });
+
+  describe('Dead-Zone Guard', () => {
+    it('does not call triggerIngest if map moves less than 500 meters', async () => {
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+      const mapElement = getByTestId('mock-map');
+      
+      const initialRegion = { latitude: 47.35, longitude: 8.55, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      fireEvent(mapElement, 'regionChangeComplete', initialRegion);
+      
+      // Wait for the first ingest to fire (initial scan)
+      await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
+
+      // Mock distance to be 400 meters (0.4 km)
+      (calculateDistance as jest.Mock).mockReturnValue(0.4);
+
+      const newRegion = { latitude: 47.351, longitude: 8.551, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      fireEvent(mapElement, 'regionChangeComplete', newRegion);
+
+      // It should still be exactly 1
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls triggerIngest if map moves 500 meters or more', async () => {
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+      const mapElement = getByTestId('mock-map');
+      
+      const initialRegion = { latitude: 47.35, longitude: 8.55, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      fireEvent(mapElement, 'regionChangeComplete', initialRegion);
+      
+      await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
+
+      // Mock distance to be 600 meters (0.6 km)
+      (calculateDistance as jest.Mock).mockReturnValue(0.6);
+
+      const newRegion = { latitude: 47.36, longitude: 8.56, latitudeDelta: 0.1, longitudeDelta: 0.2 };
+      fireEvent(mapElement, 'regionChangeComplete', newRegion);
+
+      await waitFor(() => {
+        expect(triggerIngest).toHaveBeenCalledTimes(2);
       });
     });
   });

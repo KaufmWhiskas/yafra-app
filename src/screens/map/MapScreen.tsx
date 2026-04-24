@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import {
   fetchRestaurants,
@@ -14,7 +14,12 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
-import { BoundingBox, getRegionBBox } from '../../utils/geo';
+import {
+  BoundingBox,
+  getRegionBBox,
+  calculateDistance,
+  Coordinate,
+} from '../../utils/geo';
 
 /**
  * Displays a map and list view of restaurants fetched from the database.
@@ -30,6 +35,8 @@ export default function MapScreen() {
   const { hasLocationPermission } = useLocation(); // will use this soon:tm:
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const lastScannedLocation = useRef<Coordinate | null>(null);
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
@@ -60,6 +67,21 @@ export default function MapScreen() {
   };
 
   const handleRegionChangeComplete = async (region: Region) => {
+    const currentCoord: Coordinate = {
+      latitude: region.latitude,
+      longitude: region.longitude,
+    };
+
+    if (lastScannedLocation.current) {
+      const distance = calculateDistance(
+        lastScannedLocation.current,
+        currentCoord,
+      );
+      if (distance < 0.5) return;
+    }
+
+    lastScannedLocation.current = currentCoord;
+
     const bbox = getRegionBBox(region);
 
     try {
