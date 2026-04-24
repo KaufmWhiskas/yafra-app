@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import {
+  fetchRestaurantDetails,
   fetchRestaurants,
   triggerIngest,
 } from '../../services/restaurantService';
@@ -40,6 +41,23 @@ export default function MapScreen() {
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
+  };
+
+  const handleRestaurantSelect = async (restaurant: Restaurant) => {
+    setSelectedRestaurant(restaurant);
+
+    if (restaurant.google_place_id) {
+      try {
+        const details = await fetchRestaurantDetails(
+          restaurant.google_place_id,
+        );
+        setSelectedRestaurant((prev) =>
+          prev ? { ...prev, ...details } : null,
+        );
+      } catch (error) {
+        console.error('Failed to fetch Pro details:', error);
+      }
+    }
   };
 
   const initialRegion: Region = {
@@ -114,7 +132,7 @@ export default function MapScreen() {
         <RestaurantMap
           restaurants={restaurants}
           selectedRestaurant={selectedRestaurant}
-          onRestaurantSelect={setSelectedRestaurant}
+          onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => setSelectedRestaurant(null)}
           initialRegion={initialRegion}
           showsUserLocation={true}

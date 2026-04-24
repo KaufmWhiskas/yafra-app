@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
 import {
+  fetchRestaurantDetails,
   fetchRestaurants,
   triggerIngest,
 } from '../../../services/restaurantService';
@@ -17,10 +18,12 @@ jest.mock('../../../services/restaurantService', () => ({
         cuisine: 'American',
         latitude: 49.465,
         longitude: 8.425,
+        google_place_id: 'place_123',
       },
     ]),
   ),
   triggerIngest: jest.fn(() => Promise.resolve()),
+  fetchRestaurantDetails: jest.fn(),
 }));
 
 jest.mock('react-native-maps', () => {
@@ -151,6 +154,27 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(map);
 
     expect(queryByTestId('floating-preview-card')).toBeNull();
+  });
+
+  it('fetches details and updates UI when a marker is pressed', async () => {
+    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
+      rating: 4.8,
+      price_level: 2,
+    });
+    const { getByText, getByTestId, findByText } = render(<MapScreen />);
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const marker = getByTestId('restaurant-marker');
+    fireEvent.press(marker);
+
+    // Verify the service call
+    await waitFor(() => {
+      expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
+    });
+
+    // Verify the UI updates with the fetched details
+    expect(await findByText(/4.8/)).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {

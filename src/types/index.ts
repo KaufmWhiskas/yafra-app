@@ -5,4 +5,5 @@ export interface Restaurant {
   rating?: number;
   latitude: number;
   longitude: number;
+  google_place_id?: string;
 }
