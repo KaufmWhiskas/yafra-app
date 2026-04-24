@@ -19,13 +19,22 @@ export async function getPlacePredictions(
   input: string,
   sessionToken: string,
 ): Promise<Prediction[]> {
+  console.log(`[SearchService] Invoking 'search-places' for: "${input}"`);
+  console.log(`[SearchService] Session Token:`, sessionToken);
+
   const { data, error } = await supabase.functions.invoke("search-places", {
     body: { input, sessionToken },
   });
 
   if (error) {
+    console.error(`[SearchService] Supabase Invoke Error:`, error);
+    // Log the raw response if it exists attached to the error
+    if ((error as any).context) {
+      console.error(`[SearchService] Error Context:`, (error as any).context);
+    }
     throw error;
   }
 
+  console.log(`[SearchService] Success! Received data:`, data);
   return data || [];
 }

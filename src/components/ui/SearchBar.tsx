@@ -92,10 +92,8 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 60,
-    left: SIZES.padding,
-    right: SIZES.padding,
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: 10,
     zIndex: 100,
   },
   input: {

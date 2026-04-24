@@ -39,6 +39,7 @@ export default function MapScreen() {
     longitudeDelta: 0.0421,
   });
 
+  // eslint-disable-next-line
   const { hasLocationPermission } = useLocation();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -132,8 +133,10 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <SearchBar onPlaceSelect={handleSearchSelect} />
-      <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
+      <View style={styles.floatingHeader} pointerEvents="box-none">
+        <SearchBar onPlaceSelect={handleSearchSelect} />
+        <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
+      </View>
 
       {viewMode === 'map' ? (
         <RestaurantMap
@@ -172,13 +175,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  floatingHeader: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    zIndex: 100, // Ensure search dropdown overlays the map
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContent: {
-    paddingTop: 120,
+    paddingTop: SIZES.padding, // Reduced since the header is no longer absolutely positioned over the list
     paddingHorizontal: SIZES.padding,
   },
 });

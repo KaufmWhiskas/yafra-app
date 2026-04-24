@@ -18,12 +18,14 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log("[search-places] Received body:", body); // <-- ADDED
     const { input, sessionToken } = body;
 
     if (
       typeof input !== "string" || !input.trim() ||
       typeof sessionToken !== "string"
     ) {
+      console.error("[search-places] Invalid payload detected"); // <-- ADDED
       return new Response(
         JSON.stringify({
           error:
@@ -38,10 +40,12 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
+      console.error("[search-places] GOOGLE_PLACES_API_KEY is missing from environment!"); // <-- ADDED
       throw new Error("Missing GOOGLE_PLACES_API_KEY environment variable");
     }
 
     const predictions = await fetchPredictions(input, sessionToken, apiKey);
+    console.log(`[search-places] Successfully fetched ${predictions.length} predictions`); // <-- ADDED
 
     return new Response(JSON.stringify(predictions), {
       status: 200,
@@ -49,6 +53,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     const error = err as Error;
+    console.error("[search-places] Caught unhandled exception:", error.message); // <-- ADDED
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -37,13 +37,11 @@ export default function ViewToggle({ viewMode, onToggle }: ViewToggleProps) {
 const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: 'row',
-    position: 'absolute',
-    top: 50,
     alignSelf: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.largeRadius,
     padding: 4,
-    zIndex: 10,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
