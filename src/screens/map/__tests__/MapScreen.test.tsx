@@ -183,10 +183,10 @@ describe('MapScreen Toggle Feature', () => {
 
     await waitFor(() => {
       expect(triggerIngest).toHaveBeenCalledWith({
-        minLat: 47.3, // 47.35 - (0.1 / 2)
-        maxLat: 47.4, // 47.35 + (0.1 / 2)
-        minLon: 8.45, // 8.55 - (0.2 / 2)
-        maxLon: 8.65, // 8.55 + (0.2 / 2)
+        minLat: 47.35 - 0.1 / 2,
+        maxLat: 47.35 + 0.1 / 2,
+        minLon: 8.55 - 0.2 / 2,
+        maxLon: 8.55 + 0.2 / 2,
       });
     });
   });

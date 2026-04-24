@@ -4,8 +4,7 @@
  * orchestrates the fetching and storing of restaurant data from OpenStreetMap.
  */
 
-import "@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   fetchAndStoreRestaurants,
   OrchestratorDatabaseClient,
@@ -50,7 +49,7 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const authHeader = req.headers.get("Authorization") ?? "";
 
     const supabaseClient = createClient(supabaseUrl, supabaseKey, {
@@ -68,6 +67,8 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     const error = err as Error;
+    console.error("Ingest Function Error:", error);
+
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

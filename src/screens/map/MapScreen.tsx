@@ -25,6 +25,7 @@ export default function MapScreen() {
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
+  // eslint-disable-next-line
   const { hasLocationPermission } = useLocation(); // will use this soon:tm:
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();

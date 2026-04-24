@@ -45,7 +45,12 @@ export async function fetchAndStoreRestaurants(
     )
   }`;
 
-  const response = await customFetch(overpassUrl);
+  const response = await customFetch(overpassUrl, {
+    headers: {
+      "User-Agent": "YAFRAApp/1.0 (local-dev)",
+      "Accept": "application/json",
+    },
+  });
   if (!response.ok) {
     throw new Error(
       `Overpass API error: ${response.status} ${response.statusText}`,

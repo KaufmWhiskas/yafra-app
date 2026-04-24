@@ -408,7 +408,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.ingest-restaurants]
 enabled = true
 verify_jwt = true
-import_map = "./functions/ingest-restaurants/deno.json"
+import_map = "./functions/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/ingest-restaurants/index.ts"
