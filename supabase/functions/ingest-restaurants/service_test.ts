@@ -95,12 +95,12 @@ Deno.test("fetchAndStoreRestaurants() exits early if shouldSkipScan is true", as
 
   let fetchCalled = false;
 
-  const mockFetcher: RestaurantFetcher = {
-    fetchRestaurants: () => {
+  const mockFetcher = {
+    fetchData: () => {
       fetchCalled = true;
       return Promise.resolve([]);
     },
-  };
+  } as unknown as RestaurantFetcher;
 
   await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
 
@@ -121,8 +121,8 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
 
   let fetchCalled = false;
 
-  const mockFetcher: RestaurantFetcher = {
-    fetchRestaurants: () => {
+  const mockFetcher = {
+    fetchData: () => {
       fetchCalled = true;
       return Promise.resolve([{
         name: "Test Cafe",
@@ -130,7 +130,7 @@ Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan i
         location: "POINT(8.55 47.35)",
       }]);
     },
-  };
+  } as unknown as RestaurantFetcher;
 
   await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
 

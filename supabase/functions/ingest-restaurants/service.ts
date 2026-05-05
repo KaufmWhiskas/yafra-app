@@ -20,7 +20,7 @@ export interface OrchestratorDatabaseClient {
 
 /** Interface for any service that provides restaurant data. */
 export interface RestaurantFetcher {
-  fetchRestaurants: (bbox: BoundingBox) => Promise<RestaurantRecord[]>;
+  fetchData: (bbox: BoundingBox) => Promise<RestaurantRecord[]>;
 }
 
 /**
@@ -40,7 +40,7 @@ export async function fetchAndStoreRestaurants(
     return;
   }
 
-  const restaurants = await fetcher.fetchRestaurants(bbox);
+  const restaurants = await fetcher.fetchData(bbox);
 
   if (restaurants.length > 0) {
     const { error: upsertError } = await supabase.from("restaurants").upsert(
