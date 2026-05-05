@@ -4,7 +4,8 @@ export async function fetchProDetails(placeId: string, apiKey: string) {
     method: "GET",
     headers: {
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "rating,priceLevel,regularOpeningHours,reviews",
+      "X-Goog-FieldMask":
+        "rating,priceLevel,regularOpeningHours,reviews,location",
     },
   });
   return response.json();

@@ -121,10 +121,8 @@ describe('MapScreen Toggle Feature', () => {
   it('renders the map by default after loading', async () => {
     const { findByText, getByTestId } = render(<MapScreen />);
 
-    // Wait for the UI to finish loading by looking for our toggle text
     await findByText('Map View');
 
-    // Now synchronously check that the map is on the screen
     const mapElement = getByTestId('mock-map');
     expect(mapElement).toBeTruthy();
   });
@@ -150,7 +148,6 @@ describe('MapScreen Toggle Feature', () => {
 
     await waitFor(() => expect(getByText('Map View')).toBeTruthy());
 
-    // Verify fetchRestaurants was called and markers are rendered based on returned data
     expect(fetchRestaurants).toHaveBeenCalled();
     const markers = getAllByTestId('restaurant-marker');
     expect(markers.length).toBeGreaterThan(0);
@@ -193,12 +190,10 @@ describe('MapScreen Toggle Feature', () => {
     const marker = getByTestId('restaurant-marker');
     fireEvent.press(marker);
 
-    // Verify the service call
     await waitFor(() => {
       expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
     });
 
-    // Verify the UI updates with the fetched details
     expect(await findByText(/4.8/)).toBeTruthy();
   });
 
@@ -246,8 +241,17 @@ describe('MapScreen Toggle Feature', () => {
     });
   });
 
-  describe('Dead-Zone Guard', () => {
-    it('does not call triggerIngest if map moves less than 500 meters', async () => {
+  describe('Dead-Zone Guard & Debounce', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.runOnlyPendingTimers();
+      jest.useRealTimers();
+    });
+
+    it('does not call triggerIngest if map moves less than 500 meters after 800ms', async () => {
       const { getByTestId, getByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
       const mapElement = getByTestId('mock-map');
@@ -260,10 +264,9 @@ describe('MapScreen Toggle Feature', () => {
       };
       fireEvent(mapElement, 'regionChangeComplete', initialRegion);
 
-      // Wait for the first ingest to fire (initial scan)
-      await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
+      jest.advanceTimersByTime(800);
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
 
-      // Mock distance to be 400 meters (0.4 km)
       (calculateDistance as jest.Mock).mockReturnValue(0.4);
 
       const newRegion = {
@@ -274,11 +277,12 @@ describe('MapScreen Toggle Feature', () => {
       };
       fireEvent(mapElement, 'regionChangeComplete', newRegion);
 
-      // It should still be exactly 1
+      jest.advanceTimersByTime(800);
+
       expect(triggerIngest).toHaveBeenCalledTimes(1);
     });
 
-    it('calls triggerIngest if map moves 500 meters or more', async () => {
+    it('calls triggerIngest if map moves 500 meters or more after 800ms', async () => {
       const { getByTestId, getByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
       const mapElement = getByTestId('mock-map');
@@ -291,9 +295,9 @@ describe('MapScreen Toggle Feature', () => {
       };
       fireEvent(mapElement, 'regionChangeComplete', initialRegion);
 
-      await waitFor(() => expect(triggerIngest).toHaveBeenCalledTimes(1));
+      jest.advanceTimersByTime(800);
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
 
-      // Mock distance to be 600 meters (0.6 km)
       (calculateDistance as jest.Mock).mockReturnValue(0.6);
 
       const newRegion = {
@@ -304,9 +308,50 @@ describe('MapScreen Toggle Feature', () => {
       };
       fireEvent(mapElement, 'regionChangeComplete', newRegion);
 
-      await waitFor(() => {
-        expect(triggerIngest).toHaveBeenCalledTimes(2);
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(800);
+      expect(triggerIngest).toHaveBeenCalledTimes(2);
+    });
+
+    it('debounces multiple rapid region changes within 800ms', async () => {
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+      const mapElement = getByTestId('mock-map');
+
+      // Initial scan
+      fireEvent(mapElement, 'regionChangeComplete', {
+        latitude: 47.35,
+        longitude: 8.55,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
       });
+      jest.advanceTimersByTime(800);
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
+
+      (calculateDistance as jest.Mock).mockReturnValue(0.6);
+
+      // Rapid change 1
+      fireEvent(mapElement, 'regionChangeComplete', {
+        latitude: 47.36,
+        longitude: 8.56,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      });
+      jest.advanceTimersByTime(500);
+
+      fireEvent(mapElement, 'regionChangeComplete', {
+        latitude: 47.37,
+        longitude: 8.57,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.2,
+      });
+
+      jest.advanceTimersByTime(500);
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(300);
+      expect(triggerIngest).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -327,7 +372,6 @@ describe('MapScreen Toggle Feature', () => {
 
       const searchBar = getByTestId('mock-search-bar');
 
-      // Simulate user selecting a place from the SearchBar
       fireEvent(searchBar, 'placeSelect', {
         placeId: 'search_123',
         description: 'Frankfurt, Germany',
@@ -337,7 +381,6 @@ describe('MapScreen Toggle Feature', () => {
         expect(fetchRestaurantDetails).toHaveBeenCalledWith('search_123');
       });
 
-      // Assert the Map component received the new region coordinates
       const map = getByTestId('mock-map');
       expect(map.props.region.latitude).toBeCloseTo(50.1109);
       expect(map.props.region.longitude).toBeCloseTo(8.6821);
