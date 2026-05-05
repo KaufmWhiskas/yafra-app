@@ -40,7 +40,7 @@ function calculateRadiusInMeters(
 
 export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
   return {
-    fetchRestaurants: async (
+    fetchData: async (
       bbox: BoundingBox,
     ): Promise<RestaurantRecord[]> => {
       const url = "https://places.googleapis.com/v1/places:searchNearby";
@@ -60,7 +60,8 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "places.id,places.location,places.displayName",
+          "X-Goog-FieldMask":
+            "places.id,places.location,places.displayName.text",
         },
         body: JSON.stringify({
           includedTypes: ["restaurant"],
