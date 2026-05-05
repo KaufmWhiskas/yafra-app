@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { fetchPredictions } from "./fetcher.ts";
+import { createSearchFetcher } from "./fetcher.ts";
 
-Deno.test("fetchPredictions makes a POST request to Google Places API with correct headers and body", async () => {
+Deno.test("createSearchFetcher() makes a POST request to Google Places API with correct headers and body", async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
   let requestedHeaders: HeadersInit | undefined;
@@ -19,7 +19,8 @@ Deno.test("fetchPredictions makes a POST request to Google Places API with corre
   }) as typeof fetch;
 
   try {
-    await fetchPredictions("Pizza", "session_123", "DUMMY_KEY");
+    const fetcher = createSearchFetcher("DUMMY_KEY");
+    await fetcher.fetchPredictions("Pizza", "session_123");
 
     assertEquals(
       requestedUrl,
@@ -37,7 +38,7 @@ Deno.test("fetchPredictions makes a POST request to Google Places API with corre
   }
 });
 
-Deno.test("fetchPredictions maps Google API response to Prediction[] format", async () => {
+Deno.test("createSearchFetcher() maps Google API response to Prediction[] format", async () => {
   const originalFetch = globalThis.fetch;
   const mockGoogleResponse = {
     suggestions: [
@@ -56,7 +57,8 @@ Deno.test("fetchPredictions maps Google API response to Prediction[] format", as
     )) as typeof fetch;
 
   try {
-    const results = await fetchPredictions("Pizza", "session_123", "DUMMY_KEY");
+    const fetcher = createSearchFetcher("DUMMY_KEY");
+    const results = await fetcher.fetchPredictions("Pizza", "session_123");
 
     assertEquals(results.length, 1);
     assertEquals(results[0].placeId, "places/123");
