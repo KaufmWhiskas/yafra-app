@@ -221,6 +221,7 @@ describe('MapScreen Toggle Feature', () => {
 
     await waitFor(() => expect(getByText('Map View')).toBeTruthy());
 
+    jest.useFakeTimers();
     const mapElement = getByTestId('mock-map');
     const dummyRegion = {
       latitude: 47.35,
@@ -231,14 +232,16 @@ describe('MapScreen Toggle Feature', () => {
 
     fireEvent(mapElement, 'regionChangeComplete', dummyRegion);
 
-    await waitFor(() => {
-      expect(triggerIngest).toHaveBeenCalledWith({
-        minLat: 47.35 - 0.1 / 2,
-        maxLat: 47.35 + 0.1 / 2,
-        minLon: 8.55 - 0.2 / 2,
-        maxLon: 8.55 + 0.2 / 2,
-      });
+    jest.advanceTimersByTime(800);
+
+    expect(triggerIngest).toHaveBeenCalledWith({
+      minLat: 47.35 - 0.1 / 2,
+      maxLat: 47.35 + 0.1 / 2,
+      minLon: 8.55 - 0.2 / 2,
+      maxLon: 8.55 + 0.2 / 2,
     });
+
+    jest.useRealTimers();
   });
 
   describe('Dead-Zone Guard & Debounce', () => {

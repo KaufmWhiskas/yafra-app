@@ -11,12 +11,12 @@ import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
-import SearchBar from '../../components/ui/SearchBar'; // Added import
+import SearchBar from '../../components/ui/SearchBar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
-import { Prediction } from '../../services/searchService'; // Added import
+import { Prediction } from '../../services/searchService';
 import {
   BoundingBox,
   getRegionBBox,
@@ -39,11 +39,13 @@ export default function MapScreen() {
     longitudeDelta: 0.0421,
   });
 
+  // disables useless eslint error
   // eslint-disable-next-line
   const { hasLocationPermission } = useLocation();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const lastScannedLocation = useRef<Coordinate | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
@@ -95,28 +97,33 @@ export default function MapScreen() {
 
   const handleRegionChangeComplete = async (region: Region) => {
     setMapRegion(region); // Ensure state stays in sync with user gestures
-    const currentCoord: Coordinate = {
-      latitude: region.latitude,
-      longitude: region.longitude,
-    };
 
-    if (lastScannedLocation.current) {
-      const distance = calculateDistance(
-        lastScannedLocation.current,
-        currentCoord,
-      );
-      if (distance < 0.5) return;
-    }
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-    lastScannedLocation.current = currentCoord;
-    const bbox = getRegionBBox(region);
+    debounceTimer.current = setTimeout(async () => {
+      const currentCoord: Coordinate = {
+        latitude: region.latitude,
+        longitude: region.longitude,
+      };
 
-    try {
-      await triggerIngest(bbox);
-      await loadData(bbox);
-    } catch (error) {
-      console.error('Failed to ingest or refresh restaurants:', error);
-    }
+      if (lastScannedLocation.current) {
+        const distance = calculateDistance(
+          lastScannedLocation.current,
+          currentCoord,
+        );
+        if (distance < 0.5) return; // 0.5 km = 500 meters
+      }
+
+      lastScannedLocation.current = currentCoord;
+      const bbox = getRegionBBox(region);
+
+      try {
+        await triggerIngest(bbox);
+        await loadData(bbox);
+      } catch (error) {
+        console.error('Failed to ingest or refresh restaurants:', error);
+      }
+    }, 800);
   };
 
   useEffect(() => {
