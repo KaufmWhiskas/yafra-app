@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { getPlacePredictions, Prediction } from '../../services/searchService';
 import { COLORS, SIZES } from '../../constants/theme';
+import { randomUUID } from 'expo-crypto';
 
 interface SearchBarProps {
   onPlaceSelect: (place: Prediction) => void;
@@ -26,7 +27,7 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
 
   useEffect(() => {
     // Generate initial session token on mount.
-    sessionToken.current = Math.random().toString(36).substring(2, 15);
+    sessionToken.current = randomUUID();
 
     return () => {
       if (timeoutId.current) clearTimeout(timeoutId.current);
@@ -59,7 +60,7 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
     setQuery('');
     setSuggestions([]);
     // Refresh session token after selection to start a new billable session.
-    sessionToken.current = Math.random().toString(36).substring(2, 15);
+    sessionToken.current = randomUUID();
   };
 
   return (

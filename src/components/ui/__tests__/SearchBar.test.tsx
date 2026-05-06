@@ -2,9 +2,14 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import SearchBar from '../SearchBar';
 import { getPlacePredictions } from '../../../services/searchService';
+import { randomUUID } from 'expo-crypto';
 
 jest.mock('../../../services/searchService', () => ({
   getPlacePredictions: jest.fn(),
+}));
+
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(),
 }));
 
 describe('SearchBar', () => {
@@ -22,6 +27,7 @@ describe('SearchBar', () => {
   it('debounces calls to getPlacePredictions as the user types', async () => {
     jest.useFakeTimers();
     (getPlacePredictions as jest.Mock).mockResolvedValue([]);
+    (randomUUID as jest.Mock).mockReturnValue('a-fake-uuid-v4');
     const { getByPlaceholderText } = render(
       <SearchBar onPlaceSelect={jest.fn()} />,
     );
@@ -38,7 +44,7 @@ describe('SearchBar', () => {
       expect(getPlacePredictions).toHaveBeenCalledTimes(1);
       expect(getPlacePredictions).toHaveBeenCalledWith(
         'Pizza',
-        expect.any(String), // We expect the component to generate a sessionToken
+        'a-fake-uuid-v4',
       );
     });
 
