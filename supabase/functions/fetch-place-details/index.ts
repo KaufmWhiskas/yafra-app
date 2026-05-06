@@ -1,6 +1,9 @@
 // deno-lint-ignore no-import-prefix
 import "jsr:@supabase/functions-js@^2/edge-runtime.d.ts";
+// deno-lint-ignore no-import-prefix
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { fetchProDetails } from "./fetcher.ts";
+import { DatabaseClient, getOrFetchPlaceDetails } from "./service.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,9 +18,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const googlePlaceId = body?.googlePlaceId;
+    const rawPlaceId = body?.googlePlaceId;
 
-    if (!googlePlaceId || typeof googlePlaceId !== "string") {
+    if (!rawPlaceId || typeof rawPlaceId !== "string") {
       return new Response(
         JSON.stringify({ error: "Missing or invalid googlePlaceId" }),
         {
@@ -26,6 +29,9 @@ Deno.serve(async (req) => {
         },
       );
     }
+
+    // Clean the prefix immediately so the database query uses the correct ID format
+    const googlePlaceId = rawPlaceId.replace(/^places\//, "");
 
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
@@ -40,7 +46,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const data = await fetchProDetails(googlePlaceId, apiKey);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    const data = await getOrFetchPlaceDetails(
+      googlePlaceId,
+      apiKey,
+      supabase as unknown as DatabaseClient,
+      fetchProDetails,
+    );
 
     return new Response(JSON.stringify(data), {
       status: 200,

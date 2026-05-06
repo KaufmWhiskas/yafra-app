@@ -4,7 +4,6 @@ import { getOrFetchPlaceDetails } from "./service.ts";
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
 const FIFTEEN_DAYS_MS = 15 * 24 * 60 * 60 * 1000;
 
-// Strict mock interface to avoid 'any'
 export interface MockDatabaseClient {
   from: (table: string) => {
     select: (columns: string) => {
@@ -16,7 +15,9 @@ export interface MockDatabaseClient {
       };
     };
     update: (payload: { details: unknown; details_updated_at: string }) => {
-      eq: (column: string, value: string) => Promise<{ error: Error | null }>;
+      eq: (column: string, value: string) => {
+        select: () => Promise<{ data: unknown[] | null; error: Error | null }>;
+      };
     };
   };
 }
@@ -40,7 +41,10 @@ function createMockSupabase(
       update: (_payload: { details: unknown; details_updated_at: string }) => ({
         eq: (_column: string, _value: string) => {
           state.updateCalled = true;
-          return Promise.resolve({ error: null });
+          return {
+            select: () =>
+              Promise.resolve({ data: [{ dummy: true }], error: null }),
+          };
         },
       }),
     }),

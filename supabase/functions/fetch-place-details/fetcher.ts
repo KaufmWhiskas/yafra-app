@@ -1,6 +1,5 @@
 export async function fetchProDetails(placeId: string, apiKey: string) {
-  const cleanPlaceId = placeId.replace(/^places\//, "");
-  const url = `https://places.googleapis.com/v1/places/${cleanPlaceId}`;
+  const url = `https://places.googleapis.com/v1/places/${placeId}`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
