@@ -89,10 +89,17 @@ export default function MapScreen() {
     try {
       if (!bbox) return;
       const data = await fetchRestaurants(bbox);
-      setRestaurants(data || []);
+
+      setRestaurants((prev) => {
+        // Create a Map to merge and deduplicate by ID
+        const merged = new Map(prev.map((r) => [r.id, r]));
+        // Add the new restaurants (overwriting any stale duplicates)
+        data?.forEach((r) => merged.set(r.id, r));
+
+        return Array.from(merged.values());
+      });
     } catch (error) {
       console.error('Failed to fetch restaurants:', error);
-      setRestaurants([]);
     }
   };
 
