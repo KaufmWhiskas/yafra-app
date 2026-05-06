@@ -1,5 +1,5 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { fetchPredictions } from "./fetcher.ts";
+import { createSearchFetcher } from "./fetcher.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +46,8 @@ Deno.serve(async (req) => {
       throw new Error("Missing GOOGLE_PLACES_API_KEY environment variable");
     }
 
-    const predictions = await fetchPredictions(input, sessionToken, apiKey);
+    const fetcher = createSearchFetcher(apiKey);
+    const predictions = await fetcher.fetchPredictions(input, sessionToken);
     console.log(
       `[search-places] Successfully fetched ${predictions.length} predictions`,
     );

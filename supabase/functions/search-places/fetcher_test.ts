@@ -67,3 +67,52 @@ Deno.test("createSearchFetcher() maps Google API response to Prediction[] format
     globalThis.fetch = originalFetch;
   }
 });
+
+Deno.test("createSearchFetcher() includes locationBias when location is provided", async () => {
+  const originalFetch = globalThis.fetch;
+
+  interface ExpectedBody {
+    input?: string;
+    sessionToken?: string;
+    locationBias?: {
+      circle?: {
+        center?: { latitude?: number; longitude?: number };
+      };
+    };
+  }
+  let requestedBody: ExpectedBody | undefined;
+
+  globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.body) {
+      requestedBody = JSON.parse(init.body.toString());
+    }
+    return Promise.resolve(new Response(JSON.stringify({ suggestions: [] })));
+  }) as typeof fetch;
+
+  try {
+    const fetcher = createSearchFetcher("DUMMY_KEY");
+
+    // @ts-expect-error: Third parameter 'location' is not yet implemented
+    await fetcher.fetchPredictions("McDonalds", "session_123", {
+      latitude: 49.46,
+      longitude: 8.42,
+    });
+
+    assertEquals(requestedBody?.input, "McDonalds");
+    assertEquals(requestedBody?.sessionToken, "session_123");
+
+    const circle = requestedBody?.locationBias?.circle;
+    assertEquals(
+      circle?.center?.latitude,
+      49.46,
+      "locationBias center latitude is missing or incorrect",
+    );
+    assertEquals(
+      circle?.center?.longitude,
+      8.42,
+      "locationBias center longitude is missing or incorrect",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

@@ -16,6 +16,7 @@ export interface SearchFetcher {
   fetchPredictions: (
     input: string,
     sessionToken: string,
+    location?: { latitude: number; longitude: number },
   ) => Promise<Prediction[]>;
 }
 
@@ -27,8 +28,37 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
     fetchPredictions: async (
       input: string,
       sessionToken: string,
+      location?: { latitude: number; longitude: number },
     ): Promise<Prediction[]> => {
       const url = "https://places.googleapis.com/v1/places:autocomplete";
+
+      interface AutocompleteRequest {
+        input: string;
+        sessionToken: string;
+        locationBias?: {
+          circle: {
+            center: { latitude: number; longitude: number };
+            radius: number;
+          };
+        };
+      }
+
+      const requestBody: AutocompleteRequest = {
+        input,
+        sessionToken,
+      };
+
+      if (location) {
+        requestBody.locationBias = {
+          circle: {
+            center: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+            radius: 50000.0,
+          },
+        };
+      }
 
       const response = await fetch(url, {
         method: "POST",
@@ -36,10 +66,7 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
         },
-        body: JSON.stringify({
-          input,
-          sessionToken,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -49,7 +76,6 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
 
       const data = await response.json();
 
-      // Map the Autocomplete (New) response structure safely to our Prediction interface
       return (data.suggestions || []).map((suggestion: GoogleSuggestion) => ({
         description: suggestion?.placePrediction?.text?.text ?? "",
         placeId: suggestion?.placePrediction?.place ?? "",
