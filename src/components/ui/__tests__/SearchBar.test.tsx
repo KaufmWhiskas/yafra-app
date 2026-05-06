@@ -45,6 +45,32 @@ describe('SearchBar', () => {
       expect(getPlacePredictions).toHaveBeenCalledWith(
         'Pizza',
         'a-fake-uuid-v4',
+        undefined,
+      );
+    });
+
+    jest.useRealTimers();
+  });
+
+  it('passes userLocation to getPlacePredictions if provided', async () => {
+    jest.useFakeTimers();
+    (getPlacePredictions as jest.Mock).mockResolvedValue([]);
+    (randomUUID as jest.Mock).mockReturnValue('a-fake-uuid-v4');
+
+    const mockLocation = { latitude: 49.46, longitude: 8.42 };
+
+    const { getByPlaceholderText } = render(
+      <SearchBar onPlaceSelect={jest.fn()} userLocation={mockLocation} />
+    );
+
+    fireEvent.changeText(getByPlaceholderText('Search places...'), 'Pizza');
+    jest.advanceTimersByTime(500);
+
+    await waitFor(() => {
+      expect(getPlacePredictions).toHaveBeenCalledWith(
+        'Pizza',
+        'a-fake-uuid-v4',
+        mockLocation,
       );
     });
 

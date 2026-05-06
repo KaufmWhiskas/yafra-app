@@ -32,5 +32,29 @@ describe("Search Service", () => {
       });
       expect(result).toEqual(mockPredictions);
     });
+
+    it("includes location in the payload if provided", async () => {
+      const mockPredictions = [{
+        description: "Pizza Hut, Berlin",
+        placeId: "123",
+      }];
+
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: mockPredictions,
+        error: null,
+      });
+
+      const location = { latitude: 49.46, longitude: 8.42 };
+      const result = await getPlacePredictions(
+        "Pizza",
+        "session_token_123",
+        location,
+      );
+
+      expect(supabase.functions.invoke).toHaveBeenCalledWith("search-places", {
+        body: { input: "Pizza", sessionToken: "session_token_123", location },
+      });
+      expect(result).toEqual(mockPredictions);
+    });
   });
 });

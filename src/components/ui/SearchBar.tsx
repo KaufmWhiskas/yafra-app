@@ -13,13 +13,17 @@ import { randomUUID } from 'expo-crypto';
 
 interface SearchBarProps {
   onPlaceSelect: (place: Prediction) => void;
+  userLocation?: { latitude: number; longitude: number };
 }
 
 /**
  * A search input component providing place suggestions via Google Places Autocomplete.
  * Uses a session token to bundle keystrokes into a single billable event for cost control.
  */
-export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
+export default function SearchBar({
+  onPlaceSelect,
+  userLocation,
+}: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Prediction[]>([]);
   const sessionToken = useRef<string>('');
@@ -47,7 +51,11 @@ export default function SearchBar({ onPlaceSelect }: SearchBarProps) {
     // Debounce matches the 500ms delay defined in your tests.
     timeoutId.current = setTimeout(async () => {
       try {
-        const results = await getPlacePredictions(text, sessionToken.current);
+        const results = await getPlacePredictions(
+          text,
+          sessionToken.current,
+          userLocation,
+        );
         setSuggestions(results);
       } catch (error) {
         console.error('Search error:', error);
