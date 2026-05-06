@@ -1,3 +1,4 @@
+// deno-lint-ignore no-import-prefix
 import "jsr:@supabase/functions-js@^2/edge-runtime.d.ts";
 import { fetchProDetails } from "./fetcher.ts";
 

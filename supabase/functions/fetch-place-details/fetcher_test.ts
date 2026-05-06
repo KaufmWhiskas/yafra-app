@@ -54,3 +54,23 @@ Deno.test("fetchProDetails returns the parsed JSON data", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+Deno.test("fetchProDetails strips 'places/' prefix to construct the correct URL", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+
+  globalThis.fetch = ((input: RequestInfo | URL) => {
+    requestedUrl = input.toString();
+    return Promise.resolve(new Response(JSON.stringify({ rating: 4.5 })));
+  }) as typeof fetch;
+
+  try {
+    await fetchProDetails("places/place_123", "DUMMY_KEY");
+    assertEquals(
+      requestedUrl,
+      "https://places.googleapis.com/v1/places/place_123",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
