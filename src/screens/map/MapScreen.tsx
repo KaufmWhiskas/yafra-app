@@ -75,9 +75,10 @@ export default function MapScreen() {
         setMapRegion({
           latitude: details.location.latitude,
           longitude: details.location.longitude,
-          latitudeDelta: 0.0922, // Keep zoom level
-          longitudeDelta: 0.0421,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
         });
+        setSelectedRestaurant(details as Restaurant);
       }
     } catch (error) {
       console.error('Failed to fetch place details from search:', error);
@@ -141,7 +142,13 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.floatingHeader} pointerEvents="box-none">
-        <SearchBar onPlaceSelect={handleSearchSelect} />
+        <SearchBar
+          onPlaceSelect={handleSearchSelect}
+          userLocation={{
+            latitude: mapRegion.latitude,
+            longitude: mapRegion.longitude,
+          }}
+        />
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 

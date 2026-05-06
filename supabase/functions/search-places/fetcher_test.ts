@@ -6,7 +6,11 @@ Deno.test("createSearchFetcher() makes a POST request to Google Places API with 
   let requestedUrl = "";
   let requestedHeaders: HeadersInit | undefined;
   let requestedMethod = "";
-  let requestedBody: { input?: string; sessionToken?: string } | undefined;
+  let requestedBody: {
+    input?: string;
+    sessionToken?: string;
+    includedPrimaryTypes?: string[];
+  } | undefined;
 
   globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     requestedUrl = input.toString();
@@ -33,6 +37,7 @@ Deno.test("createSearchFetcher() makes a POST request to Google Places API with 
 
     assertEquals(requestedBody?.input, "Pizza");
     assertEquals(requestedBody?.sessionToken, "session_123");
+    assertEquals(requestedBody?.includedPrimaryTypes, ["restaurant"]);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -77,6 +82,7 @@ Deno.test("createSearchFetcher() includes locationBias when location is provided
     locationBias?: {
       circle?: {
         center?: { latitude?: number; longitude?: number };
+        radius?: number;
       };
     };
   }
@@ -92,7 +98,6 @@ Deno.test("createSearchFetcher() includes locationBias when location is provided
   try {
     const fetcher = createSearchFetcher("DUMMY_KEY");
 
-    // @ts-expect-error: Third parameter 'location' is not yet implemented
     await fetcher.fetchPredictions("McDonalds", "session_123", {
       latitude: 49.46,
       longitude: 8.42,
@@ -111,6 +116,11 @@ Deno.test("createSearchFetcher() includes locationBias when location is provided
       circle?.center?.longitude,
       8.42,
       "locationBias center longitude is missing or incorrect",
+    );
+    assertEquals(
+      circle?.radius,
+      25000.0,
+      "locationBias radius should be strictly 25km",
     );
   } finally {
     globalThis.fetch = originalFetch;

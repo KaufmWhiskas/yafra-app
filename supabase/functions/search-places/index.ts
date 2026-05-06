@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     console.log("[search-places] Received body:", body);
-    const { input, sessionToken } = body;
+    const { input, sessionToken, location } = body;
 
     if (
       typeof input !== "string" || !input.trim() ||
@@ -47,7 +47,11 @@ Deno.serve(async (req) => {
     }
 
     const fetcher = createSearchFetcher(apiKey);
-    const predictions = await fetcher.fetchPredictions(input, sessionToken);
+    const predictions = await fetcher.fetchPredictions(
+      input,
+      sessionToken,
+      location,
+    );
     console.log(
       `[search-places] Successfully fetched ${predictions.length} predictions`,
     );

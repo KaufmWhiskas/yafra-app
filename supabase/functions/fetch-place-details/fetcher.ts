@@ -6,8 +6,14 @@ export async function fetchProDetails(placeId: string, apiKey: string) {
     headers: {
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "rating,priceLevel,regularOpeningHours,reviews,location",
+        "rating,priceLevel,regularOpeningHours,reviews,location,displayName,primaryType",
     },
   });
-  return response.json();
+
+  const data = await response.json();
+  return {
+    ...data,
+    name: data.displayName?.text ?? "Unknown",
+    cuisine: data.primaryType ?? "",
+  };
 }

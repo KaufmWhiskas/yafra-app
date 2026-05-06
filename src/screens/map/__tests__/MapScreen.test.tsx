@@ -32,12 +32,17 @@ jest.mock('../../../components/ui/SearchBar', () => {
 
   interface MockSearchBarProps {
     onPlaceSelect: (place: { placeId: string; description: string }) => void;
+    userLocation?: { latitude: number; longitude: number };
   }
 
   return function MockSearchBar(props: MockSearchBarProps) {
     const MockView = View as React.ElementType;
     return (
-      <MockView testID="mock-search-bar" onPlaceSelect={props.onPlaceSelect} />
+      <MockView
+        testID="mock-search-bar"
+        onPlaceSelect={props.onPlaceSelect}
+        userLocation={props.userLocation}
+      />
     );
   };
 });
@@ -367,10 +372,12 @@ describe('MapScreen Toggle Feature', () => {
 
     it('fetches place details and updates map region on place selection', async () => {
       (fetchRestaurantDetails as jest.Mock).mockResolvedValueOnce({
+        id: 'search_123',
+        name: 'Frankfurt Diner',
         location: { latitude: 50.1109, longitude: 8.6821 }, // Coordinates for Frankfurt
       });
 
-      const { getByTestId, getByText } = render(<MapScreen />);
+      const { getByTestId, getByText, findByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
 
       const searchBar = getByTestId('mock-search-bar');
@@ -387,6 +394,25 @@ describe('MapScreen Toggle Feature', () => {
       const map = getByTestId('mock-map');
       expect(map.props.region.latitude).toBeCloseTo(50.1109);
       expect(map.props.region.longitude).toBeCloseTo(8.6821);
+      expect(map.props.region.latitudeDelta).toBeCloseTo(0.005);
+      expect(map.props.region.longitudeDelta).toBeCloseTo(0.005);
+
+      // Assert the restaurant card automatically popped up
+      expect(await findByText('Frankfurt Diner')).toBeTruthy();
+    });
+
+    it('passes the map region coordinates to SearchBar as userLocation', async () => {
+      const { getByTestId, getByText } = render(<MapScreen />);
+      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+      const searchBar = getByTestId('mock-search-bar');
+
+      expect(searchBar.props.userLocation).toEqual(
+        expect.objectContaining({
+          latitude: 49.469805794737454,
+          longitude: 8.422159691397045,
+        }),
+      );
     });
   });
 });

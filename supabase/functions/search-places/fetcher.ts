@@ -41,11 +41,13 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
             radius: number;
           };
         };
+        includedPrimaryTypes?: string[];
       }
 
       const requestBody: AutocompleteRequest = {
         input,
         sessionToken,
+        includedPrimaryTypes: ["restaurant"],
       };
 
       if (location) {
@@ -55,7 +57,7 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
               latitude: location.latitude,
               longitude: location.longitude,
             },
-            radius: 50000.0,
+            radius: 25000.0,
           },
         };
       }

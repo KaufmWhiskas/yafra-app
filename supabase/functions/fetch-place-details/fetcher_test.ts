@@ -27,7 +27,7 @@ Deno.test("fetchProDetails makes a GET request to the correct Google Places URL 
     assertEquals(headers.get("X-Goog-Api-Key"), "DUMMY_KEY");
     assertEquals(
       headers.get("X-Goog-FieldMask"),
-      "rating,priceLevel,regularOpeningHours,reviews,location",
+      "rating,priceLevel,regularOpeningHours,reviews,location,displayName,primaryType",
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -40,6 +40,8 @@ Deno.test("fetchProDetails returns the parsed JSON data", async () => {
     rating: 4.5,
     priceLevel: 2,
     location: { latitude: 49.46, longitude: 8.42 },
+    displayName: { text: "McDonald's" },
+    primaryType: "fast_food_restaurant",
   };
 
   globalThis.fetch = (() =>
@@ -49,7 +51,10 @@ Deno.test("fetchProDetails returns the parsed JSON data", async () => {
 
   try {
     const result = await fetchProDetails("place_123", "DUMMY_KEY");
-    assertEquals(result, mockResponse);
+
+    assertEquals(result.name, "McDonald's");
+    assertEquals(result.cuisine, "fast_food_restaurant");
+    assertEquals(result.rating, 4.5);
   } finally {
     globalThis.fetch = originalFetch;
   }
