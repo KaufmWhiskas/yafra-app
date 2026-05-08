@@ -1,7 +1,7 @@
-import { View, StyleSheet } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import React from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import MapView, { Marker, Region, Callout } from 'react-native-maps';
 import { Restaurant } from '../../types';
-import { SIZES } from '../../constants/theme';
 import RestaurantCard from '../ui/RestaurantCard';
 
 interface RestaurantMapProps {
@@ -18,6 +18,37 @@ interface RestaurantMapProps {
   onRegionChangeComplete?: (region: Region) => void;
 }
 
+// 1. Hide default Google POIs so only our restaurants show up
+const mapStyle = [
+  {
+    featureType: 'poi',
+    stylers: [{ visibility: 'off' }],
+  },
+];
+
+// Helper to get a generic emoji based on the cuisine string
+const getEmojiForCuisine = (cuisine?: string) => {
+  if (!cuisine) return '🍽️';
+  const c = cuisine.toLowerCase();
+  if (c.includes('pizza')) return '🍕';
+  if (c.includes('burger') || c.includes('hamburger')) return '🍔';
+  if (c.includes('cafe') || c.includes('coffee')) return '☕';
+  if (c.includes('sushi')) return '🍣';
+  return '🍽️';
+};
+
+// Helper for dynamic coloring based on rating
+const getMarkerStyle = (rating?: number) => {
+  let backgroundColor = '#808080'; // Gray for unrated
+  if (rating && rating >= 4.0) {
+    backgroundColor = '#4CAF50'; // Green for good
+  } else if (rating && rating >= 3.0) {
+    backgroundColor = '#FFC107'; // Yellow for okay
+  }
+
+  return [styles.customMarker, { backgroundColor }];
+};
+
 export default function RestaurantMap({
   restaurants,
   selectedRestaurant,
@@ -32,64 +63,107 @@ export default function RestaurantMap({
   onRegionChangeComplete,
 }: RestaurantMapProps) {
   return (
-    <>
+    <View style={styles.container}>
       <MapView
-        testID={testID}
+        testID={testID || 'mock-map'}
         style={styles.map}
+        region={region}
         showsUserLocation={showsUserLocation}
         showsMyLocationButton={showsMyLocationButton}
         toolbarEnabled={toolbarEnabled}
-        region={region}
         onPress={onMapPress}
         onRegionChangeComplete={onRegionChangeComplete}
+        customMapStyle={mapStyle} // Apply the custom style here
       >
         {restaurants
           .filter(
             (r) =>
               typeof r.latitude === 'number' && typeof r.longitude === 'number',
           )
-          .map((restaurant) => (
-            <Marker
-              key={restaurant.id}
-              testID="restaurant-marker"
-              coordinate={{
-                latitude: restaurant.latitude,
-                longitude: restaurant.longitude,
-              }}
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                onRestaurantSelect(restaurant);
-              }}
-            />
-          ))}
+          .map((restaurant) => {
+            const displayRating = restaurant.app_rating || restaurant.rating;
+
+            return (
+              <Marker
+                key={restaurant.id}
+                testID="restaurant-marker"
+                coordinate={{
+                  latitude: restaurant.latitude,
+                  longitude: restaurant.longitude,
+                }}
+                onPress={() => onRestaurantSelect(restaurant)}
+              >
+                {/* Custom UI inside the Marker */}
+                <View style={getMarkerStyle(displayRating)}>
+                  <Text style={styles.markerText}>
+                    {getEmojiForCuisine(restaurant.cuisine)}{' '}
+                    {displayRating ? displayRating.toFixed(1) : 'New'}
+                  </Text>
+                </View>
+
+                {/* Keep the callout for details if you like, or rely on the bottom sheet */}
+                <Callout tooltip>
+                  <View style={styles.calloutContainer}>
+                    <Text style={styles.calloutTitle}>{restaurant.name}</Text>
+                  </View>
+                </Callout>
+              </Marker>
+            );
+          })}
       </MapView>
 
+      {/* Selected Restaurant Overlay Card */}
       {selectedRestaurant && (
-        <View testID="floating-preview-card" style={styles.floatingCard}>
+        <View testID="floating-preview-card" style={styles.cardContainer}>
           <RestaurantCard
             item={selectedRestaurant}
-            onPressReview={
-              onPressReview
-                ? () => onPressReview(selectedRestaurant)
-                : undefined
-            }
+            onPressReview={() => onPressReview?.(selectedRestaurant)}
           />
         </View>
       )}
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  map: {
-    flex: 1,
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
-  floatingCard: {
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardContainer: {
     position: 'absolute',
     bottom: 20,
-    left: SIZES.padding,
-    right: SIZES.padding,
-    zIndex: 10,
-    elevation: 10,
+    left: 20,
+    right: 20,
+  },
+  customMarker: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    borderColor: '#fff',
+    borderWidth: 2,
+    elevation: 4, // Shadow for Android
+    shadowColor: '#000', // Shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  markerText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  calloutContainer: {
+    backgroundColor: 'white',
+    padding: 10,
+    borderRadius: 8,
+    elevation: 4,
+  },
+  calloutTitle: {
+    fontWeight: 'bold',
   },
 });
