@@ -67,7 +67,6 @@ export default function RestaurantMap({
   bookmarkedIds,
   onToggleBookmark,
 }: RestaurantMapProps) {
-  // Determine if we should show the detailed or compact marker
   const isZoomedIn = region.latitudeDelta < ZOOM_THRESHOLD;
 
   return (
@@ -104,7 +103,6 @@ export default function RestaurantMap({
               // The key forces the native view to redraw when crossing the zoom threshold OR toggling a bookmark
               key={`${restaurant.id}-${isZoomedIn ? 'detailed' : 'compact'}-${isBookmarked ? 'bookmarked' : 'unbookmarked'}`}
               testID="restaurant-marker"
-              // Add testID for the color assertion in our test
               coordinate={{
                 latitude: restaurant.latitude,
                 longitude: restaurant.longitude,
@@ -116,7 +114,6 @@ export default function RestaurantMap({
               style={{ zIndex }}
             >
               {isZoomedIn ? (
-                // Detailed Marker (Zoomed In)
                 <View
                   testID="marker-inner-view"
                   style={[styles.detailedMarker, { backgroundColor: bgColor }]}
@@ -132,7 +129,6 @@ export default function RestaurantMap({
                   </Text>
                 </View>
               ) : (
-                // Compact Marker (Zoomed Out)
                 <View
                   testID="marker-inner-view"
                   style={[styles.compactMarker, { backgroundColor: bgColor }]}

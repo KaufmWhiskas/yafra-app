@@ -3,7 +3,6 @@ import { render } from '@testing-library/react-native';
 import RestaurantMap from '../RestaurantMap';
 import { COLORS } from '../../../constants/theme';
 
-// 1. Mock the native map
 jest.mock('react-native-maps', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
@@ -20,7 +19,6 @@ jest.mock('react-native-maps', () => {
   return { __esModule: true, default: MockMapView, Marker: MockMarker };
 });
 
-// 2. Mock Expo Vector Icons
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
@@ -64,9 +62,7 @@ describe('RestaurantMap', () => {
       />,
     );
 
-    // Expect exact decimal
     expect(getByText(/4\.8/)).toBeTruthy();
-    // Expect the "-" text for unrated places
     expect(getByText(/-/)).toBeTruthy();
   });
 
@@ -89,11 +85,8 @@ describe('RestaurantMap', () => {
       />,
     );
 
-    // Expect rounded integer (4.8 rounds up to 5)
     expect(getByText('5')).toBeTruthy();
-    // Ensure the decimal version is NOT there
     expect(queryByText(/4\.8/)).toBeNull();
-    // Ensure the word "New" is hidden completely
     expect(queryByText(/New/)).toBeNull();
   });
 
@@ -107,7 +100,7 @@ describe('RestaurantMap', () => {
 
     const { getAllByTestId, rerender } = render(
       <RestaurantMap
-        bookmarkedIds={new Set()} // Start unbookmarked
+        bookmarkedIds={new Set()}
         onToggleBookmark={jest.fn()}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         restaurants={mockRestaurants as any}
@@ -120,17 +113,15 @@ describe('RestaurantMap', () => {
 
     let markerViews = getAllByTestId('marker-inner-view');
 
-    // 1. Assert initial state (App Rating is 4.8, so it should be Green initially)
     expect(markerViews[0].props.style).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ backgroundColor: '#4CAF50' }),
       ]),
     );
 
-    // 2. Re-render with the bookmark added
     rerender(
       <RestaurantMap
-        bookmarkedIds={new Set(['1'])} // Update state
+        bookmarkedIds={new Set(['1'])}
         onToggleBookmark={jest.fn()}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         restaurants={mockRestaurants as any}
@@ -143,7 +134,6 @@ describe('RestaurantMap', () => {
 
     markerViews = getAllByTestId('marker-inner-view');
 
-    // 3. Assert it changed to the vibrant pink
     expect(markerViews[0].props.style).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ backgroundColor: COLORS.bookmark }),

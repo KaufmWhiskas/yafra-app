@@ -31,7 +31,6 @@ export async function fetchRestaurants(
     throw error;
   }
 
-  // Map the raw database columns to our strict frontend TypeScript interface
   return data.map((r: Record<string, unknown>) => {
     const { google_rating, app_rating, ...rest } = r;
     return {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
@@ -14,7 +14,7 @@ import RestaurantList from '../../components/ui/RestaurantList';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
@@ -28,7 +28,6 @@ export default function MapScreen() {
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
 
-  // New state to control map position
   const [mapRegion, setMapRegion] = useState<Region>({
     latitude: 49.469805794737454,
     longitude: 8.422159691397045,
@@ -40,7 +39,6 @@ export default function MapScreen() {
   // eslint-disable-next-line
   const { hasLocationPermission } = useLocation();
 
-  // Cleanly extract the user from the auth session
   const { session } = useAuth();
   const user = session?.user;
 
@@ -55,7 +53,6 @@ export default function MapScreen() {
   const handleRestaurantSelect = async (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant);
 
-    // Quietly fetch Google details in the background
     if (restaurant.google_place_id && !restaurant.rating) {
       try {
         const details = await fetchRestaurantDetails(
@@ -70,7 +67,6 @@ export default function MapScreen() {
     }
   };
 
-  // New handler for search selection
   const handleSearchSelect = async (place: Prediction) => {
     try {
       const details = await fetchRestaurantDetails(place.placeId);
@@ -94,9 +90,7 @@ export default function MapScreen() {
       const data = await fetchRestaurants(bbox);
 
       setRestaurants((prev) => {
-        // Create a Map to merge and deduplicate by ID
         const merged = new Map(prev.map((r) => [r.id, r]));
-        // Add the new restaurants (overwriting any stale duplicates)
         data?.forEach((r) => merged.set(r.id, r));
 
         return Array.from(merged.values());
@@ -109,7 +103,7 @@ export default function MapScreen() {
   const { scanRegion } = useMapScanner(loadData);
 
   const handleRegionChangeComplete = async (region: Region) => {
-    setMapRegion(region); // Ensure state stays in sync with user gestures
+    setMapRegion(region);
     scanRegion(region);
   };
 
@@ -117,21 +111,22 @@ export default function MapScreen() {
     loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (user?.id) {
-      getBookmarks(user.id)
-        .then((bookmarks) => {
-          setBookmarkedIds(new Set(bookmarks.map((b) => b.id.toString())));
-        })
-        .catch((error) => console.error('Failed to load bookmarks:', error));
-    }
-  }, [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        getBookmarks(user.id)
+          .then((bookmarks) => {
+            setBookmarkedIds(new Set(bookmarks.map((b) => b.id.toString())));
+          })
+          .catch((error) => console.error('Failed to load bookmarks:', error));
+      }
+    }, [user?.id]),
+  );
 
   const handleToggleBookmark = async (restaurantId: string | number) => {
     if (!user?.id) return;
     const idStr = restaurantId.toString();
 
-    // Optimistic UI update
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
       if (next.has(idStr)) next.delete(idStr);
@@ -143,7 +138,6 @@ export default function MapScreen() {
       await toggleBookmark(restaurantId, user.id);
     } catch (error) {
       console.error('Failed to toggle bookmark:', error);
-      // If the backend call fails, the next fetch/mount will naturally correct the state
     }
   };
 
@@ -174,7 +168,7 @@ export default function MapScreen() {
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => setSelectedRestaurant(null)}
-          region={mapRegion} // Use controlled region
+          region={mapRegion}
           showsUserLocation={true}
           showsMyLocationButton={true}
           toolbarEnabled={false}
