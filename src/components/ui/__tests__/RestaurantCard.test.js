@@ -2,6 +2,10 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import RestaurantCard from '../RestaurantCard';
 
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
+
 describe('RestaurantCard', () => {
   it('renders restaurant name and cuisine correctly', () => {
     const mockRestaurant = {
@@ -43,18 +47,22 @@ describe('RestaurantCard Interaction', () => {
     expect(mockOnPress).toHaveBeenCalledTimes(1);
   });
 
-  it('renders app rating and review count when available', () => {
+  it('renders both app rating and google rating when both are available', () => {
     const mockRestaurant = {
       id: 2,
       name: 'Pizzeria Uno',
       cuisine: 'Italian',
       latitude: 0,
       longitude: 0,
+      rating: 4.2, // Google rating
       app_rating: 4.8,
       app_review_count: 12,
     };
 
     const { getByText } = render(<RestaurantCard item={mockRestaurant} />);
+
+    // Expect both to be rendered!
     expect(getByText('4.8 ★ (12 App Reviews)')).toBeTruthy();
+    expect(getByText('4.2 ★ (Google)')).toBeTruthy();
   });
 });

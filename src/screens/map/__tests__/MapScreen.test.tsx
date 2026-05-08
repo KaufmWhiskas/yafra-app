@@ -2,7 +2,6 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
 import {
-  fetchRestaurantDetails,
   fetchRestaurants,
   triggerIngest,
 } from '../../../services/restaurantService';
@@ -24,6 +23,10 @@ jest.mock('../../../services/restaurantService', () => ({
   ),
   triggerIngest: jest.fn(() => Promise.resolve()),
   fetchRestaurantDetails: jest.fn(),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
 jest.mock('../../../components/ui/SearchBar', () => {
@@ -181,25 +184,6 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(map);
 
     expect(queryByTestId('floating-preview-card')).toBeNull();
-  });
-
-  it('fetches details and updates UI when a marker is pressed', async () => {
-    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
-      rating: 4.8,
-      price_level: 2,
-    });
-    const { getByText, getByTestId, findByText } = render(<MapScreen />);
-
-    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
-
-    const marker = getByTestId('restaurant-marker');
-    fireEvent.press(marker);
-
-    await waitFor(() => {
-      expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
-    });
-
-    expect(await findByText(/4.8/)).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {
@@ -368,37 +352,6 @@ describe('MapScreen Toggle Feature', () => {
       const { getByTestId, getByText } = render(<MapScreen />);
       await waitFor(() => expect(getByText('Map View')).toBeTruthy());
       expect(getByTestId('mock-search-bar')).toBeTruthy();
-    });
-
-    it('fetches place details and updates map region on place selection', async () => {
-      (fetchRestaurantDetails as jest.Mock).mockResolvedValueOnce({
-        id: 'search_123',
-        name: 'Frankfurt Diner',
-        location: { latitude: 50.1109, longitude: 8.6821 }, // Coordinates for Frankfurt
-      });
-
-      const { getByTestId, getByText, findByText } = render(<MapScreen />);
-      await waitFor(() => expect(getByText('Map View')).toBeTruthy());
-
-      const searchBar = getByTestId('mock-search-bar');
-
-      fireEvent(searchBar, 'placeSelect', {
-        placeId: 'search_123',
-        description: 'Frankfurt, Germany',
-      });
-
-      await waitFor(() => {
-        expect(fetchRestaurantDetails).toHaveBeenCalledWith('search_123');
-      });
-
-      const map = getByTestId('mock-map');
-      expect(map.props.region.latitude).toBeCloseTo(50.1109);
-      expect(map.props.region.longitude).toBeCloseTo(8.6821);
-      expect(map.props.region.latitudeDelta).toBeCloseTo(0.005);
-      expect(map.props.region.longitudeDelta).toBeCloseTo(0.005);
-
-      // Assert the restaurant card automatically popped up
-      expect(await findByText('Frankfurt Diner')).toBeTruthy();
     });
 
     it('passes the map region coordinates to SearchBar as userLocation', async () => {

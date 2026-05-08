@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import MapView, { Marker, Region, Callout } from 'react-native-maps';
+import MapView, { Marker, Region } from 'react-native-maps';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Restaurant } from '../../types';
 import RestaurantCard from '../ui/RestaurantCard';
 
@@ -18,7 +19,8 @@ interface RestaurantMapProps {
   onRegionChangeComplete?: (region: Region) => void;
 }
 
-// 1. Hide default Google POIs so only our restaurants show up
+const ZOOM_THRESHOLD = 0.02;
+
 const mapStyle = [
   {
     featureType: 'poi',
@@ -26,27 +28,24 @@ const mapStyle = [
   },
 ];
 
-// Helper to get a generic emoji based on the cuisine string
-const getEmojiForCuisine = (cuisine?: string) => {
-  if (!cuisine) return '🍽️';
+const getIconForCuisine = (
+  cuisine?: string,
+): keyof typeof MaterialCommunityIcons.glyphMap => {
+  if (!cuisine) return 'silverware-fork-knife';
   const c = cuisine.toLowerCase();
-  if (c.includes('pizza')) return '🍕';
-  if (c.includes('burger') || c.includes('hamburger')) return '🍔';
-  if (c.includes('cafe') || c.includes('coffee')) return '☕';
-  if (c.includes('sushi')) return '🍣';
-  return '🍽️';
+  if (c.includes('pizza')) return 'pizza';
+  if (c.includes('burger') || c.includes('hamburger')) return 'hamburger';
+  if (c.includes('cafe') || c.includes('coffee')) return 'coffee';
+  if (c.includes('sushi')) return 'food-variant';
+  return 'silverware-fork-knife';
 };
 
-// Helper for dynamic coloring based on rating
-const getMarkerStyle = (rating?: number) => {
-  let backgroundColor = '#808080'; // Gray for unrated
-  if (rating && rating >= 4.0) {
-    backgroundColor = '#4CAF50'; // Green for good
-  } else if (rating && rating >= 3.0) {
-    backgroundColor = '#FFC107'; // Yellow for okay
-  }
-
-  return [styles.customMarker, { backgroundColor }];
+// STRICTLY color by App Rating only
+const getMarkerColor = (appRating?: number) => {
+  if (!appRating) return '#808080';
+  if (appRating >= 4.0) return '#4CAF50';
+  if (appRating >= 3.0) return '#FFC107';
+  return '#808080';
 };
 
 export default function RestaurantMap({
@@ -55,17 +54,20 @@ export default function RestaurantMap({
   onRestaurantSelect,
   onMapPress,
   region,
-  showsUserLocation = true,
-  showsMyLocationButton = true,
-  toolbarEnabled = false,
-  testID = 'restaurant-map',
+  showsUserLocation,
+  showsMyLocationButton,
+  toolbarEnabled,
+  testID,
   onPressReview,
   onRegionChangeComplete,
 }: RestaurantMapProps) {
+  // Determine if we should show the detailed or compact marker
+  const isZoomedIn = region.latitudeDelta < ZOOM_THRESHOLD;
+
   return (
     <View style={styles.container}>
       <MapView
-        testID={testID || 'mock-map'}
+        testID={testID || 'restaurant-map'}
         style={styles.map}
         region={region}
         showsUserLocation={showsUserLocation}
@@ -73,46 +75,76 @@ export default function RestaurantMap({
         toolbarEnabled={toolbarEnabled}
         onPress={onMapPress}
         onRegionChangeComplete={onRegionChangeComplete}
-        customMapStyle={mapStyle} // Apply the custom style here
+        customMapStyle={mapStyle}
       >
-        {restaurants
-          .filter(
-            (r) =>
-              typeof r.latitude === 'number' && typeof r.longitude === 'number',
-          )
-          .map((restaurant) => {
-            const displayRating = restaurant.app_rating || restaurant.rating;
+        {restaurants.map((restaurant) => {
+          const displayRating = restaurant.app_rating || restaurant.rating;
+          const bgColor = getMarkerColor(restaurant.app_rating);
+          const iconName = getIconForCuisine(restaurant.cuisine);
+          const isSelected = selectedRestaurant?.id === restaurant.id;
 
-            return (
-              <Marker
-                key={restaurant.id}
-                testID="restaurant-marker"
-                coordinate={{
-                  latitude: restaurant.latitude,
-                  longitude: restaurant.longitude,
-                }}
-                onPress={() => onRestaurantSelect(restaurant)}
-              >
-                {/* Custom UI inside the Marker */}
-                <View style={getMarkerStyle(displayRating)}>
+          // Elevate selected > app rated > google rated > unrated
+          const zIndex = isSelected
+            ? 100
+            : restaurant.app_rating
+              ? 10
+              : displayRating
+                ? 5
+                : 1;
+
+          return (
+            <Marker
+              // The key forces the native view to redraw when crossing the zoom threshold
+              key={`${restaurant.id}-${isZoomedIn ? 'detailed' : 'compact'}`}
+              testID="restaurant-marker"
+              coordinate={{
+                latitude: restaurant.latitude,
+                longitude: restaurant.longitude,
+              }}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onRestaurantSelect(restaurant);
+              }}
+              style={{ zIndex }}
+            >
+              {isZoomedIn ? (
+                // Detailed Marker (Zoomed In)
+                <View
+                  style={[styles.detailedMarker, { backgroundColor: bgColor }]}
+                >
+                  <MaterialCommunityIcons
+                    name={iconName}
+                    size={14}
+                    color="#fff"
+                    style={styles.iconSpacing}
+                  />
                   <Text style={styles.markerText}>
-                    {getEmojiForCuisine(restaurant.cuisine)}{' '}
-                    {displayRating ? displayRating.toFixed(1) : 'New'}
+                    {displayRating ? displayRating.toFixed(1) : '-'}
                   </Text>
                 </View>
-
-                {/* Keep the callout for details if you like, or rely on the bottom sheet */}
-                <Callout tooltip>
-                  <View style={styles.calloutContainer}>
-                    <Text style={styles.calloutTitle}>{restaurant.name}</Text>
-                  </View>
-                </Callout>
-              </Marker>
-            );
-          })}
+              ) : (
+                // Compact Marker (Zoomed Out)
+                <View
+                  style={[styles.compactMarker, { backgroundColor: bgColor }]}
+                >
+                  {displayRating ? (
+                    <Text style={styles.markerText}>
+                      {Math.round(displayRating)}
+                    </Text>
+                  ) : (
+                    <MaterialCommunityIcons
+                      name={iconName}
+                      size={12}
+                      color="#fff"
+                    />
+                  )}
+                </View>
+              )}
+            </Marker>
+          );
+        })}
       </MapView>
 
-      {/* Selected Restaurant Overlay Card */}
       {selectedRestaurant && (
         <View testID="floating-preview-card" style={styles.cardContainer}>
           <RestaurantCard
@@ -140,30 +172,40 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
   },
-  customMarker: {
+  detailedMarker: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 16,
     borderColor: '#fff',
     borderWidth: 2,
-    elevation: 4, // Shadow for Android
-    shadowColor: '#000', // Shadow for iOS
+    elevation: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  compactMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderColor: '#fff',
+    borderWidth: 2,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   markerText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12,
   },
-  calloutContainer: {
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 8,
-    elevation: 4,
-  },
-  calloutTitle: {
-    fontWeight: 'bold',
+  iconSpacing: {
+    marginRight: 4,
   },
 });

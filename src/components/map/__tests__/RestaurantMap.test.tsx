@@ -2,38 +2,29 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import RestaurantMap from '../RestaurantMap';
 
-// 1. Mock react-native-maps so Jest doesn't crash on native views
+// 1. Mock the native map
 jest.mock('react-native-maps', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const MockMapView = (props: any) => (
-    <View testID={props.testID || 'map-view'} {...props} />
+    <View testID={props.testID || 'restaurant-map'} {...props} />
   );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const MockMarker = (props: any) => <View testID="map-marker" {...props} />;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const MockCallout = (props: any) => <View testID="map-callout" {...props} />;
+  const MockMarker = (props: any) => (
+    <View testID="restaurant-marker" {...props} />
+  );
 
   MockMapView.Marker = MockMarker;
-  MockMapView.Callout = MockCallout;
-
-  return {
-    __esModule: true,
-    default: MockMapView,
-    Marker: MockMarker,
-    Callout: MockCallout,
-  };
+  return { __esModule: true, default: MockMapView, Marker: MockMarker };
 });
 
-describe('RestaurantMap', () => {
-  const mockRegion = {
-    latitude: 49.46,
-    longitude: 8.42,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  };
+// 2. Mock Expo Vector Icons
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
 
+describe('RestaurantMap', () => {
   const mockRestaurants = [
     {
       id: '1',
@@ -45,51 +36,63 @@ describe('RestaurantMap', () => {
     },
     {
       id: '2',
-      name: 'Burger Joint',
-      cuisine: 'hamburger',
-      rating: 4.2, // Fallback to google rating
+      name: 'New Sushi Place',
+      cuisine: 'sushi',
+      rating: undefined, // Unrated
       latitude: 49.47,
       longitude: 8.43,
     },
   ];
 
-  it('applies a customMapStyle to hide default Google POIs', () => {
-    const { getByTestId } = render(
-      <RestaurantMap
-        restaurants={mockRestaurants as any}
-        region={mockRegion}
-        onRestaurantSelect={jest.fn()}
-        selectedRestaurant={null}
-        onMapPress={jest.fn()}
-      />,
-    );
+  it('renders detailed markers (decimals & icons) when zoomed IN', () => {
+    const zoomedInRegion = {
+      latitude: 49.46,
+      longitude: 8.42,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
 
-    const map = getByTestId('restaurant-map');
-
-    expect(map.props.customMapStyle).toBeDefined();
-
-    // Check if the style array contains the rule to hide POIs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasPoiHidden = map.props.customMapStyle.some(
-      (style: any) =>
-        style.featureType === 'poi' && style.stylers[0].visibility === 'off',
-    );
-    expect(hasPoiHidden).toBe(true);
-  });
-
-  it('renders custom markers showing the rating', () => {
     const { getByText } = render(
       <RestaurantMap
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         restaurants={mockRestaurants as any}
-        region={mockRegion}
+        region={zoomedInRegion}
         onRestaurantSelect={jest.fn()}
         selectedRestaurant={null}
         onMapPress={jest.fn()}
       />,
     );
 
-    // We expect our custom marker to render the ratings instead of a default pin
+    // Expect exact decimal
     expect(getByText(/4\.8/)).toBeTruthy();
-    expect(getByText(/4\.2/)).toBeTruthy();
+    // Expect the "-" text for unrated places
+    expect(getByText(/-/)).toBeTruthy();
+  });
+
+  it('renders compact markers (rounded numbers, no text) when zoomed OUT', () => {
+    const zoomedOutRegion = {
+      latitude: 49.46,
+      longitude: 8.42,
+      latitudeDelta: 0.08,
+      longitudeDelta: 0.08,
+    };
+
+    const { queryByText, getByText } = render(
+      <RestaurantMap
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        restaurants={mockRestaurants as any}
+        region={zoomedOutRegion}
+        onRestaurantSelect={jest.fn()}
+        selectedRestaurant={null}
+        onMapPress={jest.fn()}
+      />,
+    );
+
+    // Expect rounded integer (4.8 rounds up to 5)
+    expect(getByText('5')).toBeTruthy();
+    // Ensure the decimal version is NOT there
+    expect(queryByText(/4\.8/)).toBeNull();
+    // Ensure the word "New" is hidden completely
+    expect(queryByText(/New/)).toBeNull();
   });
 });

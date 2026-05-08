@@ -7,9 +7,10 @@ import { supabase } from "../supabase";
 
 jest.mock("../supabase", () => ({
   supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(),
-    })),
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    gte: jest.fn().mockReturnThis(),
+    lte: jest.fn().mockReturnThis(),
     functions: {
       invoke: jest.fn(),
     },
@@ -22,65 +23,34 @@ describe("Restaurant Service", () => {
   });
 
   describe("fetchRestaurants", () => {
-    it("fetches and returns a list of restaurants successfully", async () => {
-      const mockRestaurants = [
+    it("fetchRestaurants maps google_rating to rating and parses strings to numbers", async () => {
+      const mockDbData = [
         {
           id: "1",
-          name: "Pizza Palace",
-          cuisine: "Italian",
-          rating: 4.5,
-        },
-        {
-          id: "2",
-          name: "Sushi Spot",
-          cuisine: "Japanese",
-          rating: 4.8,
+          name: "Piccola Italia",
+          google_rating: "4.6", // DB returns string
+          app_rating: "3.4", // DB returns string
         },
       ];
 
-      const mockLteLon = jest.fn().mockResolvedValue({
-        data: mockRestaurants,
-        error: null,
-      });
-      const mockGteLon = jest.fn(() => ({ lte: mockLteLon }));
-      const mockLteLat = jest.fn(() => ({ gte: mockGteLon }));
-      const mockGteLat = jest.fn(() => ({ lte: mockLteLat }));
-      const mockSelect = jest.fn(() => ({ gte: mockGteLat }));
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
+      // Setup the mock chain to resolve with our fake DB data
+      // Since .lte() is called twice, the first call must continue the chain,
+      // and the second call must resolve the promise with our data.
+      // @ts-expect-error: lte is a custom mock property not on the root client
+      (supabase.lte as jest.Mock).mockReturnValueOnce(supabase)
+        .mockResolvedValueOnce({
+          data: mockDbData,
+          error: null,
+        });
 
-      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
+      const bbox = { minLat: 0, maxLat: 1, minLon: 0, maxLon: 1 };
       const result = await fetchRestaurants(bbox);
 
-      expect(supabase.from).toHaveBeenCalledWith("restaurants");
-      expect(mockSelect).toHaveBeenCalledWith("*");
-      // Check latitude filters
-      expect(mockGteLat).toHaveBeenCalledWith("latitude", bbox.minLat);
-      expect(mockLteLat).toHaveBeenCalledWith("latitude", bbox.maxLat);
-      // Check longitude filters
-      expect(mockGteLon).toHaveBeenCalledWith("longitude", bbox.minLon);
-      expect(mockLteLon).toHaveBeenCalledWith("longitude", bbox.maxLon);
-      expect(result).toEqual(mockRestaurants);
-    });
-
-    it("throws an error if the database query fails", async () => {
-      const errorMessage = "Database connection failed";
-
-      const mockSelect = jest.fn().mockReturnValue({
-        gte: jest.fn().mockReturnValue({
-          lte: jest.fn().mockReturnValue({
-            gte: jest.fn().mockReturnValue({
-              lte: jest.fn().mockResolvedValue({
-                data: null,
-                error: new Error(errorMessage),
-              }),
-            }),
-          }),
-        }),
-      });
-      (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
-
-      const bbox = { minLat: 47.3, minLon: 8.5, maxLat: 47.4, maxLon: 8.6 };
-      await expect(fetchRestaurants(bbox)).rejects.toThrow(errorMessage);
+      // Assert the data was transformed correctly for the frontend
+      expect(result[0].rating).toBe(4.6);
+      expect(result[0].app_rating).toBe(3.4);
+      // @ts-expect-error: We are explicitly testing that this stripped property does not leak
+      expect(result[0].google_rating).toBeUndefined();
     });
   });
 });

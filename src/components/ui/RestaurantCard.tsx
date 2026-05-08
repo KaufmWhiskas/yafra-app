@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
 
@@ -8,6 +9,18 @@ interface RestaurantCardProps {
   /** Triggered when the user initiates the review flow */
   onPressReview?: () => void;
 }
+
+const getIconForCuisine = (
+  cuisine?: string,
+): keyof typeof MaterialCommunityIcons.glyphMap => {
+  if (!cuisine) return 'silverware-fork-knife';
+  const c = cuisine.toLowerCase();
+  if (c.includes('pizza')) return 'pizza';
+  if (c.includes('burger') || c.includes('hamburger')) return 'hamburger';
+  if (c.includes('cafe') || c.includes('coffee')) return 'coffee';
+  if (c.includes('sushi')) return 'food-variant';
+  return 'silverware-fork-knife';
+};
 
 /**
  * Displays summarized restaurant information.
@@ -19,15 +32,33 @@ export default function RestaurantCard({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{item.name}</Text>
-      <Text>{item.cuisine}</Text>
 
-      {item.app_rating && item.app_review_count ? (
-        <Text>
-          {item.app_rating.toFixed(1)} ★ ({item.app_review_count} App Reviews)
-        </Text>
-      ) : (
-        <Text>{item.rating ? item.rating.toFixed(1) : 'No Rating'}</Text>
-      )}
+      <View style={styles.row}>
+        <MaterialCommunityIcons
+          name={getIconForCuisine(item.cuisine)}
+          size={16}
+          color={COLORS.text}
+        />
+        <Text style={styles.cuisineText}>{item.cuisine}</Text>
+      </View>
+
+      <View style={styles.ratingContainer}>
+        {item.app_rating && item.app_review_count ? (
+          <Text style={styles.ratingText}>
+            {item.app_rating.toFixed(1)} ★ ({item.app_review_count} App Reviews)
+          </Text>
+        ) : null}
+
+        {item.rating ? (
+          <Text style={styles.googleRatingText}>
+            {item.rating.toFixed(1)} ★ (Google)
+          </Text>
+        ) : null}
+
+        {!item.app_rating && !item.rating && (
+          <Text style={styles.ratingText}>Unrated</Text>
+        )}
+      </View>
 
       <TouchableOpacity
         style={styles.reviewButton}
@@ -47,11 +78,40 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: COLORS.text,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  cuisineText: {
+    marginLeft: 6,
+    color: COLORS.text,
+    fontSize: 14,
+    textTransform: 'capitalize',
+  },
+  ratingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  ratingContainer: {
+    marginBottom: 8,
+  },
+  googleRatingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   reviewButton: {
     backgroundColor: COLORS.primary,

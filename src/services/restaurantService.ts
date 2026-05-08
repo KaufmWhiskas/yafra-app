@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { Restaurant } from "../types";
 
 /**
  * Represents a geographic bounding box for map-based queries.
@@ -15,7 +16,9 @@ interface BoundingBox {
  * @returns A promise resolving to an array of restaurant records.
  * @throws Will throw an error if the database query fails.
  */
-export async function fetchRestaurants(bbox: BoundingBox) {
+export async function fetchRestaurants(
+  bbox: BoundingBox,
+): Promise<Restaurant[]> {
   const { data, error } = await supabase
     .from("restaurants")
     .select("*")
@@ -28,7 +31,15 @@ export async function fetchRestaurants(bbox: BoundingBox) {
     throw error;
   }
 
-  return data;
+  // Map the raw database columns to our strict frontend TypeScript interface
+  return data.map((r: Record<string, unknown>) => {
+    const { google_rating, app_rating, ...rest } = r;
+    return {
+      ...rest,
+      rating: google_rating ? parseFloat(google_rating as string) : undefined,
+      app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
+    };
+  }) as Restaurant[];
 }
 
 /**

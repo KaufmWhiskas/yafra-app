@@ -53,16 +53,18 @@ export default function MapScreen() {
 
   const handleRestaurantSelect = async (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant);
-    if (restaurant.google_place_id) {
+
+    // Quietly fetch Google details in the background
+    if (restaurant.google_place_id && !restaurant.rating) {
       try {
         const details = await fetchRestaurantDetails(
           restaurant.google_place_id,
         );
         setSelectedRestaurant((prev) =>
-          prev ? { ...prev, ...details } : null,
+          prev?.id === restaurant.id ? { ...prev, ...details } : prev,
         );
       } catch (error) {
-        console.error('Failed to fetch Pro details:', error);
+        console.error('Failed to fetch Google details:', error);
       }
     }
   };
