@@ -108,6 +108,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   title: {
+    flex: 1,
+    marginRight: 8,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
