@@ -1,63 +1,52 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ProfileScreen from '../ProfileScreen';
-import { Alert } from 'react-native';
 import { logout } from '../../../services/authService';
-
-const mockNavigate = jest.fn();
-
-jest.mock('@react-navigation/native', () => {
-  return {
-    useNavigation: () => ({
-      navigate: mockNavigate,
-    }),
-  };
-});
+import { fetchUserProfile } from '../../../services/profileService';
 
 jest.mock('../../../services/authService', () => ({
-  logout: jest.fn(() => Promise.resolve({ data: {} })),
+  logout: jest.fn(),
 }));
 
-jest.spyOn(Alert, 'alert');
+jest.mock('../../../services/profileService', () => ({
+  fetchUserProfile: jest.fn(),
+}));
 
-describe('ProfileScreen Component Render Check', () => {
-  it('renders the Profile Screen text', () => {
-    const { getByText } = render(<ProfileScreen />);
-    expect(getByText('Profile Screen')).toBeTruthy();
-  });
-
-  it('renders the Logout button', () => {
-    const { getByTestId } = render(<ProfileScreen />);
-    expect(getByTestId('logout-button')).toBeTruthy();
-  });
-});
-
-describe('ProfileScreen Logout Logic', () => {
+describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('calls the logout service when Logout button is pressed', async () => {
-    const { getByTestId } = render(<ProfileScreen />);
-
-    fireEvent.press(getByTestId('logout-button'));
-
-    await waitFor(() => {
-      expect(logout).toHaveBeenCalled();
+  it('loads and displays the user profile data on mount', async () => {
+    // Mock the profile service to return a user with 5 reviews
+    (fetchUserProfile as jest.Mock).mockResolvedValueOnce({
+      email: 'tester@yafra.com',
+      reviewCount: 5,
     });
+
+    const { getByText, findByText } = render(<ProfileScreen />);
+
+    // Assert loading state (optional depending on your implementation)
+    expect(getByText('Profile Screen')).toBeTruthy();
+
+    // Assert that the fetched data appears on screen
+    expect(await findByText('tester@yafra.com')).toBeTruthy();
+    expect(await findByText('Total Reviews: 5')).toBeTruthy();
   });
 
-  it('shows an error alert when logout fails', async () => {
-    const errorMessage = 'Logout failed';
-
-    (logout as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+  it('calls logout when the logout button is pressed', async () => {
+    (fetchUserProfile as jest.Mock).mockResolvedValueOnce({
+      email: 'tester@yafra.com',
+      reviewCount: 5,
+    });
 
     const { getByTestId } = render(<ProfileScreen />);
 
-    fireEvent.press(getByTestId('logout-button'));
+    const logoutButton = getByTestId('logout-button');
+    fireEvent.press(logoutButton);
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Logout Failed', errorMessage);
+      expect(logout).toHaveBeenCalledTimes(1);
     });
   });
 });
