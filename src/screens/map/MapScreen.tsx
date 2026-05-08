@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
   fetchRestaurants,
   triggerIngest,
 } from '../../services/restaurantService';
-import { COLORS, SIZES } from '../../constants/theme';
-import RestaurantCard from '../../components/ui/RestaurantCard';
+import { COLORS } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
+import RestaurantList from '../../components/ui/RestaurantList';
+import { useAuth } from '../../context/AuthContext';
+import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -42,6 +44,15 @@ export default function MapScreen() {
   // disables useless eslint error
   // eslint-disable-next-line
   const { hasLocationPermission } = useLocation();
+
+  // Safely extract user whether AuthContext exposes it directly or nested inside a session
+  const auth = useAuth() as unknown as {
+    user?: { id: string };
+    session?: { user?: { id: string } };
+  };
+  const user = auth?.user ?? auth?.session?.user;
+
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const lastScannedLocation = useRef<Coordinate | null>(null);
@@ -140,6 +151,36 @@ export default function MapScreen() {
     loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (user?.id) {
+      getBookmarks(user.id)
+        .then((bookmarks) => {
+          setBookmarkedIds(new Set(bookmarks.map((b) => b.id.toString())));
+        })
+        .catch((error) => console.error('Failed to load bookmarks:', error));
+    }
+  }, [user?.id]);
+
+  const handleToggleBookmark = async (restaurantId: string | number) => {
+    if (!user?.id) return;
+    const idStr = restaurantId.toString();
+
+    // Optimistic UI update
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(idStr)) next.delete(idStr);
+      else next.add(idStr);
+      return next;
+    });
+
+    try {
+      await toggleBookmark(restaurantId, user.id);
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+      // If the backend call fails, the next fetch/mount will naturally correct the state
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -176,17 +217,11 @@ export default function MapScreen() {
           onRegionChangeComplete={handleRegionChangeComplete}
         />
       ) : (
-        <FlatList
-          testID="list-view"
-          contentContainerStyle={styles.listContent}
-          data={restaurants}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <RestaurantCard
-              item={item}
-              onPressReview={() => handleReviewPress(item)}
-            />
-          )}
+        <RestaurantList
+          restaurants={restaurants}
+          bookmarkedIds={bookmarkedIds}
+          onPressReview={handleReviewPress}
+          onToggleBookmark={handleToggleBookmark}
         />
       )}
     </View>
@@ -209,9 +244,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  listContent: {
-    paddingTop: SIZES.padding, // Reduced since the header is no longer absolutely positioned over the list
-    paddingHorizontal: SIZES.padding,
   },
 });

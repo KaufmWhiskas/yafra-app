@@ -8,6 +8,8 @@ interface RestaurantCardProps {
   item: Restaurant;
   /** Triggered when the user initiates the review flow */
   onPressReview?: () => void;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
 }
 
 const getIconForCuisine = (
@@ -28,10 +30,27 @@ const getIconForCuisine = (
 export default function RestaurantCard({
   item,
   onPressReview,
+  isBookmarked,
+  onToggleBookmark,
 }: RestaurantCardProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{item.name}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>{item.name}</Text>
+        {onToggleBookmark && (
+          <TouchableOpacity
+            onPress={onToggleBookmark}
+            testID="bookmark-button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons
+              name={isBookmarked ? 'heart' : 'heart-outline'}
+              size={24}
+              color={isBookmarked ? COLORS.primary : COLORS.text}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <View style={styles.row}>
         <MaterialCommunityIcons
@@ -82,6 +101,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   title: {
     fontSize: 18,

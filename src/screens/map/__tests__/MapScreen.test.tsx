@@ -4,9 +4,11 @@ import MapScreen from '../MapScreen';
 import {
   fetchRestaurants,
   triggerIngest,
+  fetchRestaurantDetails,
 } from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
 import { calculateDistance } from '../../../utils/geo';
+import { toggleBookmark } from '../../../services/bookmarkService';
 
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurants: jest.fn(() =>
@@ -23,6 +25,15 @@ jest.mock('../../../services/restaurantService', () => ({
   ),
   triggerIngest: jest.fn(() => Promise.resolve()),
   fetchRestaurantDetails: jest.fn(),
+}));
+
+jest.mock('../../../services/bookmarkService', () => ({
+  toggleBookmark: jest.fn(),
+  getBookmarks: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'user_123' } }),
 }));
 
 jest.mock('@expo/vector-icons', () => ({
@@ -151,6 +162,20 @@ describe('MapScreen Toggle Feature', () => {
     expect(queryByTestId('list-view')).toBeNull();
   });
 
+  it('calls toggleBookmark when the bookmark icon is pressed in List View', async () => {
+    const { findByText, getByText, getAllByTestId } = render(<MapScreen />);
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const listToggleButton = await findByText('List View');
+    fireEvent.press(listToggleButton);
+
+    const bookmarkButtons = getAllByTestId('bookmark-button');
+    fireEvent.press(bookmarkButtons[0]);
+
+    expect(toggleBookmark).toHaveBeenCalledWith('1', 'user_123');
+  });
+
   it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
     const { getByText, getAllByTestId } = render(<MapScreen />);
 
@@ -184,6 +209,29 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(map);
 
     expect(queryByTestId('floating-preview-card')).toBeNull();
+  });
+
+  it('quietly fetches details in the background if a selected restaurant has no rating', async () => {
+    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
+      rating: 4.8,
+    });
+
+    const { getByText, getByTestId, findByText } = render(<MapScreen />);
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const marker = getByTestId('restaurant-marker');
+    fireEvent.press(marker);
+
+    // Card appears instantly
+    expect(getByTestId('floating-preview-card')).toBeTruthy();
+
+    // Background fetch happens
+    await waitFor(() => {
+      expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
+    });
+
+    // Card updates with new rating
+    expect(await findByText(/4\.8/)).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {

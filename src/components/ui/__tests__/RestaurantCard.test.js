@@ -65,4 +65,29 @@ describe('RestaurantCard Interaction', () => {
     expect(getByText('4.8 ★ (12 App Reviews)')).toBeTruthy();
     expect(getByText('4.2 ★ (Google)')).toBeTruthy();
   });
+
+  it('calls onToggleBookmark when the bookmark button is pressed', () => {
+    const mockOnToggleBookmark = jest.fn();
+
+    const mockRestaurant = {
+      id: '3',
+      name: 'Bookmark Cafe',
+      cuisine: 'Cafe',
+      latitude: 0,
+      longitude: 0,
+    };
+
+    const { getByTestId } = render(
+      <RestaurantCard
+        item={mockRestaurant}
+        onToggleBookmark={mockOnToggleBookmark}
+        isBookmarked={false}
+      />,
+    );
+
+    const bookmarkButton = getByTestId('bookmark-button');
+    fireEvent.press(bookmarkButton);
+
+    expect(mockOnToggleBookmark).toHaveBeenCalledTimes(1);
+  });
 });
