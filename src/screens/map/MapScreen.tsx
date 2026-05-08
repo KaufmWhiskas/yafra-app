@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
   fetchRestaurants,
-  triggerIngest,
 } from '../../services/restaurantService';
 import { COLORS } from '../../constants/theme';
 import { Restaurant } from '../../types';
@@ -12,6 +11,7 @@ import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
 import RestaurantList from '../../components/ui/RestaurantList';
+import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
 import { useNavigation } from '@react-navigation/native';
@@ -19,12 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
 import { Prediction } from '../../services/searchService';
-import {
-  BoundingBox,
-  getRegionBBox,
-  calculateDistance,
-  Coordinate,
-} from '../../utils/geo';
+import { BoundingBox, getRegionBBox } from '../../utils/geo';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -45,18 +40,13 @@ export default function MapScreen() {
   // eslint-disable-next-line
   const { hasLocationPermission } = useLocation();
 
-  // Safely extract user whether AuthContext exposes it directly or nested inside a session
-  const auth = useAuth() as unknown as {
-    user?: { id: string };
-    session?: { user?: { id: string } };
-  };
-  const user = auth?.user ?? auth?.session?.user;
+  // Cleanly extract the user from the auth session
+  const { session } = useAuth();
+  const user = session?.user;
 
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const lastScannedLocation = useRef<Coordinate | null>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
@@ -116,35 +106,11 @@ export default function MapScreen() {
     }
   };
 
+  const { scanRegion } = useMapScanner(loadData);
+
   const handleRegionChangeComplete = async (region: Region) => {
     setMapRegion(region); // Ensure state stays in sync with user gestures
-
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
-    debounceTimer.current = setTimeout(async () => {
-      const currentCoord: Coordinate = {
-        latitude: region.latitude,
-        longitude: region.longitude,
-      };
-
-      if (lastScannedLocation.current) {
-        const distance = calculateDistance(
-          lastScannedLocation.current,
-          currentCoord,
-        );
-        if (distance < 0.5) return; // 0.5 km = 500 meters
-      }
-
-      lastScannedLocation.current = currentCoord;
-      const bbox = getRegionBBox(region);
-
-      try {
-        await triggerIngest(bbox);
-        await loadData(bbox);
-      } catch (error) {
-        console.error('Failed to ingest or refresh restaurants:', error);
-      }
-    }, 800);
+    scanRegion(region);
   };
 
   useEffect(() => {
@@ -215,6 +181,8 @@ export default function MapScreen() {
           testID="mock-map"
           onPressReview={handleReviewPress}
           onRegionChangeComplete={handleRegionChangeComplete}
+          bookmarkedIds={bookmarkedIds}
+          onToggleBookmark={handleToggleBookmark}
         />
       ) : (
         <RestaurantList

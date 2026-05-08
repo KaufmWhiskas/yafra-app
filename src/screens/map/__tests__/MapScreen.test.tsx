@@ -20,11 +20,12 @@ jest.mock('../../../services/restaurantService', () => ({
         latitude: 49.465,
         longitude: 8.425,
         google_place_id: 'place_123',
+        rating: 4.5, // Add rating to prevent accidental background fetches in standard tests
       },
     ]),
   ),
   triggerIngest: jest.fn(() => Promise.resolve()),
-  fetchRestaurantDetails: jest.fn(),
+  fetchRestaurantDetails: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../services/bookmarkService', () => ({
@@ -33,7 +34,7 @@ jest.mock('../../../services/bookmarkService', () => ({
 }));
 
 jest.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user_123' } }),
+  useAuth: () => ({ session: { user: { id: 'user_123' } } }),
 }));
 
 jest.mock('@expo/vector-icons', () => ({
@@ -130,11 +131,13 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('calls fetchRestaurants when the component mounts', async () => {
-    render(<MapScreen />);
+    const { getByText } = render(<MapScreen />);
 
     await waitFor(() => {
       expect(fetchRestaurants).toHaveBeenCalled();
     });
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
   });
 
   it('renders the map by default after loading', async () => {
@@ -187,11 +190,13 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('requests location permissions', async () => {
-    render(<MapScreen />);
+    const { getByText } = render(<MapScreen />);
 
     await waitFor(() => {
       expect(requestForegroundPermissionsAsync).toHaveBeenCalled();
     });
+
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
   });
 
   it('floating ui card appears on press', async () => {
@@ -212,6 +217,17 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('quietly fetches details in the background if a selected restaurant has no rating', async () => {
+    // Override the mock to return an UNRATED restaurant specifically for this test
+    (fetchRestaurants as jest.Mock).mockResolvedValueOnce([
+      {
+        id: '1',
+        name: 'Test Burger',
+        cuisine: 'American',
+        latitude: 49.465,
+        longitude: 8.425,
+        google_place_id: 'place_123',
+      },
+    ]);
     (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
       rating: 4.8,
     });
@@ -232,6 +248,19 @@ describe('MapScreen Toggle Feature', () => {
 
     // Card updates with new rating
     expect(await findByText(/4\.8/)).toBeTruthy();
+  });
+
+  it('passes toggleBookmark down to the floating preview card', async () => {
+    const { getByText, getByTestId, findByTestId } = render(<MapScreen />);
+    await waitFor(() => expect(getByText('Map View')).toBeTruthy());
+
+    const marker = getByTestId('restaurant-marker');
+    fireEvent.press(marker);
+
+    expect(getByTestId('floating-preview-card')).toBeTruthy();
+
+    // The bookmark button should be present on the floating card
+    expect(await findByTestId('bookmark-button')).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {

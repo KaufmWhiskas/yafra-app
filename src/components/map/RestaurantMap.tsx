@@ -4,6 +4,7 @@ import MapView, { Marker, Region } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Restaurant } from '../../types';
 import RestaurantCard from '../ui/RestaurantCard';
+import { COLORS } from '../../constants/theme';
 
 interface RestaurantMapProps {
   restaurants: Restaurant[];
@@ -17,6 +18,8 @@ interface RestaurantMapProps {
   testID?: string;
   onPressReview?: (restaurant: Restaurant) => void;
   onRegionChangeComplete?: (region: Region) => void;
+  bookmarkedIds?: Set<string>;
+  onToggleBookmark?: (id: string | number) => void;
 }
 
 const ZOOM_THRESHOLD = 0.02;
@@ -41,7 +44,8 @@ const getIconForCuisine = (
 };
 
 // STRICTLY color by App Rating only
-const getMarkerColor = (appRating?: number) => {
+const getMarkerColor = (appRating?: number, isBookmarked?: boolean) => {
+  if (isBookmarked) return COLORS.bookmark;
   if (!appRating) return '#808080';
   if (appRating >= 4.0) return '#4CAF50';
   if (appRating >= 3.0) return '#FFC107';
@@ -60,6 +64,8 @@ export default function RestaurantMap({
   testID,
   onPressReview,
   onRegionChangeComplete,
+  bookmarkedIds,
+  onToggleBookmark,
 }: RestaurantMapProps) {
   // Determine if we should show the detailed or compact marker
   const isZoomedIn = region.latitudeDelta < ZOOM_THRESHOLD;
@@ -78,15 +84,16 @@ export default function RestaurantMap({
         customMapStyle={mapStyle}
       >
         {restaurants.map((restaurant) => {
+          const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
           const displayRating = restaurant.app_rating || restaurant.rating;
-          const bgColor = getMarkerColor(restaurant.app_rating);
+          const bgColor = getMarkerColor(restaurant.app_rating, isBookmarked);
           const iconName = getIconForCuisine(restaurant.cuisine);
           const isSelected = selectedRestaurant?.id === restaurant.id;
 
           // Elevate selected > app rated > google rated > unrated
           const zIndex = isSelected
             ? 100
-            : restaurant.app_rating
+            : isBookmarked || restaurant.app_rating
               ? 10
               : displayRating
                 ? 5
@@ -94,9 +101,10 @@ export default function RestaurantMap({
 
           return (
             <Marker
-              // The key forces the native view to redraw when crossing the zoom threshold
-              key={`${restaurant.id}-${isZoomedIn ? 'detailed' : 'compact'}`}
+              // The key forces the native view to redraw when crossing the zoom threshold OR toggling a bookmark
+              key={`${restaurant.id}-${isZoomedIn ? 'detailed' : 'compact'}-${isBookmarked ? 'bookmarked' : 'unbookmarked'}`}
               testID="restaurant-marker"
+              // Add testID for the color assertion in our test
               coordinate={{
                 latitude: restaurant.latitude,
                 longitude: restaurant.longitude,
@@ -110,6 +118,7 @@ export default function RestaurantMap({
               {isZoomedIn ? (
                 // Detailed Marker (Zoomed In)
                 <View
+                  testID="marker-inner-view"
                   style={[styles.detailedMarker, { backgroundColor: bgColor }]}
                 >
                   <MaterialCommunityIcons
@@ -125,6 +134,7 @@ export default function RestaurantMap({
               ) : (
                 // Compact Marker (Zoomed Out)
                 <View
+                  testID="marker-inner-view"
                   style={[styles.compactMarker, { backgroundColor: bgColor }]}
                 >
                   {displayRating ? (
@@ -150,6 +160,8 @@ export default function RestaurantMap({
           <RestaurantCard
             item={selectedRestaurant}
             onPressReview={() => onPressReview?.(selectedRestaurant)}
+            isBookmarked={bookmarkedIds?.has(selectedRestaurant.id.toString())}
+            onToggleBookmark={() => onToggleBookmark?.(selectedRestaurant.id)}
           />
         </View>
       )}

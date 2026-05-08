@@ -46,7 +46,7 @@ export default function RestaurantCard({
             <MaterialCommunityIcons
               name={isBookmarked ? 'heart' : 'heart-outline'}
               size={24}
-              color={isBookmarked ? COLORS.primary : COLORS.text}
+              color={isBookmarked ? COLORS.bookmark : COLORS.text}
             />
           </TouchableOpacity>
         )}
