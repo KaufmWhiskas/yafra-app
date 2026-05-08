@@ -20,7 +20,14 @@ export default function RestaurantCard({
     <View style={styles.container}>
       <Text style={styles.title}>{item.name}</Text>
       <Text>{item.cuisine}</Text>
-      <Text>{item.rating ? item.rating.toFixed(1) : 'No Rating'}</Text>
+
+      {item.app_rating && item.app_review_count ? (
+        <Text>
+          {item.app_rating.toFixed(1)} ★ ({item.app_review_count} App Reviews)
+        </Text>
+      ) : (
+        <Text>{item.rating ? item.rating.toFixed(1) : 'No Rating'}</Text>
+      )}
 
       <TouchableOpacity
         style={styles.reviewButton}
