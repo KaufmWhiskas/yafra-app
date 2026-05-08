@@ -20,35 +20,64 @@ export default function ReviewScreen() {
   const { restaurant } = route.params;
 
   const [rating, setRating] = useState('');
+  const [priceValueRating, setPriceValueRating] = useState('');
   const [reviewText, setReviewText] = useState('');
+  const [error, setError] = useState('');
+
+  const formatRatingInput = (text: string) => {
+    let cleaned = text.replace(/[^0-9.]/g, '');
+
+    const parts = cleaned.split('.');
+    if (parts.length > 2) {
+      cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    if (cleaned.includes('.')) {
+      const [whole, decimal] = cleaned.split('.');
+      cleaned = `${whole}.${decimal.slice(0, 1)}`;
+    }
+
+    if (parseFloat(cleaned) > 5) {
+      return '5.0';
+    }
+
+    return cleaned;
+  };
 
   /**
    * Validates inputs and "submits" the review before navigating back.
    */
   const handleSubmitReview = async () => {
-    const numericRating = Number(rating);
+    const parsedRating = parseFloat(rating);
+    const parsedPriceValue = parseFloat(priceValueRating);
 
-    // Guard: Ensure rating is a valid number between 1 and 5
     if (
-      !rating ||
-      isNaN(numericRating) ||
-      numericRating < 1 ||
-      numericRating > 5
+      isNaN(parsedRating) ||
+      parsedRating < 1 ||
+      parsedRating > 5 ||
+      isNaN(parsedPriceValue) ||
+      parsedPriceValue < 1 ||
+      parsedPriceValue > 5
     ) {
+      setError(
+        'Ratings must be between 1.0 and 5.0 with up to one decimal place.',
+      );
       return;
     }
 
+    setError('');
+
     try {
       await submitReview({
-        restaurant_id: restaurant.id,
-        rating: numericRating,
-        description: reviewText,
+        restaurantId: restaurant.id.toString(),
+        rating: parsedRating,
+        priceValueRating: parsedPriceValue,
+        reviewText,
       });
 
       navigation.goBack();
-    } catch (error) {
-      // We will handle the error differently soon:tm:, I SWEAR
-      console.error('Error submitting review:', error);
+    } catch (err) {
+      setError((err as Error).message);
     }
   };
 
@@ -56,13 +85,22 @@ export default function ReviewScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Review for {restaurant.name}</Text>
 
+      <Text style={styles.label}>Overall Rating</Text>
       <TextInput
         style={styles.input}
-        placeholder="Rating (1-5)"
-        value={rating}
-        onChangeText={setRating}
+        placeholder="Rating (1.0 - 5.0)"
         keyboardType="numeric"
-        maxLength={1}
+        value={rating}
+        onChangeText={(text) => setRating(formatRatingInput(text))}
+      />
+
+      <Text style={styles.label}>Price/Value</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Price/Value (1.0 - 5.0)"
+        keyboardType="numeric"
+        value={priceValueRating}
+        onChangeText={(text) => setPriceValueRating(formatRatingInput(text))}
       />
 
       <TextInput
@@ -73,6 +111,8 @@ export default function ReviewScreen() {
         multiline
         numberOfLines={4}
       />
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TouchableOpacity
         style={styles.submitButton}
@@ -97,6 +137,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: SIZES.padding * 2,
     color: COLORS.text,
+  },
+  label: {
+    marginRight: 10,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
+  },
+  starSelected: {
+    fontSize: 30,
+    color: '#FFD700',
+  },
+  starUnselected: {
+    fontSize: 30,
+    color: '#CCCCCC',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: SIZES.padding,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: COLORS.surface,
