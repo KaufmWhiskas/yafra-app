@@ -115,7 +115,7 @@ jest.mock('@react-navigation/native', () => {
     useNavigation: () => ({
       navigate: mockNavigate,
     }),
-    useFocusEffect: jest.fn((cb) => React.useEffect(cb, [])),
+    useFocusEffect: jest.fn((cb) => React.useEffect(() => cb(), [cb])),
   };
 });
 
@@ -131,6 +131,7 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn(() =>
     Promise.resolve({ coords: { latitude: 49.46, longitude: 8.42 } }),
   ),
+  Accuracy: { Balanced: 3 },
 }));
 
 describe('MapScreen Toggle Feature', () => {

@@ -22,6 +22,23 @@ describe('RestaurantCard', () => {
     expect(getByText('Burger King')).toBeTruthy();
     expect(getByText('Fast Food')).toBeTruthy();
   });
+
+  it('renders distance when distance prop is provided', () => {
+    const mockRestaurant = {
+      id: 1,
+      name: 'Burger King',
+      cuisine: 'Fast Food',
+      rating: 4.5,
+      latitude: 0,
+      longitude: 0,
+    };
+
+    const { getByText } = render(
+      <RestaurantCard item={mockRestaurant} distance={2.4} />,
+    );
+
+    expect(getByText(/2\.4 km/)).toBeTruthy();
+  });
 });
 
 describe('RestaurantCard Interaction', () => {

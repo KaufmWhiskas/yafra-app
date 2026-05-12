@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
@@ -19,7 +19,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Region } from 'react-native-maps';
 import { Prediction } from '../../services/searchService';
-import { BoundingBox, getRegionBBox } from '../../utils/geo';
+import {
+  BoundingBox,
+  getRegionBBox,
+  sortRestaurantsByDistance,
+  filterWithinRadius,
+} from '../../utils/geo';
 
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -37,7 +42,7 @@ export default function MapScreen() {
 
   // disables useless eslint error
   // eslint-disable-next-line
-  const { hasLocationPermission } = useLocation();
+  const { hasLocationPermission, userLocation } = useLocation();
 
   const { session } = useAuth();
   const user = session?.user;
@@ -90,15 +95,35 @@ export default function MapScreen() {
       const data = await fetchRestaurants(bbox);
 
       setRestaurants((prev) => {
-        const merged = new Map(prev.map((r) => [r.id, r]));
-        data?.forEach((r) => merged.set(r.id, r));
+        // BUG FIX: Deduplicate by Google Place ID. The database is likely creating
+        // duplicate rows with different IDs for the same physical restaurant.
+        const merged = new Map(
+          prev.map((r) => [r.google_place_id || r.id.toString(), r]),
+        );
+        data?.forEach((r) =>
+          merged.set(r.google_place_id || r.id.toString(), r),
+        );
 
-        return Array.from(merged.values());
+        // Calculate the center of the scan area
+        const scanCenter = {
+          latitude: (bbox.minLat + bbox.maxLat) / 2,
+          longitude: (bbox.minLon + bbox.maxLon) / 2,
+        };
+
+        // Prune restaurants further than 15km from the current scan center
+        return filterWithinRadius(Array.from(merged.values()), scanCenter, 15);
       });
     } catch (error) {
       console.error('Failed to fetch restaurants:', error);
     }
   };
+
+  const sortedRestaurants = useMemo(() => {
+    return sortRestaurantsByDistance(restaurants, {
+      latitude: mapRegion.latitude,
+      longitude: mapRegion.longitude,
+    });
+  }, [restaurants, mapRegion.latitude, mapRegion.longitude]);
 
   const { scanRegion } = useMapScanner(loadData);
 
@@ -164,7 +189,7 @@ export default function MapScreen() {
 
       {viewMode === 'map' ? (
         <RestaurantMap
-          restaurants={restaurants}
+          restaurants={sortedRestaurants}
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => setSelectedRestaurant(null)}
@@ -180,10 +205,12 @@ export default function MapScreen() {
         />
       ) : (
         <RestaurantList
-          restaurants={restaurants}
+          restaurants={sortedRestaurants}
           bookmarkedIds={bookmarkedIds}
           onPressReview={handleReviewPress}
           onToggleBookmark={handleToggleBookmark}
+          userLocation={userLocation || undefined}
+          contentContainerStyle={{ paddingTop: 175 }}
         />
       )}
     </View>

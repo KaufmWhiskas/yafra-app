@@ -222,11 +222,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderColor: '#fff',
     borderWidth: 2,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   compactMarker: {
     width: 24,
@@ -236,11 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderColor: '#fff',
     borderWidth: 2,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
   },
   markerText: {
     color: '#fff',

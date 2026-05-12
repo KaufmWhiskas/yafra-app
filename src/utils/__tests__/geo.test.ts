@@ -1,4 +1,9 @@
-import { calculateDistance, getRegionBBox } from "../geo";
+import {
+  calculateDistance,
+  getRegionBBox,
+  sortRestaurantsByDistance,
+  filterWithinRadius,
+} from "../geo";
 
 describe("Geolocation Utilities", () => {
   describe("getRegionBBox", () => {
@@ -37,6 +42,45 @@ describe("Geolocation Utilities", () => {
       // Expected straight-line distance is ~74.5 km
       expect(distance).toBeGreaterThan(74);
       expect(distance).toBeLessThan(75);
+    });
+  });
+
+  describe("sortRestaurantsByDistance", () => {
+    it("should sort restaurants from closest to furthest based on origin", () => {
+      const origin = { latitude: 47.35, longitude: 8.55 };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r1 = { id: 1, name: "Far", latitude: 48.0, longitude: 9.0 } as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r2 = {
+        id: 2,
+        name: "Closest",
+        latitude: 47.36,
+        longitude: 8.56,
+      } as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r3 = { id: 3, name: "Mid", latitude: 47.5, longitude: 8.6 } as any;
+
+      const result = sortRestaurantsByDistance([r1, r2, r3], origin);
+      expect(result[0].name).toBe("Closest");
+      expect(result[1].name).toBe("Mid");
+      expect(result[2].name).toBe("Far");
+    });
+  });
+
+  describe("filterWithinRadius", () => {
+    it("should filter restaurants within the specified radius", () => {
+      const center = { latitude: 0, longitude: 0 };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r1 = { id: 1, name: "5km", latitude: 0.045, longitude: 0 } as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r2 = { id: 2, name: "10km", latitude: 0.09, longitude: 0 } as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r3 = { id: 3, name: "20km", latitude: 0.18, longitude: 0 } as any;
+
+      const result = filterWithinRadius([r1, r2, r3], center, 15);
+      expect(result.length).toBe(2);
+      expect(result[0].name).toBe("5km");
+      expect(result[1].name).toBe("10km");
     });
   });
 });

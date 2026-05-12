@@ -10,6 +10,7 @@ interface RestaurantCardProps {
   onPressReview?: () => void;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
+  distance?: number;
 }
 
 const getIconForCuisine = (
@@ -32,6 +33,7 @@ export default function RestaurantCard({
   onPressReview,
   isBookmarked,
   onToggleBookmark,
+  distance,
 }: RestaurantCardProps) {
   return (
     <View style={styles.container}>
@@ -59,6 +61,9 @@ export default function RestaurantCard({
           color={COLORS.text}
         />
         <Text style={styles.cuisineText}>{item.cuisine}</Text>
+        {distance !== undefined && (
+          <Text style={styles.distanceText}> • {distance.toFixed(1)} km</Text>
+        )}
       </View>
 
       <View style={styles.ratingContainer}>
@@ -125,6 +130,10 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 14,
     textTransform: 'capitalize',
+  },
+  distanceText: {
+    color: COLORS.textLight,
+    fontSize: 14,
   },
   ratingText: {
     fontSize: 14,
