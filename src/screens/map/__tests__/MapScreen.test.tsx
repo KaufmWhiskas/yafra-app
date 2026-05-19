@@ -83,12 +83,14 @@ jest.mock('react-native-maps', () => {
     onPress?: () => void;
     onRegionChangeComplete?: (region: Region) => void;
     region?: Region;
+    initialRegion?: Region;
   }) => (
     <View
       testID="mock-map"
       onPress={props.onPress}
       onRegionChangeComplete={props.onRegionChangeComplete}
       region={props.region}
+      initialRegion={props.initialRegion}
     >
       {props.children}
     </View>
@@ -304,8 +306,8 @@ describe('MapScreen Toggle Feature', () => {
     const dummyRegion = {
       latitude: 47.35,
       longitude: 8.55,
-      latitudeDelta: 0.1,
-      longitudeDelta: 0.2,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
     };
 
     // Trigger the region change
@@ -335,5 +337,30 @@ describe('MapScreen Toggle Feature', () => {
         }),
       );
     });
+  });
+
+  it('does not call scanRegion when zoomed out past the maximum threshold', async () => {
+    const mockScanRegion = jest.fn();
+    (useMapScanner as jest.Mock).mockReturnValue({
+      scanRegion: mockScanRegion,
+    });
+
+    const { getByTestId, findByText } = render(<MapScreen />);
+    await findByText('Map View');
+
+    const mapElement = getByTestId('mock-map');
+
+    // A latitudeDelta of 0.15 is roughly a 15-20km view
+    const zoomedOutRegion = {
+      latitude: 47.35,
+      longitude: 8.55,
+      latitudeDelta: 0.15,
+      longitudeDelta: 0.15,
+    };
+
+    fireEvent(mapElement, 'regionChangeComplete', zoomedOutRegion);
+
+    // Should ignore the scan to save API calls!
+    expect(mockScanRegion).not.toHaveBeenCalled();
   });
 });

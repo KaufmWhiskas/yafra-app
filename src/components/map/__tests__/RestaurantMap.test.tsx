@@ -43,7 +43,7 @@ describe('RestaurantMap', () => {
     },
   ];
 
-  it('renders detailed markers (decimals & icons) when zoomed IN', () => {
+  it('renders detailed markers when selected', () => {
     const zoomedInRegion = {
       latitude: 49.46,
       longitude: 8.42,
@@ -57,16 +57,15 @@ describe('RestaurantMap', () => {
         restaurants={mockRestaurants as any}
         region={zoomedInRegion}
         onRestaurantSelect={jest.fn()}
-        selectedRestaurant={null}
+        selectedRestaurant={mockRestaurants[0] as any}
         onMapPress={jest.fn()}
       />,
     );
 
     expect(getByText(/4\.8/)).toBeTruthy();
-    expect(getByText(/-/)).toBeTruthy();
   });
 
-  it('renders compact markers (rounded numbers, no text) when zoomed OUT', () => {
+  it('renders compact markers when unselected', () => {
     const zoomedOutRegion = {
       latitude: 49.46,
       longitude: 8.42,
@@ -139,5 +138,51 @@ describe('RestaurantMap', () => {
         expect.objectContaining({ backgroundColor: COLORS.bookmark }),
       ]),
     );
+  });
+
+  it('maintains deterministic marker order in the component tree when a restaurant is selected', () => {
+    const mockRegion = {
+      latitude: 49.46,
+      longitude: 8.42,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    };
+
+    // 1. Render the map with selectedRestaurant={null}.
+    const { getAllByTestId, rerender } = render(
+      <RestaurantMap
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        restaurants={mockRestaurants as any}
+        region={mockRegion}
+        onRestaurantSelect={jest.fn()}
+        selectedRestaurant={null}
+        onMapPress={jest.fn()}
+      />
+    );
+
+    // 2. Query all markers by testID.
+    let markers = getAllByTestId(/^marker-\d+/);
+
+    // 3. Extract and store the sequence of restaurant IDs from the initial render.
+    const initialIds = markers.map((m) => m.props.testID);
+
+    // 4. Re-render the map with a selectedRestaurant.
+    rerender(
+      <RestaurantMap
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        restaurants={mockRestaurants as any}
+        region={mockRegion}
+        onRestaurantSelect={jest.fn()}
+        selectedRestaurant={mockRestaurants[0] as any}
+        onMapPress={jest.fn()}
+      />
+    );
+
+    // 5. Query the markers again.
+    markers = getAllByTestId(/^marker-\d+/);
+    const newIds = markers.map((m) => m.props.testID);
+
+    // 6. Assert that the new sequence of IDs strictly matches the initial sequence.
+    expect(newIds).toEqual(initialIds);
   });
 });

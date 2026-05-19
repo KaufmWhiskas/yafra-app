@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
@@ -17,7 +17,7 @@ import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
-import { Region } from 'react-native-maps';
+import MapView, { Region } from 'react-native-maps';
 import { Prediction } from '../../services/searchService';
 import {
   BoundingBox,
@@ -26,12 +26,16 @@ import {
   filterWithinRadius,
 } from '../../utils/geo';
 
+const MAX_ZOOM_OUT = 0.1;
+
 export default function MapScreen() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
+
+  const mapRef = useRef<MapView>(null);
 
   const [mapRegion, setMapRegion] = useState<Region>({
     latitude: 49.469805794737454,
@@ -55,33 +59,62 @@ export default function MapScreen() {
     navigation.navigate('ReviewScreen', { restaurant });
   };
 
-  const handleRestaurantSelect = async (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant);
+  const handleRestaurantSelect = useCallback(
+    async (restaurant: Restaurant) => {
+      // 1. Instantly trigger the React UI update
+      setSelectedRestaurant(restaurant);
 
-    if (restaurant.google_place_id && !restaurant.rating) {
-      try {
-        const details = await fetchRestaurantDetails(
-          restaurant.google_place_id,
+      // 2. 🚨 SMART ZOOM LOGIC 🚨
+      // If the user is already zoomed in closer than 0.005, we keep their current zoom level.
+      // If they are zoomed out far away, we bring them into the 0.005 level.
+      const targetLatDelta =
+        mapRegion.latitudeDelta < 0.005 ? mapRegion.latitudeDelta : 0.005;
+      const targetLonDelta =
+        mapRegion.longitudeDelta < 0.005 ? mapRegion.longitudeDelta : 0.005;
+
+      // 3. Wait 250ms for the Visual Marker to finish its Pop Animation, THEN pan.
+      setTimeout(() => {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: restaurant.latitude,
+            longitude: restaurant.longitude,
+            latitudeDelta: targetLatDelta,
+            longitudeDelta: targetLonDelta,
+          },
+          600,
         );
-        setSelectedRestaurant((prev) =>
-          prev?.id === restaurant.id ? { ...prev, ...details } : prev,
-        );
-      } catch (error) {
-        console.error('Failed to fetch Google details:', error);
+      }, 250);
+
+      // 4. Fetch details
+      if (restaurant.google_place_id && !restaurant.rating) {
+        try {
+          const details = await fetchRestaurantDetails(
+            restaurant.google_place_id,
+          );
+
+          setSelectedRestaurant((prev) =>
+            prev?.id === restaurant.id ? { ...prev, ...details } : prev,
+          );
+        } catch (error) {
+          console.error(error);
+        }
       }
-    }
-  };
+    },
+    [mapRegion.latitudeDelta, mapRegion.longitudeDelta],
+  );
 
   const handleSearchSelect = async (place: Prediction) => {
     try {
       const details = await fetchRestaurantDetails(place.placeId);
       if (details.location) {
-        setMapRegion({
+        const newRegion = {
           latitude: details.location.latitude,
           longitude: details.location.longitude,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
-        });
+        };
+        setMapRegion(newRegion);
+        mapRef.current?.animateToRegion(newRegion, 1000);
         setSelectedRestaurant(details as Restaurant);
       }
     } catch (error) {
@@ -95,14 +128,11 @@ export default function MapScreen() {
       const data = await fetchRestaurants(bbox);
 
       setRestaurants((prev) => {
-        // BUG FIX: Deduplicate by Google Place ID. The database is likely creating
-        // duplicate rows with different IDs for the same physical restaurant.
-        const merged = new Map(
-          prev.map((r) => [r.google_place_id || r.id.toString(), r]),
-        );
-        data?.forEach((r) =>
-          merged.set(r.google_place_id || r.id.toString(), r),
-        );
+        const merged = new Map<string, Restaurant>();
+
+        [...prev, ...(data || [])].forEach((r) => {
+          merged.set(r.id.toString(), r);
+        });
 
         // Calculate the center of the scan area
         const scanCenter = {
@@ -110,7 +140,6 @@ export default function MapScreen() {
           longitude: (bbox.minLon + bbox.maxLon) / 2,
         };
 
-        // Prune restaurants further than 15km from the current scan center
         return filterWithinRadius(Array.from(merged.values()), scanCenter, 15);
       });
     } catch (error) {
@@ -128,13 +157,41 @@ export default function MapScreen() {
   const { scanRegion } = useMapScanner(loadData);
 
   const handleRegionChangeComplete = async (region: Region) => {
-    setMapRegion(region);
-    scanRegion(region);
+    setMapRegion((prev) => {
+      const hasChanged =
+        Math.abs(prev.latitude - region.latitude) > 0.0001 ||
+        Math.abs(prev.longitude - region.longitude) > 0.0001 ||
+        Math.abs(prev.latitudeDelta - region.latitudeDelta) > 0.0001 ||
+        Math.abs(prev.longitudeDelta - region.longitudeDelta) > 0.0001;
+
+      return hasChanged ? region : prev;
+    });
+
+    if (region.latitudeDelta < MAX_ZOOM_OUT) {
+      scanRegion(region);
+    }
   };
 
+  const [hasSetInitialLocation, setHasSetInitialLocation] = useState(false);
+
   useEffect(() => {
-    loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (userLocation && !hasSetInitialLocation) {
+      const initialRegion = {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.04,
+        longitudeDelta: 0.02,
+      };
+      setMapRegion(initialRegion);
+      mapRef.current?.animateToRegion(initialRegion, 1000);
+      setHasSetInitialLocation(true);
+
+      loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
+    } else if (!userLocation && !hasSetInitialLocation) {
+      loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
+      setHasSetInitialLocation(true);
+    }
+  }, [userLocation, hasSetInitialLocation, mapRegion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -189,10 +246,17 @@ export default function MapScreen() {
 
       {viewMode === 'map' ? (
         <RestaurantMap
-          restaurants={sortedRestaurants}
+          mapRef={mapRef}
+          restaurants={
+            mapRegion.latitudeDelta >= MAX_ZOOM_OUT ? [] : sortedRestaurants
+          }
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
-          onMapPress={() => setSelectedRestaurant(null)}
+          onMapPress={() => {
+            requestAnimationFrame(() => {
+              setSelectedRestaurant(null);
+            });
+          }}
           region={mapRegion}
           showsUserLocation={true}
           showsMyLocationButton={true}
