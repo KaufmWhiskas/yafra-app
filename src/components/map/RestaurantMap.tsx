@@ -22,8 +22,14 @@ interface RestaurantMapProps {
   onToggleBookmark?: (id: string | number) => void;
 }
 
+/** Custom map style configuration used to hide default Points of Interest (POIs). */
 const mapStyle = [{ featureType: 'poi', stylers: [{ visibility: 'off' }] }];
 
+/**
+ * Component representing the interactive map layout.
+ * Renders the underlying map view engine, restaurant location markers,
+ * and a conditional floating preview card upon restaurant selection.
+ */
 export default function RestaurantMap({
   mapRef,
   restaurants,
@@ -55,7 +61,6 @@ export default function RestaurantMap({
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {/* 1. THE PERMANENT BASE MARKERS */}
         {restaurants.map((restaurant) => {
           const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
 
@@ -64,20 +69,19 @@ export default function RestaurantMap({
               key={`base-${restaurant.id}`}
               restaurant={restaurant}
               isBookmarked={isBookmarked}
-              isSelected={false} // 🚨 LOCKED
+              isSelected={false}
               onPress={onRestaurantSelect}
             />
           );
         })}
 
-        {/* 2. THE FLOATING SELECTION OVERLAY */}
         {selectedRestaurant && (
           <RestaurantMarker
             key={`overlay-${selectedRestaurant.id}`}
             restaurant={selectedRestaurant}
             isBookmarked={bookmarkedIds?.has(selectedRestaurant.id.toString())}
-            isSelected={true} // 🚨 LOCKED
-            isOverlay={true} // 🚨 ACTIVATES MICRO-SHIFT
+            isSelected={true}
+            isOverlay={true}
             onPress={onRestaurantSelect}
           />
         )}

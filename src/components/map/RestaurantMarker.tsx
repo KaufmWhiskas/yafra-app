@@ -5,6 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Restaurant } from '../../types';
 import { COLORS } from '../../constants/theme';
 
+/**
+ * Base64 string representing a 1x1 transparent PNG pixel.
+ * Used as an invisible touch target over the map markers.
+ */
 const TRANSPARENT_PIXEL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
@@ -12,9 +16,14 @@ interface RestaurantMarkerProps {
   restaurant: Restaurant;
   isBookmarked?: boolean;
   isSelected: boolean;
+  isOverlay?: boolean;
   onPress: (restaurant: Restaurant) => void;
 }
 
+/**
+ * Maps a given cuisine type to a corresponding MaterialCommunityIcons icon name.
+ * Defaults to a generic silverware icon if no match is found.
+ */
 const getIconForCuisine = (
   cuisine?: string,
 ): keyof typeof MaterialCommunityIcons.glyphMap => {
@@ -27,7 +36,10 @@ const getIconForCuisine = (
   return 'silverware-fork-knife';
 };
 
-const getMarkerColor = (appRating?: number, isBookmarked?: boolean) => {
+/**
+ * Determines the background color of a marker based on its rating and bookmark state.
+ */
+const getMarkerColor = (appRating?: number, isBookmarked?: boolean): string => {
   if (isBookmarked) return COLORS.bookmark;
   if (!appRating) return '#808080';
   if (appRating >= 4.0) return '#4CAF50';
@@ -35,34 +47,36 @@ const getMarkerColor = (appRating?: number, isBookmarked?: boolean) => {
   return '#808080';
 };
 
+/**
+ * Component representing an individual restaurant marker on the map view.
+ * Renders a visual indicator layer and an invisible interactive touch shield.
+ */
 function RestaurantMarker({
   restaurant,
   isBookmarked,
   isSelected,
+  isOverlay,
   onPress,
 }: RestaurantMarkerProps) {
   const [trackChanges, setTrackChanges] = useState(true);
 
-  // 🚨 MATH FIX 🚨
-  // 0.75 scale of the 56px width is exactly 42px.
-  // It now starts seamlessly at its unselected size and grows outward.
+  // Scale value ranges from 0.75 (unselected proportional size) to 1.0 (selected size).
   const scaleAnim = useRef(new Animated.Value(isSelected ? 0.75 : 1)).current;
 
-  // Because the `key` swaps on selection, this component mounts fresh every time state changes.
   useEffect(() => {
     if (isSelected) {
-      scaleAnim.setValue(0.75); // Start at original 42px equivalent
+      scaleAnim.setValue(0.75);
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 6, // Slightly higher friction to settle smoothly
-        tension: 250, // Higher = faster pop
-        overshootClamping: true, // Prevents bouncing past 1.0
-        useNativeDriver: false, // MUST be false so Android Map SDK registers the redraw frames
+        friction: 6,
+        tension: 250,
+        overshootClamping: true,
+        useNativeDriver: false, // Required false for layout frame rendering in Android Map SDK.
       }).start();
     }
 
     setTrackChanges(true);
-    // Keep awake for 800ms to guarantee the spring has completely finished resting before the camera locks.
+    // Disable change tracking after animation completes to maximize map rendering performance.
     const timer = setTimeout(() => setTrackChanges(false), 800);
     return () => clearTimeout(timer);
   }, [isSelected, isBookmarked, scaleAnim]);
@@ -71,25 +85,23 @@ function RestaurantMarker({
   const baseBgColor = getMarkerColor(restaurant.app_rating, isBookmarked);
   const iconName = getIconForCuisine(restaurant.cuisine);
 
-  // 🚨 LARGER SELECTION SIZES 🚨
   const width = isSelected ? 56 : 42;
   const height = isSelected ? 36 : 28;
   const borderRadius = isSelected ? 18 : 14;
 
   return (
     <>
-      {/* 1. THE VISUAL LAYER */}
       <Marker
         key={`visual-${restaurant.id}-${isSelected ? 'active' : 'idle'}-${isBookmarked ? 'saved' : 'unsaved'}`}
         coordinate={{
-          latitude: restaurant.latitude,
+          // Offsets latitude minutely when rendering as an overlay to prevent layout clipping.
+          latitude: restaurant.latitude + (isOverlay ? 0.0000001 : 0),
           longitude: restaurant.longitude,
         }}
         tracksViewChanges={trackChanges}
         anchor={{ x: 0.5, y: 0.5 }}
         zIndex={isSelected ? 50 : isBookmarked ? 10 : 5}
       >
-        {/* THE ANTI-CLIPPING BOUNDING BOX */}
         <View
           style={{
             width,
@@ -108,7 +120,7 @@ function RestaurantMarker({
                 backgroundColor: baseBgColor,
                 borderColor: isSelected ? COLORS.primary : '#fff',
                 borderWidth: isSelected ? 3 : 2,
-                transform: [{ scale: scaleAnim }], // Apply the pop!
+                transform: [{ scale: scaleAnim }],
               },
             ]}
           >
@@ -121,14 +133,12 @@ function RestaurantMarker({
         </View>
       </Marker>
 
-      {/* 2. THE INDESTRUCTIBLE TOUCH SHIELD */}
       <Marker
         key={`touch-${restaurant.id}`}
         coordinate={{
-          latitude: restaurant.latitude,
+          latitude: restaurant.latitude + (isOverlay ? 0.0000001 : 0),
           longitude: restaurant.longitude,
         }}
-        // Feeds the empty PNG directly to the map engine
         image={{ uri: TRANSPARENT_PIXEL }}
         tracksViewChanges={false}
         anchor={{ x: 0.5, y: 0.5 }}
@@ -161,6 +171,7 @@ export default memo(RestaurantMarker, (prev, next) => {
     prev.restaurant.id === next.restaurant.id &&
     prev.isBookmarked === next.isBookmarked &&
     prev.isSelected === next.isSelected &&
+    prev.isOverlay === next.isOverlay &&
     prev.restaurant.app_rating === next.restaurant.app_rating &&
     prev.restaurant.rating === next.restaurant.rating
   );

@@ -42,7 +42,7 @@ export async function fetchRestaurants(
 }
 
 /**
- * Fetches detailed high-fidelity data (Pro SKU) for a specific restaurant from Google Places.
+ * Fetches detailed high-detailed data for a specific restaurant from Google Places.
  * @param googlePlaceId The Google Place ID of the restaurant.
  * @throws Will throw an error if the function invocation fails.
  */
