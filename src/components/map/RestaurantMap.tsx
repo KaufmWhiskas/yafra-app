@@ -66,7 +66,7 @@ export default function RestaurantMap({
 
           return (
             <RestaurantMarker
-              key={`base-${restaurant.id}`}
+              key={`base-${restaurant.id}-${isBookmarked ? 'saved' : 'unsaved'}`}
               restaurant={restaurant}
               isBookmarked={isBookmarked}
               isSelected={false}

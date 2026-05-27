@@ -42,8 +42,8 @@ const getIconForCuisine = (
 const getMarkerColor = (appRating?: number, isBookmarked?: boolean): string => {
   if (isBookmarked) return COLORS.bookmark;
   if (!appRating) return '#808080';
-  if (appRating >= 4.0) return '#4CAF50';
-  if (appRating >= 3.0) return '#FFC107';
+  if (appRating >= 4.0) return COLORS.success;
+  if (appRating >= 3.0) return COLORS.warning;
   return '#808080';
 };
 

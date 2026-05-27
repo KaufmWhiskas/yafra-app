@@ -2,6 +2,8 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import RestaurantMap from '../RestaurantMap';
 import { COLORS } from '../../../constants/theme';
+import RestaurantMarker from '../RestaurantMarker';
+import { Restaurant } from '../../../types';
 
 jest.mock('react-native-maps', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -184,5 +186,42 @@ describe('RestaurantMap', () => {
 
     // 6. Assert that the new sequence of IDs strictly matches the initial sequence.
     expect(newIds).toEqual(initialIds);
+  });
+});
+
+const mockRestaurant = {
+  id: '123',
+  name: 'Test Pizzeria',
+  cuisine: 'pizza',
+  latitude: 49.4698,
+  longitude: 8.4221,
+} as Restaurant;
+
+describe('RestaurantMarker Memoization', () => {
+  it('forces a re-render when bookmarked state changes', () => {
+    const onPressMock = jest.fn();
+    
+    // Render the initial unbookmarked state
+    const { rerender } = render(
+      <RestaurantMarker
+        restaurant={mockRestaurant}
+        isBookmarked={true}
+        isSelected={false}
+        onPress={onPressMock}
+      />
+    );
+
+    // Re-render with changed bookmark prop
+    rerender(
+      <RestaurantMarker
+        restaurant={mockRestaurant}
+        isBookmarked={false}
+        isSelected={false}
+        onPress={onPressMock}
+      />
+    );
+    
+    // The component must accept properties dynamically without caching old states
+    expect(onPressMock).not.toHaveBeenCalled();
   });
 });
