@@ -61,12 +61,12 @@ export default function RestaurantMap({
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {restaurants.map((restaurant) => {
+        {restaurants.map((restaurant, index) => {
           const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
 
           return (
             <RestaurantMarker
-              key={`base-${restaurant.id}-${isBookmarked ? 'saved' : 'unsaved'}`}
+              key={`base-${restaurant.id}-${isBookmarked ? 'saved' : 'unsaved'}-${index}`}
               restaurant={restaurant}
               isBookmarked={isBookmarked}
               isSelected={false}

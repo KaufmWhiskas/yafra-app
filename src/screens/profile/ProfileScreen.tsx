@@ -43,8 +43,15 @@ export default function ProfileScreen() {
       if (user?.id) {
         getBookmarks(user.id)
           .then((data) => {
-            setBookmarks(data);
-            setBookmarkedIds(new Set(data.map((b) => b.id.toString())));
+            // Deduplicate the array by ID to prevent flatlist key errors
+            const uniqueBookmarks = Array.from(
+              new Map(data.map((item) => [item.id.toString(), item])).values(),
+            );
+
+            setBookmarks(uniqueBookmarks);
+            setBookmarkedIds(
+              new Set(uniqueBookmarks.map((b) => b.id.toString())),
+            );
           })
           .catch((error) => console.error('Failed to load bookmarks:', error));
       }

@@ -15,7 +15,7 @@ export async function toggleBookmark(
 ): Promise<{ bookmarked: boolean }> {
   const { data } = await supabase
     .from("bookmarks")
-    .select("*")
+    .select("id")
     .eq("user_id", userId)
     .eq("restaurant_id", restaurantId.toString())
     .maybeSingle();
@@ -29,9 +29,16 @@ export async function toggleBookmark(
     return { bookmarked: false };
   }
 
-  await supabase.from("bookmarks").insert([
+  const { error: insertError } = await supabase.from("bookmarks").insert([
     { user_id: userId, restaurant_id: restaurantId.toString() },
   ]);
+
+  // If the insert fails because of the unique constraint (race condition),
+  // it means it was already bookmarked, which is fine.
+  if (insertError && insertError.code !== "23505") {
+    throw insertError;
+  }
+
   return { bookmarked: true };
 }
 
