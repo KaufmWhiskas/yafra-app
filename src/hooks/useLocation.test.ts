@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import * as Location from "expo-location";
 import { FALLBACK_COORDINATE, useLocation } from "./useLocation";
 
@@ -39,33 +39,18 @@ describe("useLocation", () => {
     expect(result.current.hasLocationPermission).toBe(true);
   });
 
-  it("Returns last known cached coordinates if high-accuracy positioning times out", async () => {
+  it("Returns last known cached coordinates if high-accuracy positioning fails", async () => {
     (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue(
       { status: "granted" },
     );
-    (Location.getCurrentPositionAsync as jest.Mock).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () => resolve({ coords: { latitude: 1, longitude: 1 } }),
-            10000,
-          )
-        ),
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(
+      new Error("Failed"),
     );
     (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue({
       coords: { latitude: 47.0, longitude: 7.0 },
     });
 
     const { result } = renderHook(() => useLocation());
-
-    // Flush microtasks so requestLocation can resolve permissions and register the 5-second timeout
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    act(() => {
-      jest.advanceTimersByTime(5000);
-    });
 
     await waitFor(() => {
       expect(result.current.userLocation).toEqual({

@@ -22,6 +22,12 @@ class MockMapView extends Component<MockMapViewProps> {
 
   fitToCoordinates(): void {}
 
+  animateCamera(): void {}
+
+  async getCamera(): Promise<{ heading: number }> {
+    return { heading: 0 };
+  }
+
   render(): React.ReactNode {
     return (
       <View testID={this.props.testID ?? 'mock-map'} {...this.props}>

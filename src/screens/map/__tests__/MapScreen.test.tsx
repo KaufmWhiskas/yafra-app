@@ -9,6 +9,7 @@ import { requestForegroundPermissionsAsync } from 'expo-location';
 import { toggleBookmark } from '../../../services/bookmarkService';
 import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
+import MapView from 'react-native-maps';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, left: 0, bottom: 0, right: 0 }),
@@ -105,6 +106,9 @@ jest.mock('expo-location', () => ({
   }),
   getLastKnownPositionAsync: jest.fn().mockResolvedValue({
     coords: { latitude: 49.46, longitude: 8.42 },
+  }),
+  watchHeadingAsync: jest.fn().mockResolvedValue({
+    remove: jest.fn(),
   }),
   Accuracy: { Balanced: 3 },
 }));
@@ -330,5 +334,46 @@ describe('MapScreen Toggle Feature', () => {
     await flushMicrotasks();
 
     expect(mockScanRegion).not.toHaveBeenCalled();
+  });
+
+  describe('Custom Map Controls', () => {
+    it('Pressing the custom "My Location" button calls mapRef.animateCamera with userLocation', async () => {
+      const { getByTestId } = render(<MapScreen />);
+      await flushMicrotasks();
+
+      const animateCameraSpy = jest.spyOn(MapView.prototype, 'animateCamera');
+
+      const myLocationButton = getByTestId('my-location-button');
+      fireEvent.press(myLocationButton);
+
+      expect(animateCameraSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          center: { latitude: 49.46, longitude: 8.42 },
+          zoom: 15,
+        }),
+        expect.objectContaining({ duration: 500 }),
+      );
+
+      animateCameraSpy.mockRestore();
+    });
+
+    it('Pressing the custom "Compass" button calls mapRef.animateCamera with heading 0', async () => {
+      const { getByTestId } = render(<MapScreen />);
+      await flushMicrotasks();
+
+      const animateCameraSpy = jest.spyOn(MapView.prototype, 'animateCamera');
+
+      const compassButton = getByTestId('compass-button');
+      fireEvent.press(compassButton);
+
+      expect(animateCameraSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          heading: 0,
+        }),
+        expect.objectContaining({ duration: 400 }),
+      );
+
+      animateCameraSpy.mockRestore();
+    });
   });
 });

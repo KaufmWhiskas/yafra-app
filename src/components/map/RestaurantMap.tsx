@@ -20,10 +20,12 @@ interface RestaurantMapProps {
   settledRegion?: Region;
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
+  showsCompass?: boolean;
   toolbarEnabled?: boolean;
   testID?: string;
   onPressReview?: (restaurant: Restaurant) => void;
   onRegionChangeComplete?: (region: Region) => void;
+  onRegionChange?: () => void;
   bookmarkedIds?: Set<string>;
   onToggleBookmark?: (id: string | number) => void;
 }
@@ -46,10 +48,12 @@ export default function RestaurantMap({
   settledRegion,
   showsUserLocation,
   showsMyLocationButton,
+  showsCompass,
   toolbarEnabled,
   testID,
   onPressReview,
   onRegionChangeComplete,
+  onRegionChange,
   bookmarkedIds,
   onToggleBookmark,
 }: RestaurantMapProps) {
@@ -69,7 +73,6 @@ export default function RestaurantMap({
     return sortRestaurantsByDistance(rawVisible, center);
   }, [restaurants, filteringRegion, bookmarkedIds]);
 
-  // Pass the sorted array to the stagger hook
   const staggeredRestaurants = useStaggeredList(visibleRestaurants, 5);
 
   // Freeze the DOM array order so the Native Engine stops destroying views on pan
@@ -86,10 +89,12 @@ export default function RestaurantMap({
         initialRegion={region}
         showsUserLocation={showsUserLocation}
         showsMyLocationButton={showsMyLocationButton}
+        showsCompass={showsCompass}
         toolbarEnabled={toolbarEnabled}
         onPress={onMapPress}
         moveOnMarkerPress={false}
         onRegionChangeComplete={onRegionChangeComplete}
+        onRegionChange={onRegionChange}
         customMapStyle={mapStyle}
       >
         {stableDOMRestaurants.map((restaurant) => {

@@ -12,8 +12,6 @@ export function useLocation() {
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
 
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-
     async function fetchIpFallback() {
       try {
         const response = await fetch("https://ipapi.co/json/");
@@ -36,30 +34,16 @@ export function useLocation() {
 
       if (status === "granted") {
         setHasLocationPermission(true);
+
         try {
-          const locationPromise = Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced, // Balanced saves battery while giving ~100m accuracy
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
           });
-
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error("Timeout")), 5000);
-          });
-
-          // Attach a no-op catch handler to prevent unhandled rejection warnings if locationPromise resolves/rejects first
-          timeoutPromise.catch(() => {});
-
-          const location = await Promise.race([
-            locationPromise,
-            timeoutPromise,
-          ]);
-          clearTimeout(timeoutId);
-
           setUserLocation({
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           });
         } catch {
-          if (timeoutId) clearTimeout(timeoutId);
           try {
             const cachedLocation = await Location.getLastKnownPositionAsync();
             if (cachedLocation) {
@@ -80,10 +64,6 @@ export function useLocation() {
     }
 
     requestLocation();
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, []);
 
   return { hasLocationPermission, userLocation };

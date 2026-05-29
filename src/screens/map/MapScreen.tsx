@@ -12,6 +12,7 @@ import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
 import RestaurantList from '../../components/ui/RestaurantList';
 import QuickAddModal from '../../components/ui/QuickAddModal';
+import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
@@ -45,6 +46,7 @@ export default function MapScreen() {
   const [quickAddRestaurants, setQuickAddRestaurants] = useState<Restaurant[]>(
     [],
   );
+  const [mapHeading, setMapHeading] = useState(0);
 
   // Suppress unused variable warning as hasLocationPermission is reserved for future fallback triggers.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -63,10 +65,8 @@ export default function MapScreen() {
 
   const handleRestaurantSelect = useCallback(
     async (restaurant: Restaurant) => {
-      // 1. Instantly trigger the React UI update
       setSelectedRestaurant(restaurant);
 
-      // 2. 🚨 SMART ZOOM LOGIC 🚨
       // If the user is already zoomed in closer than 0.005, we keep their current zoom level.
       // If they are zoomed out far away, we bring them into the 0.005 level.
       const targetLatDelta =
@@ -91,7 +91,6 @@ export default function MapScreen() {
         );
       }, 250);
 
-      // 4. Fetch details
       if (restaurant.google_place_id && !restaurant.rating) {
         try {
           const details = await fetchRestaurantDetails(
@@ -140,7 +139,6 @@ export default function MapScreen() {
           merged.set(r.id.toString(), r);
         });
 
-        // Calculate the center of the scan area
         const scanCenter = {
           latitude: (bbox.minLat + bbox.maxLat) / 2,
           longitude: (bbox.minLon + bbox.maxLon) / 2,
@@ -169,6 +167,23 @@ export default function MapScreen() {
 
     if (region.latitudeDelta < MAX_ZOOM_OUT) {
       scanRegion(region);
+    }
+
+    // Query the map camera to find out if the user rotated the map
+    if (mapRef.current) {
+      const camera = await mapRef.current.getCamera();
+      setMapHeading(camera.heading);
+    }
+  };
+
+  const handleRegionChangeLive = async () => {
+    if (mapRef.current) {
+      const camera = await mapRef.current.getCamera();
+      // Only update state if the heading actually changed by a noticeable amount to avoid React thrashing
+      setMapHeading((prev) => {
+        if (Math.abs(prev - camera.heading) > 1) return camera.heading;
+        return prev;
+      });
     }
   };
 
@@ -225,7 +240,6 @@ export default function MapScreen() {
       const closest = getClosestRestaurants(restaurants, userLocation, 4);
       setQuickAddRestaurants(closest);
     } else if (mapRegion) {
-      // Fallback to center of map if no userLocation
       const center = {
         latitude: mapRegion.latitude,
         longitude: mapRegion.longitude,
@@ -234,6 +248,26 @@ export default function MapScreen() {
       setQuickAddRestaurants(closest);
     }
     setQuickAddVisible(true);
+  };
+
+  const handleMyLocationPress = () => {
+    if (userLocation) {
+      mapRef.current?.animateCamera(
+        {
+          center: {
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          },
+          zoom: 15,
+        },
+        { duration: 500 },
+      );
+    }
+  };
+
+  const handleCompassPress = () => {
+    setMapHeading(0);
+    mapRef.current?.animateCamera({ heading: 0 }, { duration: 400 });
   };
 
   if (isLoading) {
@@ -275,14 +309,41 @@ export default function MapScreen() {
             }}
             region={mapRegion}
             showsUserLocation={true}
-            showsMyLocationButton={true}
+            showsMyLocationButton={false}
+            showsCompass={false}
             toolbarEnabled={false}
             testID="mock-map"
             onPressReview={handleReviewPress}
             onRegionChangeComplete={handleRegionChangeComplete}
+            onRegionChange={handleRegionChangeLive}
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={handleToggleBookmark}
           />
+
+          <TouchableOpacity
+            style={[styles.fab, styles.compassFab]}
+            onPress={handleCompassPress}
+            testID="compass-button"
+          >
+            <CompassIcon rotation={-mapHeading} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.fab,
+              styles.invertedFab,
+              selectedRestaurant ? { bottom: 190 } : { bottom: 100 },
+            ]}
+            onPress={handleMyLocationPress}
+            testID="my-location-button"
+          >
+            <MaterialCommunityIcons
+              name="crosshairs-gps"
+              size={30}
+              color={COLORS.primary}
+            />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.fab,
@@ -349,5 +410,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+  },
+  invertedFab: {
+    backgroundColor: '#fff',
+  },
+  compassFab: {
+    top: 130,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent', // Strips the primary color inherited from styles.fab
+    elevation: 0, // Strips the inherited shadow
+    shadowOpacity: 0, // Strips the inherited shadow
   },
 });
