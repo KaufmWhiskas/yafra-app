@@ -39,10 +39,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderWidth: 2, // Slightly thicker border so it stands out without a background
-    borderColor: 'rgb(255, 255, 255)', // Darker rim for better contrast against the map
+    borderWidth: 2,
+    borderColor: 'rgb(255, 255, 255)',
     backgroundColor: 'transparent',
-    // We remove the shadow/elevation properties here because they render poorly on hollow shapes in React Native
   },
   needleContainer: {
     width: 32,
