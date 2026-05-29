@@ -52,8 +52,13 @@ export default function RestaurantMap({
   const filteringRegion = settledRegion || region;
 
   const visibleRestaurants = useMemo(() => {
-    return getVisibleRestaurants(restaurants, filteringRegion, 50);
-  }, [restaurants, filteringRegion]);
+    return getVisibleRestaurants(
+      restaurants,
+      filteringRegion,
+      50,
+      bookmarkedIds,
+    );
+  }, [restaurants, filteringRegion, bookmarkedIds]);
 
   return (
     <View style={styles.container}>

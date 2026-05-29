@@ -247,9 +247,7 @@ export default function MapScreen() {
       {viewMode === 'map' ? (
         <RestaurantMap
           mapRef={mapRef}
-          restaurants={
-            mapRegion.latitudeDelta >= MAX_ZOOM_OUT ? [] : sortedRestaurants
-          }
+          restaurants={sortedRestaurants}
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => {

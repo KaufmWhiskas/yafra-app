@@ -109,28 +109,28 @@ describe("Geolocation Utilities", () => {
     const region = {
       latitude: 0,
       longitude: 0,
-      latitudeDelta: 10,
-      longitudeDelta: 10,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
     };
 
-    // Exact region: lat [-5, 5], lon [-5, 5]
-    // Buffered region: lat [-10, 10], lon [-10, 10]
+    // Exact region: lat [-0.05, 0.05], lon [-0.05, 0.05]
+    // Buffered region: lat [-0.1, 0.1], lon [-0.1, 0.1]
     const exactRest = {
       id: "1",
-      latitude: 2,
-      longitude: 2,
+      latitude: 0.02,
+      longitude: 0.02,
       rating: 4,
     } as Restaurant;
     const bufferRest = {
       id: "2",
-      latitude: 8,
-      longitude: 8,
+      latitude: 0.08,
+      longitude: 0.08,
       rating: 3,
     } as Restaurant;
     const outsideRest = {
       id: "3",
-      latitude: 15,
-      longitude: 15,
+      latitude: 0.15,
+      longitude: 0.15,
       rating: 5,
     } as Restaurant;
 
@@ -177,6 +177,65 @@ describe("Geolocation Utilities", () => {
       // Should prioritize 5.0 and 4.5 over 3.0
       expect(result[0].id).toBe("2");
       expect(result[1].id).toBe("3");
+    });
+
+    describe("zoom-based pruning", () => {
+      const regionZoomIn = {
+        latitude: 0,
+        longitude: 0,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
+      const regionZoomOut = {
+        latitude: 0,
+        longitude: 0,
+        latitudeDelta: 0.25,
+        longitudeDelta: 0.25,
+      };
+      const restUnbookmarked = {
+        id: "1",
+        latitude: 0,
+        longitude: 0,
+        rating: 4,
+      } as Restaurant;
+      const restBookmarked = {
+        id: "2",
+        latitude: 0,
+        longitude: 0,
+        rating: 4,
+      } as Restaurant;
+      const bookmarkedIds = new Set(["2"]);
+
+      it("should return all visible restaurants when the zoom level is within the threshold", () => {
+        const result = getVisibleRestaurants(
+          [restUnbookmarked, restBookmarked],
+          regionZoomIn,
+          50,
+          bookmarkedIds,
+        );
+        expect(result.length).toBe(2);
+      });
+
+      it("should drop unbookmarked visible restaurants when the zoom level exceeds the threshold", () => {
+        const result = getVisibleRestaurants(
+          [restUnbookmarked],
+          regionZoomOut,
+          50,
+          bookmarkedIds,
+        );
+        expect(result.length).toBe(0);
+      });
+
+      it("should retain bookmarked restaurants even when zoomed out past the threshold", () => {
+        const result = getVisibleRestaurants(
+          [restUnbookmarked, restBookmarked],
+          regionZoomOut,
+          50,
+          bookmarkedIds,
+        );
+        expect(result.length).toBe(1);
+        expect(result[0].id).toBe("2");
+      });
     });
   });
 });

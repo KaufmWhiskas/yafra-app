@@ -91,17 +91,22 @@ export function filterWithinRadius(
  * Filters and limits restaurants based on their visibility within a map region.
  * Includes a 50% buffer zone around the visible area to ensure smooth panning.
  * If the number of visible restaurants exceeds maxMarkers, it prioritizes
- * those with the highest ratings.
+ * those with the highest ratings. When zoomed out beyond the threshold,
+ * unbookmarked restaurants are pruned to reduce visual clutter.
  *
  * @param restaurants The full list of restaurants.
  * @param region The current map region being displayed.
  * @param maxMarkers The maximum number of markers to return (defaults to 50).
+ * @param bookmarkedIds An optional set of bookmarked restaurant IDs to retain at all zoom levels.
  * @returns An array of restaurants that fall within the buffered region.
  */
+export const ZOOM_OUT_THRESHOLD = 0.2;
+
 export function getVisibleRestaurants(
   restaurants: Restaurant[],
   region: Region,
   maxMarkers: number = 50,
+  bookmarkedIds?: Set<string>,
 ): Restaurant[] {
   const latBuffer = region.latitudeDelta;
   const lonBuffer = region.longitudeDelta;
@@ -110,13 +115,20 @@ export function getVisibleRestaurants(
   const minLon = region.longitude - lonBuffer;
   const maxLon = region.longitude + lonBuffer;
 
-  const visible = restaurants.filter(
-    (r) =>
-      r.latitude >= minLat &&
-      r.latitude <= maxLat &&
-      r.longitude >= minLon &&
-      r.longitude <= maxLon,
-  );
+  const isZoomedOut = region.latitudeDelta >= ZOOM_OUT_THRESHOLD;
+
+  const visible = restaurants.filter((r) => {
+    if (
+      r.latitude < minLat || r.latitude > maxLat || r.longitude < minLon ||
+      r.longitude > maxLon
+    ) {
+      return false;
+    }
+    if (isZoomedOut) {
+      return bookmarkedIds?.has(r.id.toString()) ?? false;
+    }
+    return true;
+  });
 
   if (visible.length > maxMarkers) {
     visible.sort((a, b) => {
