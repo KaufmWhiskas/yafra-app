@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import { Restaurant } from '../../types';
 import RestaurantCard from '../ui/RestaurantCard';
 import RestaurantMarker from './RestaurantMarker';
+import { getVisibleRestaurants } from '../../utils/geo';
 
 interface RestaurantMapProps {
   mapRef?: React.Ref<MapView>;
@@ -12,6 +13,7 @@ interface RestaurantMapProps {
   onRestaurantSelect: (restaurant: Restaurant) => void;
   onMapPress: () => void;
   region: Region;
+  settledRegion?: Region;
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
   toolbarEnabled?: boolean;
@@ -37,6 +39,7 @@ export default function RestaurantMap({
   onRestaurantSelect,
   onMapPress,
   region,
+  settledRegion,
   showsUserLocation,
   showsMyLocationButton,
   toolbarEnabled,
@@ -46,6 +49,12 @@ export default function RestaurantMap({
   bookmarkedIds,
   onToggleBookmark,
 }: RestaurantMapProps) {
+  const filteringRegion = settledRegion || region;
+
+  const visibleRestaurants = useMemo(() => {
+    return getVisibleRestaurants(restaurants, filteringRegion, 50);
+  }, [restaurants, filteringRegion]);
+
   return (
     <View style={styles.container}>
       <MapView
@@ -61,12 +70,12 @@ export default function RestaurantMap({
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {restaurants.map((restaurant, index) => {
+        {visibleRestaurants.map((restaurant) => {
           const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
 
           return (
             <RestaurantMarker
-              key={`base-${restaurant.id}-${isBookmarked ? 'saved' : 'unsaved'}-${index}`}
+              key={restaurant.id.toString()}
               restaurant={restaurant}
               isBookmarked={isBookmarked}
               isSelected={false}

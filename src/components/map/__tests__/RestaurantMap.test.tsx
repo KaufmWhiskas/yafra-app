@@ -10,31 +10,42 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 describe('RestaurantMap', () => {
+  const createMockRestaurant = (
+    overrides: Partial<Restaurant> = {},
+  ): Restaurant => ({
+    id: 'default-id',
+    name: 'Default Name',
+    cuisine: 'default',
+    latitude: 0,
+    longitude: 0,
+    ...overrides,
+  });
+
   const mockRestaurants: Restaurant[] = [
-    {
+    createMockRestaurant({
       id: '1',
       name: 'Pizza Palace',
       cuisine: 'pizza',
       app_rating: 4.8,
       latitude: 49.46,
       longitude: 8.42,
-    } as Restaurant,
-    {
+    }),
+    createMockRestaurant({
       id: '2',
       name: 'New Sushi Place',
       cuisine: 'sushi',
       rating: undefined, // Unrated
       latitude: 49.47,
       longitude: 8.43,
-    } as Restaurant,
+    }),
   ];
 
   it('renders detailed markers when selected', () => {
     const zoomedInRegion = {
-      latitude: 49.46,
-      longitude: 8.42,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
+      latitude: 49.465,
+      longitude: 8.425,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
     };
 
     const { getAllByText } = render(
