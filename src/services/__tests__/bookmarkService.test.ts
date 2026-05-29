@@ -33,7 +33,7 @@ describe("bookmarkService", () => {
 
       expect(supabase.from).toHaveBeenCalledWith("bookmarks");
       // @ts-expect-error: custom mock property not on root client
-      expect(supabase.select).toHaveBeenCalledWith("*");
+      expect(supabase.select).toHaveBeenCalledWith("id");
       // @ts-expect-error: custom mock property not on root client
       expect(supabase.insert).toHaveBeenCalledWith([
         { user_id: "user_456", restaurant_id: "rest_123" },

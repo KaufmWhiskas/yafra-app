@@ -2,24 +2,27 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import App from '../App';
 
-jest.mock('react-native-maps', () => {
-  //import won't work here jest moves it to the top which crashes it
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { View } = require('react-native');
-  const MockMapView = (props) => (
-    <View testID="mock-map">{props.children}</View>
-  );
-  const MockMarker = (props) => <View testID={props.testID} />;
+// Tell Jest to use the clean __mocks__ file we created earlier
+jest.mock('react-native-maps');
 
-  return {
-    __esModule: true,
-    default: MockMapView,
-    Marker: MockMarker,
-  };
-});
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ status: 'granted' }),
+  getCurrentPositionAsync: jest.fn().mockResolvedValue({
+    coords: { latitude: 49.46, longitude: 8.42 },
+  }),
+  Accuracy: { Balanced: 3 },
+}));
 
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
+
+// Mock AuthContext without needing React inside the closure
 jest.mock('../src/context/AuthContext', () => ({
-  AuthProvider: ({ children }) => <>{children}</>,
+  AuthProvider: ({ children }) => children,
   useAuth: () => ({
     session: { user: { id: 'test-user-123' } },
     isLoading: false,
@@ -27,31 +30,20 @@ jest.mock('../src/context/AuthContext', () => ({
 }));
 
 jest.mock('../src/services/restaurantService', () => ({
-  fetchRestaurants: jest.fn(() =>
-    Promise.resolve([
-      {
-        id: '1',
-        name: 'Test Burger',
-        cuisine: 'American',
-        latitude: 49.465,
-        longitude: 8.425,
-      },
-    ]),
-  ),
+  fetchRestaurants: jest.fn().mockResolvedValue([
+    {
+      id: '1',
+      name: 'Test Burger',
+      cuisine: 'American',
+      latitude: 49.465,
+      longitude: 8.425,
+    },
+  ]),
 }));
 
 jest.mock('../src/services/bookmarkService', () => ({
   getBookmarks: jest.fn().mockResolvedValue([]),
   toggleBookmark: jest.fn(),
-}));
-
-jest.mock('expo-location', () => ({
-  requestForegroundPermissionsAsync: jest.fn(() =>
-    Promise.resolve({ status: 'granted' }),
-  ),
-  getCurrentPositionAsync: jest.fn(() =>
-    Promise.resolve({ coords: { latitude: 49.46, longitude: 8.42 } }),
-  ),
 }));
 
 describe('<App />', () => {

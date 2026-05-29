@@ -20,7 +20,12 @@ export default [
   ...compat.extends('eslint-config-expo'),
   ...tseslint.configs.strict,
   {
-    files: ['**/*.test.js', '**/*.test.ts', '**/*.test.tsx', '__tests__/**/*'],
+    files: [
+      '**/__tests__/**/*.[jt]s?(x)',
+      '**/*.test.[jt]s?(x)',
+      '**/__mocks__/**/*.[jt]s?(x)',
+      'jest.setup.js',
+    ],
     languageOptions: {
       globals: {
         describe: 'readonly',
@@ -30,6 +35,12 @@ export default [
         beforeEach: 'readonly',
         afterEach: 'readonly',
       },
+    },
+  },
+  {
+    files: ['*.config.cjs', 'jest.setup.js', '**/__mocks__/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
     },
   },
   {
