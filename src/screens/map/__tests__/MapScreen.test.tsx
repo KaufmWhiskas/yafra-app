@@ -171,6 +171,7 @@ describe('MapScreen Toggle Feature', () => {
   it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
     const { getAllByTestId } = render(<MapScreen />);
     await flushMicrotasks();
+    await flushMicrotasks(); // Advance frame queues to allow stagger hooks to drain
     const markers = getAllByTestId('restaurant-marker');
     expect(markers.length).toBeGreaterThan(0);
   });
@@ -185,6 +186,7 @@ describe('MapScreen Toggle Feature', () => {
     const { getAllByTestId, getByTestId, queryByTestId } = render(
       <MapScreen />,
     );
+    await flushMicrotasks();
     await flushMicrotasks();
 
     const markers = getAllByTestId('restaurant-marker');
@@ -214,6 +216,7 @@ describe('MapScreen Toggle Feature', () => {
 
     const { getAllByTestId, getByTestId, getAllByText } = render(<MapScreen />);
     await flushMicrotasks();
+    await flushMicrotasks();
 
     const markers = getAllByTestId('restaurant-marker');
     fireEvent.press(markers[0]);
@@ -229,6 +232,7 @@ describe('MapScreen Toggle Feature', () => {
   it('passes toggleBookmark down to the floating preview card', async () => {
     const { getAllByTestId, getByTestId } = render(<MapScreen />);
     await flushMicrotasks();
+    await flushMicrotasks();
 
     const markers = getAllByTestId('restaurant-marker');
     fireEvent.press(markers[0]);
@@ -240,6 +244,7 @@ describe('MapScreen Toggle Feature', () => {
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {
     const { getAllByTestId, getByText } = render(<MapScreen />);
+    await flushMicrotasks();
     await flushMicrotasks();
 
     const markers = getAllByTestId('restaurant-marker');

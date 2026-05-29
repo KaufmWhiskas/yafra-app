@@ -39,8 +39,15 @@ export function calculateDistance(
 }
 
 /**
+ * Synthetic distance reduction applied during proximity calculations to prioritize
+ * restaurants with custom platform reviews over standard provider entries.
+ */
+const APP_RATING_SORT_BONUS_KM = 2;
+
+/**
  * Sorts an array of restaurants by their physical distance from a given origin point.
  * Enhances UX by ensuring list views and contextual prompts prioritize visually and physically relevant locations.
+ * Restaurants with an `app_rating` are given a "bonus" to appear higher in the sort order.
  *
  * @param restaurants The full list of restaurants to sort.
  * @param origin The coordinate to calculate the distance from.
@@ -51,14 +58,21 @@ export function sortRestaurantsByDistance(
   origin: Coordinate,
 ): Restaurant[] {
   return [...restaurants].sort((a, b) => {
-    const distanceA = calculateDistance(origin, {
+    let distanceA = calculateDistance(origin, {
       latitude: a.latitude,
       longitude: a.longitude,
     });
-    const distanceB = calculateDistance(origin, {
+    if (a.app_rating) {
+      distanceA -= APP_RATING_SORT_BONUS_KM;
+    }
+
+    let distanceB = calculateDistance(origin, {
       latitude: b.latitude,
       longitude: b.longitude,
     });
+    if (b.app_rating) {
+      distanceB -= APP_RATING_SORT_BONUS_KM;
+    }
 
     return distanceA - distanceB;
   });
@@ -132,10 +146,24 @@ export function getVisibleRestaurants(
 
   if (visible.length > maxMarkers) {
     visible.sort((a, b) => {
-      const ratingA = a.app_rating ?? a.rating ?? 0;
-      const ratingB = b.app_rating ?? b.rating ?? 0;
-      return ratingB - ratingA;
+      // Rule 1: Bookmarks always win
+      const isABookmarked = bookmarkedIds?.has(a.id.toString()) ? 1 : 0;
+      const isBBookmarked = bookmarkedIds?.has(b.id.toString()) ? 1 : 0;
+      if (isABookmarked !== isBBookmarked) {
+        return isBBookmarked - isABookmarked;
+      }
+
+      // Rule 2: App ratings get a massive boost to ensure they beat any Google rating
+      const getWeightedRating = (r: Restaurant) => {
+        if (r.app_rating !== undefined && r.app_rating !== null) {
+          return r.app_rating + 10;
+        }
+        return r.rating ?? 0;
+      };
+
+      return getWeightedRating(b) - getWeightedRating(a);
     });
+
     return visible.slice(0, maxMarkers);
   }
 

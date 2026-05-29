@@ -4,7 +4,11 @@ import MapView, { Region } from 'react-native-maps';
 import { Restaurant } from '../../types';
 import RestaurantCard from '../ui/RestaurantCard';
 import RestaurantMarker from './RestaurantMarker';
-import { getVisibleRestaurants } from '../../utils/geo';
+import {
+  getVisibleRestaurants,
+  sortRestaurantsByDistance,
+} from '../../utils/geo';
+import { useStaggeredList } from '../../hooks/useStaggeredList';
 
 interface RestaurantMapProps {
   mapRef?: React.Ref<MapView>;
@@ -52,13 +56,26 @@ export default function RestaurantMap({
   const filteringRegion = settledRegion || region;
 
   const visibleRestaurants = useMemo(() => {
-    return getVisibleRestaurants(
+    const rawVisible = getVisibleRestaurants(
       restaurants,
       filteringRegion,
       50,
       bookmarkedIds,
     );
+    const center = {
+      latitude: filteringRegion.latitude,
+      longitude: filteringRegion.longitude,
+    };
+    return sortRestaurantsByDistance(rawVisible, center);
   }, [restaurants, filteringRegion, bookmarkedIds]);
+
+  // Pass the sorted array to the stagger hook
+  const staggeredRestaurants = useStaggeredList(visibleRestaurants, 5);
+
+  // Freeze the DOM array order so the Native Engine stops destroying views on pan
+  const stableDOMRestaurants = [...staggeredRestaurants].sort((a, b) =>
+    a.id.toString().localeCompare(b.id.toString()),
+  );
 
   return (
     <View style={styles.container}>
@@ -75,7 +92,7 @@ export default function RestaurantMap({
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {visibleRestaurants.map((restaurant) => {
+        {stableDOMRestaurants.map((restaurant) => {
           const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
 
           return (

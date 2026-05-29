@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, act } from '@testing-library/react-native';
 import RestaurantMap from '../RestaurantMap';
 import { Restaurant } from '../../../types';
 
@@ -40,7 +40,19 @@ describe('RestaurantMap', () => {
     }),
   ];
 
-  it('renders detailed markers when selected', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    // Safely stub requestAnimationFrame for the test environment
+    (globalThis as any).requestAnimationFrame = (callback: any) => {
+      return setTimeout(() => callback(Date.now()), 16) as any;
+    };
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  it('renders detailed markers when selected', async () => {
     const zoomedInRegion = {
       latitude: 49.465,
       longitude: 8.425,
@@ -58,11 +70,16 @@ describe('RestaurantMap', () => {
       />,
     );
 
+    // Advance the timer to let the Stagger hook flush its queue
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
     // Verify that the rating text is rendered inside the selected animated marker
     expect(getAllByText('4.8')[0]).toBeTruthy();
   });
 
-  it('renders correctly when unselected', () => {
+  it('renders correctly when unselected', async () => {
     const zoomedOutRegion = {
       latitude: 49.46,
       longitude: 8.42,
@@ -79,6 +96,11 @@ describe('RestaurantMap', () => {
         onMapPress={jest.fn()}
       />,
     );
+
+    // Advance the timer to let the Stagger hook flush its queue
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
 
     // Verify all markers are rendered (2 components per restaurant: visual layer + touch shield)
     expect(getAllByTestId('restaurant-marker').length).toBe(4);

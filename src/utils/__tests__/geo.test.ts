@@ -74,6 +74,31 @@ describe("Geolocation Utilities", () => {
       expect(result[1].name).toBe("Mid");
       expect(result[2].name).toBe("Far");
     });
+
+    it("should prioritize restaurants with an app_rating over unrated ones, even if slightly further away", () => {
+      const origin = { latitude: 0, longitude: 0 };
+      const ratedFurther = {
+        id: "1",
+        name: "Rated",
+        latitude: 0.02, // ~2.2km
+        longitude: 0,
+        app_rating: 4.5,
+      } as Restaurant;
+      const unratedCloser = {
+        id: "2",
+        name: "Unrated",
+        latitude: 0.01, // ~1.1km
+        longitude: 0,
+      } as Restaurant;
+
+      const result = sortRestaurantsByDistance(
+        [ratedFurther, unratedCloser],
+        origin,
+      );
+
+      expect(result[0].id).toBe("1");
+      expect(result[1].id).toBe("2");
+    });
   });
 
   describe("filterWithinRadius", () => {
@@ -174,9 +199,54 @@ describe("Geolocation Utilities", () => {
       const result = getVisibleRestaurants([r1, r2, r3], region, 2);
 
       expect(result.length).toBe(2);
-      // Should prioritize 5.0 and 4.5 over 3.0
-      expect(result[0].id).toBe("2");
-      expect(result[1].id).toBe("3");
+      // Should prioritize 4.5 app_rating over 5.0 rating
+      expect(result[0].id).toBe("3"); // App rating (4.5 + 10 boost) wins first place
+      expect(result[1].id).toBe("2"); // Highest remaining standard Google rating (5.0) takes second
+    });
+
+    it("should prioritize bookmarked restaurants and exclude them from the maxMarkers limit.", () => {
+      const bookmarkedLowRated = {
+        id: "1",
+        latitude: 0,
+        longitude: 0,
+        rating: 2.0,
+      } as Restaurant;
+      const unbookmarkedHighRated = {
+        id: "2",
+        latitude: 0,
+        longitude: 0,
+        rating: 5.0,
+      } as Restaurant;
+      const bookmarkedIds = new Set(["1"]);
+
+      const result = getVisibleRestaurants(
+        [bookmarkedLowRated, unbookmarkedHighRated],
+        region,
+        1, // Limit to 1
+        bookmarkedIds,
+      );
+
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe("1"); // The bookmarked one should survive
+    });
+
+    it("should heavily prioritize restaurants with an app_rating over standard Google ratings when pruning.", () => {
+      const appRated = {
+        id: "1",
+        latitude: 0,
+        longitude: 0,
+        app_rating: 1.0, // Low app rating
+        rating: 1.0,
+      } as Restaurant;
+      const googleRated = {
+        id: "2",
+        latitude: 0,
+        longitude: 0,
+        rating: 5.0,
+      } as Restaurant;
+      const result = getVisibleRestaurants([appRated, googleRated], region, 1);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe("1"); // The one with app_rating should win
     });
 
     describe("zoom-based pruning", () => {

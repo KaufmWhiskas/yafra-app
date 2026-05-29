@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import {
   fetchRestaurantDetails,
@@ -22,7 +22,6 @@ import { Prediction } from '../../services/searchService';
 import {
   BoundingBox,
   getRegionBBox,
-  sortRestaurantsByDistance,
   filterWithinRadius,
 } from '../../utils/geo';
 
@@ -44,8 +43,8 @@ export default function MapScreen() {
     longitudeDelta: 0.0421,
   });
 
-  // disables useless eslint error
-  // eslint-disable-next-line
+  // Suppress unused variable warning as hasLocationPermission is reserved for future fallback triggers.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { hasLocationPermission, userLocation } = useLocation();
 
   const { session } = useAuth();
@@ -147,13 +146,6 @@ export default function MapScreen() {
     }
   };
 
-  const sortedRestaurants = useMemo(() => {
-    return sortRestaurantsByDistance(restaurants, {
-      latitude: mapRegion.latitude,
-      longitude: mapRegion.longitude,
-    });
-  }, [restaurants, mapRegion.latitude, mapRegion.longitude]);
-
   const { scanRegion } = useMapScanner(loadData);
 
   const handleRegionChangeComplete = async (region: Region) => {
@@ -247,7 +239,7 @@ export default function MapScreen() {
       {viewMode === 'map' ? (
         <RestaurantMap
           mapRef={mapRef}
-          restaurants={sortedRestaurants}
+          restaurants={restaurants}
           selectedRestaurant={selectedRestaurant}
           onRestaurantSelect={handleRestaurantSelect}
           onMapPress={() => {
@@ -267,7 +259,7 @@ export default function MapScreen() {
         />
       ) : (
         <RestaurantList
-          restaurants={sortedRestaurants}
+          restaurants={restaurants}
           bookmarkedIds={bookmarkedIds}
           onPressReview={handleReviewPress}
           onToggleBookmark={handleToggleBookmark}
