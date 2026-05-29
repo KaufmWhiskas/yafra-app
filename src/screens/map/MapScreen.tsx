@@ -106,7 +106,7 @@ export default function MapScreen() {
         }
       }
     },
-    [mapRegion?.latitudeDelta, mapRegion?.longitudeDelta],
+    [mapRegion],
   );
 
   const handleSearchSelect = async (place: Prediction) => {
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,

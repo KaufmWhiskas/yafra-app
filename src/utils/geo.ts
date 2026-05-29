@@ -79,17 +79,32 @@ export function sortRestaurantsByDistance(
 }
 
 /**
- * Returns a sliced array of the closest restaurants to a given coordinate.
- * @param restaurants List of restaurants.
- * @param userLocation Coordinate to measure from.
- * @param limit Maximum number of restaurants to return (defaults to 4).
+ * Returns a strict subset of the closest restaurants to a given coordinate.
+ * Ignores all rating bonuses to provide a true physical proximity list.
+ *
+ * @param restaurants The full array of restaurants.
+ * @param location The geographic center point.
+ * @param limit The maximum number of restaurants to return.
+ * @returns The sliced array of closest restaurants.
  */
 export function getClosestRestaurants(
   restaurants: Restaurant[],
-  userLocation: Coordinate,
-  limit: number = 4,
+  location: Coordinate,
+  limit: number,
 ): Restaurant[] {
-  return sortRestaurantsByDistance(restaurants, userLocation).slice(0, limit);
+  return [...restaurants]
+    .sort((a, b) => {
+      const distA = calculateDistance(location, {
+        latitude: a.latitude,
+        longitude: a.longitude,
+      });
+      const distB = calculateDistance(location, {
+        latitude: b.latitude,
+        longitude: b.longitude,
+      });
+      return distA - distB;
+    })
+    .slice(0, limit);
 }
 
 /**

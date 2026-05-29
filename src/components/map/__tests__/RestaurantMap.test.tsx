@@ -43,12 +43,20 @@ describe('RestaurantMap', () => {
   beforeAll(() => {
     jest.useFakeTimers();
     // Safely stub requestAnimationFrame for the test environment
-    (globalThis as any).requestAnimationFrame = (callback: any) => {
-      return setTimeout(() => callback(Date.now()), 16) as any;
-    };
+    jest
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback) => {
+        return setTimeout(() => cb(Date.now()), 16) as unknown as number;
+      });
+    jest
+      .spyOn(globalThis, 'cancelAnimationFrame')
+      .mockImplementation((id: number) => {
+        clearTimeout(id);
+      });
   });
 
   afterAll(() => {
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 

@@ -8,6 +8,10 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, left: 0, bottom: 0, right: 0 }),
+}));
+
 const mockRestaurants: Restaurant[] = [
   {
     id: '1',
@@ -56,6 +60,8 @@ describe('QuickAddModal', () => {
 
     // Press "No"
     fireEvent.press(getByText("No, I'm somewhere else"));
+
+    expect(queryByText('Closest Rest')).toBeNull();
 
     // Now others are visible
     expect(getByText('Maybe one of these?')).toBeTruthy();

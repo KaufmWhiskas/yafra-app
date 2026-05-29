@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Restaurant } from '../../types';
 import RestaurantCard from './RestaurantCard';
 import { COLORS } from '../../constants/theme';
@@ -25,6 +26,7 @@ export default function QuickAddModal({
   onClose,
 }: QuickAddModalProps) {
   const [showMore, setShowMore] = useState(false);
+  const insets = useSafeAreaInsets();
 
   if (!visible || restaurants.length === 0) return null;
 
@@ -44,23 +46,32 @@ export default function QuickAddModal({
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.container}>
-          <Text style={styles.title}>Are you here?</Text>
-          <RestaurantCard
-            item={closest}
-            onPressReview={() => onSelect(closest)}
-          />
+        <View
+          style={[
+            styles.container,
+            { paddingBottom: Math.max(insets.bottom, 20) },
+          ]}
+        >
+          {!showMore ? (
+            <>
+              <Text style={styles.title}>Are you here?</Text>
+              <RestaurantCard
+                item={closest}
+                onPressReview={() => onSelect(closest)}
+              />
 
-          {!showMore && others.length > 0 && (
-            <TouchableOpacity
-              style={styles.noButton}
-              onPress={() => setShowMore(true)}
-            >
-              <Text style={styles.noButtonText}>No, I'm somewhere else</Text>
-            </TouchableOpacity>
-          )}
-
-          {showMore && (
+              {others.length > 0 && (
+                <TouchableOpacity
+                  style={styles.noButton}
+                  onPress={() => setShowMore(true)}
+                >
+                  <Text style={styles.noButtonText}>
+                    No, I'm somewhere else
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
             <View style={styles.moreContainer}>
               <Text style={styles.subtitle}>Maybe one of these?</Text>
               <FlatList
@@ -126,6 +137,7 @@ const styles = StyleSheet.create({
   },
   moreContainer: {
     marginTop: 16,
+    flexShrink: 1, // Prevents the FlatList from pushing the Close button off-screen
   },
   otherCardWrapper: {
     marginBottom: 12,
