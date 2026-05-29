@@ -79,6 +79,20 @@ export function sortRestaurantsByDistance(
 }
 
 /**
+ * Returns a sliced array of the closest restaurants to a given coordinate.
+ * @param restaurants List of restaurants.
+ * @param userLocation Coordinate to measure from.
+ * @param limit Maximum number of restaurants to return (defaults to 4).
+ */
+export function getClosestRestaurants(
+  restaurants: Restaurant[],
+  userLocation: Coordinate,
+  limit: number = 4,
+): Restaurant[] {
+  return sortRestaurantsByDistance(restaurants, userLocation).slice(0, limit);
+}
+
+/**
  * Filters an array of restaurants, keeping only those within a specified radius (in kilometers) from a center point.
  * Prevents memory leaks and UI lag in map components by actively pruning stale, off-screen data from the React state.
  *

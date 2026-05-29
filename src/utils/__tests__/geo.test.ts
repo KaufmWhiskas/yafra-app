@@ -1,6 +1,7 @@
 import {
   calculateDistance,
   filterWithinRadius,
+  getClosestRestaurants,
   getRegionBBox,
   getVisibleRestaurants,
   sortRestaurantsByDistance,
@@ -97,6 +98,21 @@ describe("Geolocation Utilities", () => {
       );
 
       expect(result[0].id).toBe("1");
+      expect(result[1].id).toBe("2");
+    });
+  });
+
+  describe("getClosestRestaurants", () => {
+    it("returns the closest restaurants up to the limit", () => {
+      const origin = { latitude: 0, longitude: 0 };
+      const r1 = { id: "1", latitude: 0.1, longitude: 0 } as Restaurant;
+      const r2 = { id: "2", latitude: 0.05, longitude: 0 } as Restaurant;
+      const r3 = { id: "3", latitude: 0.02, longitude: 0 } as Restaurant;
+      const r4 = { id: "4", latitude: 0.08, longitude: 0 } as Restaurant;
+
+      const result = getClosestRestaurants([r1, r2, r3, r4], origin, 2);
+      expect(result.length).toBe(2);
+      expect(result[0].id).toBe("3");
       expect(result[1].id).toBe("2");
     });
   });

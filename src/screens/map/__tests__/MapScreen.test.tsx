@@ -99,6 +99,9 @@ jest.mock('expo-location', () => ({
   getCurrentPositionAsync: jest.fn().mockResolvedValue({
     coords: { latitude: 49.46, longitude: 8.42 },
   }),
+  getLastKnownPositionAsync: jest.fn().mockResolvedValue({
+    coords: { latitude: 49.46, longitude: 8.42 },
+  }),
   Accuracy: { Balanced: 3 },
 }));
 
@@ -297,7 +300,7 @@ describe('MapScreen Toggle Feature', () => {
 
       const searchBar = getByTestId('mock-search-bar');
       expect(searchBar.props.userLocation).toEqual(
-        expect.objectContaining({ latitude: 49.469805794737454 }),
+        expect.objectContaining({ latitude: 49.46 }),
       );
     });
   });

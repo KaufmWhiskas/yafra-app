@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   fetchRestaurantDetails,
   fetchRestaurants,
@@ -11,6 +11,7 @@ import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
 import RestaurantList from '../../components/ui/RestaurantList';
+import QuickAddModal from '../../components/ui/QuickAddModal';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
@@ -23,7 +24,9 @@ import {
   BoundingBox,
   getRegionBBox,
   filterWithinRadius,
+  getClosestRestaurants,
 } from '../../utils/geo';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const MAX_ZOOM_OUT = 0.1;
 
@@ -36,12 +39,12 @@ export default function MapScreen() {
 
   const mapRef = useRef<MapView>(null);
 
-  const [mapRegion, setMapRegion] = useState<Region>({
-    latitude: 49.469805794737454,
-    longitude: 8.422159691397045,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+
+  const [quickAddVisible, setQuickAddVisible] = useState(false);
+  const [quickAddRestaurants, setQuickAddRestaurants] = useState<Restaurant[]>(
+    [],
+  );
 
   // Suppress unused variable warning as hasLocationPermission is reserved for future fallback triggers.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -67,9 +70,13 @@ export default function MapScreen() {
       // If the user is already zoomed in closer than 0.005, we keep their current zoom level.
       // If they are zoomed out far away, we bring them into the 0.005 level.
       const targetLatDelta =
-        mapRegion.latitudeDelta < 0.005 ? mapRegion.latitudeDelta : 0.005;
+        mapRegion && mapRegion.latitudeDelta < 0.005
+          ? mapRegion.latitudeDelta
+          : 0.005;
       const targetLonDelta =
-        mapRegion.longitudeDelta < 0.005 ? mapRegion.longitudeDelta : 0.005;
+        mapRegion && mapRegion.longitudeDelta < 0.005
+          ? mapRegion.longitudeDelta
+          : 0.005;
 
       // 3. Wait 250ms for the Visual Marker to finish its Pop Animation, THEN pan.
       setTimeout(() => {
@@ -99,7 +106,7 @@ export default function MapScreen() {
         }
       }
     },
-    [mapRegion.latitudeDelta, mapRegion.longitudeDelta],
+    [mapRegion?.latitudeDelta, mapRegion?.longitudeDelta],
   );
 
   const handleSearchSelect = async (place: Prediction) => {
@@ -150,6 +157,7 @@ export default function MapScreen() {
 
   const handleRegionChangeComplete = async (region: Region) => {
     setMapRegion((prev) => {
+      if (!prev) return region;
       const hasChanged =
         Math.abs(prev.latitude - region.latitude) > 0.0001 ||
         Math.abs(prev.longitude - region.longitude) > 0.0001 ||
@@ -179,11 +187,8 @@ export default function MapScreen() {
       setHasSetInitialLocation(true);
 
       loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
-    } else if (!userLocation && !hasSetInitialLocation) {
-      loadData(getRegionBBox(mapRegion)).finally(() => setIsLoading(false));
-      setHasSetInitialLocation(true);
     }
-  }, [userLocation, hasSetInitialLocation, mapRegion]);
+  }, [userLocation, hasSetInitialLocation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -215,6 +220,22 @@ export default function MapScreen() {
     }
   };
 
+  const handleQuickAddPress = () => {
+    if (userLocation) {
+      const closest = getClosestRestaurants(restaurants, userLocation, 4);
+      setQuickAddRestaurants(closest);
+    } else if (mapRegion) {
+      // Fallback to center of map if no userLocation
+      const center = {
+        latitude: mapRegion.latitude,
+        longitude: mapRegion.longitude,
+      };
+      const closest = getClosestRestaurants(restaurants, center, 4);
+      setQuickAddRestaurants(closest);
+    }
+    setQuickAddVisible(true);
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -228,35 +249,51 @@ export default function MapScreen() {
       <View style={styles.floatingHeader} pointerEvents="box-none">
         <SearchBar
           onPlaceSelect={handleSearchSelect}
-          userLocation={{
-            latitude: mapRegion.latitude,
-            longitude: mapRegion.longitude,
-          }}
+          userLocation={
+            mapRegion
+              ? {
+                  latitude: mapRegion.latitude,
+                  longitude: mapRegion.longitude,
+                }
+              : undefined
+          }
         />
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
-      {viewMode === 'map' ? (
-        <RestaurantMap
-          mapRef={mapRef}
-          restaurants={restaurants}
-          selectedRestaurant={selectedRestaurant}
-          onRestaurantSelect={handleRestaurantSelect}
-          onMapPress={() => {
-            requestAnimationFrame(() => {
-              setSelectedRestaurant(null);
-            });
-          }}
-          region={mapRegion}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-          toolbarEnabled={false}
-          testID="mock-map"
-          onPressReview={handleReviewPress}
-          onRegionChangeComplete={handleRegionChangeComplete}
-          bookmarkedIds={bookmarkedIds}
-          onToggleBookmark={handleToggleBookmark}
-        />
+      {viewMode === 'map' && mapRegion ? (
+        <>
+          <RestaurantMap
+            mapRef={mapRef}
+            restaurants={restaurants}
+            selectedRestaurant={selectedRestaurant}
+            onRestaurantSelect={handleRestaurantSelect}
+            onMapPress={() => {
+              requestAnimationFrame(() => {
+                setSelectedRestaurant(null);
+              });
+            }}
+            region={mapRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            toolbarEnabled={false}
+            testID="mock-map"
+            onPressReview={handleReviewPress}
+            onRegionChangeComplete={handleRegionChangeComplete}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={handleToggleBookmark}
+          />
+          <TouchableOpacity
+            style={[
+              styles.fab,
+              selectedRestaurant ? { bottom: 120 } : { bottom: 30 },
+            ]}
+            onPress={handleQuickAddPress}
+            testID="quick-add-fab"
+          >
+            <MaterialCommunityIcons name="plus" size={30} color="#fff" />
+          </TouchableOpacity>
+        </>
       ) : (
         <RestaurantList
           restaurants={restaurants}
@@ -267,6 +304,16 @@ export default function MapScreen() {
           contentContainerStyle={{ paddingTop: 175 }}
         />
       )}
+
+      <QuickAddModal
+        visible={quickAddVisible}
+        restaurants={quickAddRestaurants}
+        onSelect={(restaurant) => {
+          setQuickAddVisible(false);
+          navigation.navigate('ReviewScreen', { restaurant });
+        }}
+        onClose={() => setQuickAddVisible(false)}
+      />
     </View>
   );
 }
@@ -287,5 +334,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    backgroundColor: COLORS.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
 });
