@@ -1,8 +1,8 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import RestaurantMap from '../RestaurantMap';
+import { Restaurant } from '../../../types';
 
-// Jest will automatically use __mocks__/react-native-maps.tsx
 jest.mock('react-native-maps');
 
 jest.mock('@expo/vector-icons', () => ({
@@ -10,7 +10,7 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 describe('RestaurantMap', () => {
-  const mockRestaurants = [
+  const mockRestaurants: Restaurant[] = [
     {
       id: '1',
       name: 'Pizza Palace',
@@ -18,7 +18,7 @@ describe('RestaurantMap', () => {
       app_rating: 4.8,
       latitude: 49.46,
       longitude: 8.42,
-    },
+    } as Restaurant,
     {
       id: '2',
       name: 'New Sushi Place',
@@ -26,7 +26,7 @@ describe('RestaurantMap', () => {
       rating: undefined, // Unrated
       latitude: 49.47,
       longitude: 8.43,
-    },
+    } as Restaurant,
   ];
 
   it('renders detailed markers when selected', () => {
@@ -39,16 +39,15 @@ describe('RestaurantMap', () => {
 
     const { getAllByText } = render(
       <RestaurantMap
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        restaurants={mockRestaurants as any}
+        restaurants={mockRestaurants}
         region={zoomedInRegion}
         onRestaurantSelect={jest.fn()}
-        selectedRestaurant={mockRestaurants[0] as any}
+        selectedRestaurant={mockRestaurants[0]}
         onMapPress={jest.fn()}
       />,
     );
 
-    // Should find the 4.8 text inside the animated view
+    // Verify that the rating text is rendered inside the selected animated marker
     expect(getAllByText('4.8')[0]).toBeTruthy();
   });
 
@@ -62,8 +61,7 @@ describe('RestaurantMap', () => {
 
     const { getAllByTestId } = render(
       <RestaurantMap
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        restaurants={mockRestaurants as any}
+        restaurants={mockRestaurants}
         region={zoomedOutRegion}
         onRestaurantSelect={jest.fn()}
         selectedRestaurant={null}
@@ -71,11 +69,7 @@ describe('RestaurantMap', () => {
       />,
     );
 
-    // 2 restaurants * 2 markers each (visual + touch shield) = 4 markers
+    // Verify all markers are rendered (2 components per restaurant: visual layer + touch shield)
     expect(getAllByTestId('restaurant-marker').length).toBe(4);
   });
-
-  // The color test requires a slightly different approach since we use Animated.View now.
-  // We will trust the visual implementation and test the logic in RestaurantMarker if needed.
-  // The deterministic order test is also obsolete because the index is hardcoded in the key now.
 });
