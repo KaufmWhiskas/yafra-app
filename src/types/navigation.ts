@@ -5,6 +5,7 @@ export type RootStackParamList = {
   ReviewScreen: { restaurant: Restaurant };
   Login: undefined;
   Register: undefined;
+  GroupDetailScreen: { groupId: string };
 };
 
 export type TabParamList = {
