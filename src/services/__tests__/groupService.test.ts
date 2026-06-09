@@ -1,5 +1,6 @@
 import {
   createGroup,
+  createOneTimeInvite,
   fetchGroupDetails,
   fetchMyGroups,
   joinGroupWithCode,
@@ -13,8 +14,10 @@ jest.mock("../supabase", () => ({
     select: jest.fn().mockReturnThis(),
     insert: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockReturnThis(),
   },
 }));
 
@@ -62,11 +65,9 @@ describe("Group Service", () => {
     );
   });
 
-  it("joinGroupWithCode inserts a new group_member record when a valid code is provided", async () => {
-    // The query requires two sequential database operations. We mock the first single()
-    // call to return the group resolution, and the subsequent insert() call to succeed without errors.
+  it("joinGroupWithCode inserts a new group_member record when a valid permanent code is provided", async () => {
     // @ts-expect-error: custom mock property not on root client
-    (supabase.single as jest.Mock).mockResolvedValueOnce({
+    (supabase.maybeSingle as jest.Mock).mockResolvedValueOnce({
       data: { id: "group_1" },
       error: null,
     });
@@ -85,6 +86,70 @@ describe("Group Service", () => {
       user_id: "user_123",
       role: "member",
     }]);
+  });
+
+  it("joinGroupWithCode handles one-time invite codes correctly", async () => {
+    // First maybeSingle for permanent code returns null
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.maybeSingle as jest.Mock)
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          id: "invite_1",
+          group_id: "group_1",
+          max_uses: 1,
+          used_count: 0,
+        },
+        error: null,
+      });
+
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.insert as jest.Mock).mockResolvedValueOnce({ error: null });
+
+    // FIX: update() must return the mock chain (supabase) so eq() can be called.
+    // Then eq() resolves the final promise after returning the chain for the first two queries.
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.update as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock)
+      .mockReturnValueOnce(supabase)
+      .mockReturnValueOnce(supabase)
+      .mockResolvedValueOnce({ error: null });
+
+    await joinGroupWithCode("user_123", "TEMP123");
+
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("code", "TEMP123");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.insert).toHaveBeenCalledWith([{
+      group_id: "group_1",
+      user_id: "user_123",
+      role: "member",
+    }]);
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.update).toHaveBeenCalledWith({ used_count: 1 });
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("id", "invite_1");
+  });
+
+  it("createOneTimeInvite inserts a row into the group_invites table and returns the code", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.insert as jest.Mock).mockResolvedValueOnce({ error: null });
+
+    const result = await createOneTimeInvite("group_1", "user_123");
+
+    expect(result).toEqual(expect.any(String));
+    expect(result.length).toBe(6);
+    expect(supabase.from).toHaveBeenCalledWith("group_invites");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        group_id: "group_1",
+        created_by: "user_123",
+        code: expect.any(String),
+        max_uses: 1,
+      }),
+    );
   });
 
   it("leaveGroup deletes the group_member record for the active user", async () => {

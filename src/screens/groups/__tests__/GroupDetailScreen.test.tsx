@@ -1,11 +1,12 @@
 import React from 'react';
-import { render, act } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import GroupDetailScreen from '../GroupDetailScreen';
-import { fetchGroupDetails } from '../../../services/groupService';
+import { fetchGroupDetails, createOneTimeInvite } from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
 jest.mock('../../../services/groupService', () => ({
   fetchGroupDetails: jest.fn(),
+  createOneTimeInvite: jest.fn(),
 }));
 
 jest.mock('@react-navigation/native', () => {
@@ -88,5 +89,44 @@ describe('GroupDetailScreen', () => {
     await flushMicrotasks();
 
     expect(queryByText('Delete Group')).toBeNull();
+  });
+
+  it('Owner can generate a one-time invite code', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'The Elite Squad',
+      created_by: 'user_1',
+      permanent_invite_code: 'ELITE123',
+      members: [],
+    });
+    (createOneTimeInvite as jest.Mock).mockResolvedValue('TEMP45');
+
+    const { getByText, findByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const generateBtn = getByText('Generate Temporary Invite');
+    fireEvent.press(generateBtn);
+
+    expect(createOneTimeInvite).toHaveBeenCalledWith('group_1', 'user_1');
+    expect(await findByText('Temp Code: TEMP45')).toBeTruthy();
+  });
+
+  it('Non-owners do not see invite generation controls', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_2' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'user_1',
+      members: [],
+    });
+
+    const { queryByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    expect(queryByText('Generate Temporary Invite')).toBeNull();
   });
 });

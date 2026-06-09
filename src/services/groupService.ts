@@ -39,24 +39,64 @@ export async function createGroup(
 
 /**
  * Allows a user to join a group using a permanent invite code.
+ * Checks permanent group codes first, then one-time group invites.
  */
 export async function joinGroupWithCode(
   userId: string,
   inviteCode: string,
 ): Promise<void> {
-  const { data: group, error: groupError } = await supabase
+  let targetGroupId: string | null = null;
+  let inviteIdToUpdate: string | null = null;
+  let currentUsedCount: number = 0;
+
+  const { data: group } = await supabase
     .from("groups")
     .select("id")
     .eq("permanent_invite_code", inviteCode)
-    .single();
+    .maybeSingle();
 
-  if (groupError || !group) throw new Error("Invalid or missing invite code");
+  if (group) {
+    targetGroupId = group.id;
+  } else {
+    const { data: invite, error: inviteError } = await supabase
+      .from("group_invites")
+      .select("id, group_id, max_uses, used_count, expires_at")
+      .eq("code", inviteCode)
+      .maybeSingle();
+
+    if (inviteError || !invite) {
+      throw new Error("Invalid or missing invite code");
+    }
+
+    if (invite.used_count >= invite.max_uses) {
+      throw new Error("Invite code has reached its maximum uses");
+    }
+
+    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+      throw new Error("Invite code has expired");
+    }
+
+    targetGroupId = invite.group_id;
+    inviteIdToUpdate = invite.id;
+    currentUsedCount = invite.used_count;
+  }
+
+  if (!targetGroupId) throw new Error("Invalid or missing invite code");
 
   const { error: insertError } = await supabase
     .from("group_members")
-    .insert([{ group_id: group.id, user_id: userId, role: "member" }]);
+    .insert([{ group_id: targetGroupId, user_id: userId, role: "member" }]);
 
   if (insertError) throw insertError;
+
+  if (inviteIdToUpdate) {
+    const { error: updateError } = await supabase
+      .from("group_invites")
+      .update({ used_count: currentUsedCount + 1 })
+      .eq("id", inviteIdToUpdate);
+
+    if (updateError) throw updateError;
+  }
 }
 
 /**
@@ -98,4 +138,30 @@ export async function fetchGroupDetails(
 
   if (error) throw error;
   return data as any; // We cast to any here purely because Supabase nested types get highly complex, we will rely on the Promise return type.
+}
+
+/**
+ * Creates a one-time invite code for a group.
+ *
+ * @param groupId The ID of the group.
+ * @param createdBy The user ID of the creator.
+ * @returns The generated invite code.
+ */
+export async function createOneTimeInvite(
+  groupId: string,
+  createdBy: string,
+): Promise<string> {
+  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const { error } = await supabase
+    .from("group_invites")
+    .insert({
+      group_id: groupId,
+      created_by: createdBy,
+      code: inviteCode,
+      max_uses: 1,
+    });
+
+  if (error) throw error;
+  return inviteCode;
 }

@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
-import { fetchGroupDetails } from '../../services/groupService';
+import {
+  fetchGroupDetails,
+  createOneTimeInvite,
+} from '../../services/groupService';
 import { Group, GroupMember } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -31,6 +34,7 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<GroupWithMembers | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tempCode, setTempCode] = useState<string | null>(null);
 
   const insets = useSafeAreaInsets();
 
@@ -50,6 +54,16 @@ export default function GroupDetailScreen() {
       loadGroupDetails();
     }, [loadGroupDetails]),
   );
+
+  const handleGenerateTempInvite = async () => {
+    if (!user?.id) return;
+    try {
+      const code = await createOneTimeInvite(groupId, user.id);
+      setTempCode(code);
+    } catch (error) {
+      console.error('Failed to generate temp invite', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -108,9 +122,22 @@ export default function GroupDetailScreen() {
       />
 
       {isOwner && (
-        <TouchableOpacity style={styles.deleteButton}>
-          <Text style={styles.deleteButtonText}>Delete Group</Text>
-        </TouchableOpacity>
+        <View style={styles.ownerControls}>
+          <TouchableOpacity
+            style={styles.generateButton}
+            onPress={handleGenerateTempInvite}
+          >
+            <Text style={styles.generateButtonText}>
+              Generate Temporary Invite
+            </Text>
+          </TouchableOpacity>
+          {tempCode && (
+            <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
+          )}
+          <TouchableOpacity style={styles.deleteButton}>
+            <Text style={styles.deleteButtonText}>Delete Group</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -161,6 +188,28 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   memberText: { fontSize: 16 },
+  ownerControls: {
+    marginTop: SIZES.padding,
+  },
+  generateButton: {
+    backgroundColor: COLORS.primary,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+  },
+  generateButtonText: {
+    color: COLORS.surface,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  tempCodeText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: SIZES.base,
+    fontWeight: 'bold',
+  },
   deleteButton: {
     backgroundColor: COLORS.danger,
     padding: SIZES.padding,
