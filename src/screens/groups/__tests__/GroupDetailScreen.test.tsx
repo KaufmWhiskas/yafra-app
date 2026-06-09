@@ -232,7 +232,7 @@ describe('GroupDetailScreen', () => {
     );
   });
 
-  it('Owner clicking a member displays promote/demote/kick options', async () => {
+  it('Owner clicking a member displays appropriate options for "member" role', async () => {
     (useAuth as jest.Mock).mockReturnValue({
       session: { user: { id: 'owner_user' } },
     });
@@ -255,11 +255,54 @@ describe('GroupDetailScreen', () => {
       'Manage Member',
       expect.any(String),
       expect.arrayContaining([
+        expect.objectContaining({ text: 'Promote to Trusted' }),
         expect.objectContaining({ text: 'Promote to Admin' }),
+        expect.objectContaining({ text: 'Kick from Group' }),
+        expect.objectContaining({ text: 'Cancel' }),
+      ]),
+    );
+
+    const alertArgs = (Alert.alert as jest.Mock).mock.calls[0][2];
+    expect(alertArgs).not.toContainEqual(
+      expect.objectContaining({ text: 'Demote to Member' }),
+    );
+  });
+
+  it('Owner clicking an admin displays appropriate options for "admin" role', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [
+        { user_id: 'owner_user', role: 'owner', weight: 1 },
+        { user_id: 'target_admin', role: 'admin', weight: 1 },
+      ],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const targetMember = getByText(/target_admin/);
+    fireEvent.press(targetMember);
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Manage Member',
+      expect.any(String),
+      expect.arrayContaining([
         expect.objectContaining({ text: 'Demote to Member' }),
         expect.objectContaining({ text: 'Kick from Group' }),
         expect.objectContaining({ text: 'Cancel' }),
       ]),
+    );
+
+    const alertArgs = (Alert.alert as jest.Mock).mock.calls[0][2];
+    expect(alertArgs).not.toContainEqual(
+      expect.objectContaining({ text: 'Promote to Trusted' }),
+    );
+    expect(alertArgs).not.toContainEqual(
+      expect.objectContaining({ text: 'Promote to Admin' }),
     );
   });
 

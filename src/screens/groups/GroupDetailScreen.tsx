@@ -84,7 +84,7 @@ export default function GroupDetailScreen() {
       setActiveInvites(invites);
     } catch (error) {
       const err = error as Error;
-      console.error('Failed to generate temp invite', err);
+      console.warn('Operational bound reached: ', err.message);
       Alert.alert(
         'Cannot Generate Invite',
         err.message || 'An unknown error occurred.',
@@ -138,34 +138,62 @@ export default function GroupDetailScreen() {
     if (currentUserRole !== 'owner' && currentUserRole !== 'admin') return;
     if (member.user_id === user.id) return; // Prevent modifying self
 
+    const actions: {
+      text: string;
+      style?: 'cancel' | 'destructive';
+      onPress: () => void;
+    }[] = [];
+
+    // 1. Dynamic Promotion Boundaries
+    if (member.role === 'member') {
+      actions.push({
+        text: 'Promote to Trusted',
+        onPress: async () => {
+          await updateMemberRole(groupId, member.user_id, 'trusted');
+          loadGroupDetails();
+        },
+      });
+    }
+
+    if (member.role === 'member' || member.role === 'trusted') {
+      actions.push({
+        text: 'Promote to Admin',
+        onPress: async () => {
+          await updateMemberRole(groupId, member.user_id, 'admin');
+          loadGroupDetails();
+        },
+      });
+    }
+
+    // 2. Dynamic Demotion Boundaries
+    if (member.role === 'admin' || member.role === 'trusted') {
+      actions.push({
+        text: 'Demote to Member',
+        onPress: async () => {
+          await updateMemberRole(groupId, member.user_id, 'member');
+          loadGroupDetails();
+        },
+      });
+    }
+
+    // 3. Destructive Eviction Bound (Admins cannot kick owners)
+    if (member.role !== 'owner') {
+      actions.push({
+        text: 'Kick from Group',
+        style: 'destructive',
+        onPress: async () => {
+          await removeGroupMember(groupId, member.user_id);
+          loadGroupDetails();
+        },
+      });
+    }
+
+    actions.push({ text: 'Cancel', style: 'cancel', onPress: () => {} });
+
     Alert.alert(
       'Manage Member',
       `What would you like to do with ${member.profiles?.username || member.user_id}?`,
-      [
-        {
-          text: 'Promote to Admin',
-          onPress: async () => {
-            await updateMemberRole(groupId, member.user_id, 'admin');
-            loadGroupDetails();
-          },
-        },
-        {
-          text: 'Demote to Member',
-          onPress: async () => {
-            await updateMemberRole(groupId, member.user_id, 'member');
-            loadGroupDetails();
-          },
-        },
-        {
-          text: 'Kick from Group',
-          style: 'destructive',
-          onPress: async () => {
-            await removeGroupMember(groupId, member.user_id);
-            loadGroupDetails();
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ],
+      actions,
     );
   };
 
