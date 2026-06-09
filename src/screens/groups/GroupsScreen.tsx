@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
@@ -17,7 +20,7 @@ import {
   joinGroupWithCode,
 } from '../../services/groupService';
 import { Group } from '../../types';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
 
 export default function GroupsScreen() {
@@ -28,10 +31,15 @@ export default function GroupsScreen() {
   const [newGroupName, setNewGroupName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
 
+  const createInputRef = useRef<TextInput>(null);
+  const joinInputRef = useRef<TextInput>(null);
+
   const { session } = useAuth();
   const user = session?.user;
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const insets = useSafeAreaInsets();
 
   const loadGroups = useCallback(async () => {
     if (!user?.id) return;
@@ -51,7 +59,7 @@ export default function GroupsScreen() {
       await createGroup(user.id, newGroupName.trim());
       setCreateModalVisible(false);
       setNewGroupName('');
-      loadGroups(); // Refresh the list
+      loadGroups();
     } catch (error) {
       console.error('Failed to create group', error);
     }
@@ -69,6 +77,16 @@ export default function GroupsScreen() {
     }
   };
 
+  const handleCancelCreate = () => {
+    setCreateModalVisible(false);
+    setNewGroupName('');
+  };
+
+  const handleCancelJoin = () => {
+    setJoinModalVisible(false);
+    setInviteCode('');
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadGroups();
@@ -76,7 +94,7 @@ export default function GroupsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}>
       {isLoading ? (
         <Text style={styles.loadingText}>Loading groups...</Text>
       ) : (
@@ -119,18 +137,30 @@ export default function GroupsScreen() {
       </View>
 
       {/* Create Group Modal */}
-      <Modal visible={createModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={createModalVisible}
+        animationType="fade"
+        transparent
+        onShow={() => setTimeout(() => createInputRef.current?.focus(), 100)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Create New Group</Text>
             <TextInput
+              ref={createInputRef}
               placeholder="Group Name"
               style={styles.input}
               value={newGroupName}
               onChangeText={setNewGroupName}
+              returnKeyType="done"
+              onSubmitEditing={handleCreateGroup}
             />
             <View style={styles.modalActionRow}>
-              <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
+              <TouchableOpacity onPress={handleCancelCreate}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleCreateGroup}>
@@ -138,22 +168,34 @@ export default function GroupsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Join Group Modal */}
-      <Modal visible={joinModalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal
+        visible={joinModalVisible}
+        animationType="fade"
+        transparent
+        onShow={() => setTimeout(() => joinInputRef.current?.focus(), 100)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Join Group</Text>
             <TextInput
+              ref={joinInputRef}
               placeholder="Invite Code"
               style={styles.input}
               value={inviteCode}
               onChangeText={setInviteCode}
+              returnKeyType="done"
+              onSubmitEditing={handleJoinGroup}
             />
             <View style={styles.modalActionRow}>
-              <TouchableOpacity onPress={() => setJoinModalVisible(false)}>
+              <TouchableOpacity onPress={handleCancelJoin}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleJoinGroup}>
@@ -161,21 +203,25 @@ export default function GroupsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background, padding: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    padding: SIZES.padding,
+  },
   listContent: { paddingBottom: 80 },
   loadingText: { textAlign: 'center', marginTop: 20 },
   groupCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.base,
+    marginBottom: SIZES.radius,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -187,23 +233,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textLight,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: SIZES.padding,
   },
   button: {
     flex: 1,
     backgroundColor: COLORS.primary,
     padding: 14,
-    borderRadius: 8,
+    borderRadius: SIZES.base,
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: SIZES.base,
   },
-  joinButton: { marginRight: 0, marginLeft: 8, backgroundColor: '#333' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  joinButton: {
+    marginRight: 0,
+    marginLeft: SIZES.base,
+    backgroundColor: COLORS.text,
+  },
+  buttonText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 16 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -211,19 +261,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
     padding: 20,
-    borderRadius: 12,
+    borderRadius: SIZES.radius,
     width: '80%',
+    marginBottom: Platform.OS === 'android' ? 100 : 0,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: SIZES.padding },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 8,
+    borderRadius: SIZES.base,
     padding: 12,
-    marginBottom: 16,
-    color: '#000',
+    marginBottom: SIZES.padding,
+    color: COLORS.text,
   },
   modalActionRow: {
     flexDirection: 'row',
@@ -231,9 +287,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    color: '#666',
+    color: COLORS.textLight,
     fontSize: 16,
-    marginRight: 16,
+    marginRight: 20,
   },
   submitText: {
     color: COLORS.primary,

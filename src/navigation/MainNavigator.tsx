@@ -7,6 +7,7 @@ import TabNavigator from './TabNavigator';
 import ReviewScreen from '../screens/review/ReviewScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -28,6 +29,11 @@ export default function MainNavigator() {
               name="ReviewScreen"
               component={ReviewScreen}
               options={{ headerShown: true, title: 'Add Review' }}
+            />
+            <Stack.Screen 
+              name="GroupDetailScreen" 
+              component={GroupDetailScreen} 
+              options={{ title: 'Group Details' }} 
             />
           </>
         ) : (

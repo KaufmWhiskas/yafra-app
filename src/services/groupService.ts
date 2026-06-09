@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Group } from "../types";
+import { Group, GroupMember } from "../types";
 
 /**
  * Retrieves all groups the authenticated user is a member of.
@@ -20,9 +20,16 @@ export async function createGroup(
   userId: string,
   name: string,
 ): Promise<Group> {
+  // Generate a random 6-character alphanumeric code (e.g., "A7X9BQ")
+  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
   const { data, error } = await supabase
     .from("groups")
-    .insert({ name, created_by: userId })
+    .insert({
+      name,
+      created_by: userId,
+      permanent_invite_code: inviteCode,
+    })
     .select()
     .single();
 
@@ -66,4 +73,21 @@ export async function leaveGroup(
     .eq("group_id", groupId);
 
   if (error) throw error;
+}
+
+/**
+ * Retrieves a group and all its active members in a single query.
+ * Utilizes Supabase's foreign key projection to append the relational array.
+ */
+export async function fetchGroupDetails(
+  groupId: string,
+): Promise<Group & { members: GroupMember[] }> {
+  const { data, error } = await supabase
+    .from("groups")
+    .select("*, members:group_members(*)")
+    .eq("id", groupId)
+    .single();
+
+  if (error) throw error;
+  return data as Group & { members: GroupMember[] };
 }

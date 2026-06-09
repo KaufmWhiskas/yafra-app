@@ -1,5 +1,6 @@
 import {
   createGroup,
+  fetchGroupDetails,
   fetchMyGroups,
   joinGroupWithCode,
   leaveGroup,
@@ -52,10 +53,13 @@ describe("Group Service", () => {
     expect(result).toEqual({ id: "2", name: "New Group" });
     expect(supabase.from).toHaveBeenCalledWith("groups");
     // @ts-expect-error: custom mock property not on root client
-    expect(supabase.insert).toHaveBeenCalledWith({
-      name: "New Group",
-      created_by: "user_123",
-    });
+    expect(supabase.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "New Group",
+        created_by: "user_123",
+        permanent_invite_code: expect.any(String),
+      }),
+    );
   });
 
   it("joinGroupWithCode inserts a new group_member record when a valid code is provided", async () => {
@@ -95,5 +99,26 @@ describe("Group Service", () => {
     expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.eq).toHaveBeenCalledWith("group_id", "group_1");
+  });
+
+  it("fetchGroupDetails returns a group with its members", async () => {
+    // We structure the mock chain to resolve on single() for the relational query
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.single as jest.Mock).mockResolvedValueOnce({
+      data: { id: "1", name: "Test Group", members: [{ user_id: "u1" }] },
+      error: null,
+    });
+
+    const result = await fetchGroupDetails("1");
+
+    expect(result).toEqual({
+      id: "1",
+      name: "Test Group",
+      members: [{ user_id: "u1" }],
+    });
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.select).toHaveBeenCalledWith("*, members:group_members(*)");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("id", "1");
   });
 });

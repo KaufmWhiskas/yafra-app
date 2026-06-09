@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Restaurant } from '../../types';
 import RestaurantCard from './RestaurantCard';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES } from '../../constants/theme';
 
 interface QuickAddModalProps {
   visible: boolean;
@@ -114,19 +114,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: SIZES.padding,
     textAlign: 'center',
     color: COLORS.text,
   },
   subtitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 12,
+    marginTop: SIZES.padding,
+    marginBottom: SIZES.radius,
     color: COLORS.text,
   },
   noButton: {
-    marginTop: 16,
+    marginTop: SIZES.padding,
     padding: 12,
     alignItems: 'center',
   },
@@ -140,14 +140,14 @@ const styles = StyleSheet.create({
     flexShrink: 1, // Prevents the FlatList from pushing the Close button off-screen
   },
   otherCardWrapper: {
-    marginBottom: 12,
+    marginBottom: SIZES.radius,
   },
   closeButton: {
-    marginTop: 16,
-    padding: 16,
+    marginTop: SIZES.padding,
+    padding: SIZES.padding,
     alignItems: 'center',
-    backgroundColor: '#eee',
-    borderRadius: 8,
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.base,
   },
   closeButtonText: {
     color: COLORS.text,

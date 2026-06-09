@@ -4,7 +4,7 @@ import {
   fetchRestaurantDetails,
   fetchRestaurants,
 } from '../../services/restaurantService';
-import { COLORS } from '../../constants/theme';
+import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     width: 60,
     height: 60,
-    borderRadius: 16,
+    borderRadius: SIZES.padding,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   invertedFab: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
   },
   compassFab: {
     top: 130,

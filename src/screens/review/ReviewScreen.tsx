@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
   },
   errorText: {
-    color: 'red',
+    color: COLORS.danger,
     marginBottom: SIZES.padding,
     textAlign: 'center',
   },
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     marginTop: SIZES.padding,
   },
   submitButtonText: {
-    color: '#fff',
+    color: COLORS.surface,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#fff',
+    borderBottomColor: COLORS.surface,
   },
   southNeedleBorder: {
     position: 'absolute',
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#fff',
+    borderTopColor: COLORS.surface,
   },
 
   northNeedleFill: {
@@ -99,6 +99,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#999',
+    borderTopColor: COLORS.textLight,
   },
 });
