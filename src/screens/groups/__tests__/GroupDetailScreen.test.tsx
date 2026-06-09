@@ -30,7 +30,6 @@ jest.mock('@react-navigation/native', () => {
     useRoute: () => ({ params: { groupId: 'group_1' } }),
     useNavigation: () => ({ navigate: mockNavigate }),
     useFocusEffect: (cb: React.EffectCallback) => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       ReactActual.useEffect(() => cb(), []);
     },
   };
