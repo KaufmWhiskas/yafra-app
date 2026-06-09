@@ -149,8 +149,12 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Promote to Trusted',
         onPress: async () => {
-          await updateMemberRole(groupId, member.user_id, 'trusted');
-          loadGroupDetails();
+          try {
+            await updateMemberRole(groupId, member.user_id, 'trusted');
+            loadGroupDetails();
+          } catch (error) {
+            console.warn('Failed to promote member:', error);
+          }
         },
       });
     }
@@ -159,8 +163,12 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Promote to Admin',
         onPress: async () => {
-          await updateMemberRole(groupId, member.user_id, 'admin');
-          loadGroupDetails();
+          try {
+            await updateMemberRole(groupId, member.user_id, 'admin');
+            loadGroupDetails();
+          } catch (error) {
+            console.warn('Failed to promote member:', error);
+          }
         },
       });
     }
@@ -170,8 +178,12 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Demote to Member',
         onPress: async () => {
-          await updateMemberRole(groupId, member.user_id, 'member');
-          loadGroupDetails();
+          try {
+            await updateMemberRole(groupId, member.user_id, 'member');
+            loadGroupDetails();
+          } catch (error) {
+            console.warn('Failed to demote member:', error);
+          }
         },
       });
     }
@@ -182,8 +194,12 @@ export default function GroupDetailScreen() {
         text: 'Kick from Group',
         style: 'destructive',
         onPress: async () => {
-          await removeGroupMember(groupId, member.user_id);
-          loadGroupDetails();
+          try {
+            await removeGroupMember(groupId, member.user_id);
+            loadGroupDetails();
+          } catch (error) {
+            console.warn('Failed to kick member:', error);
+          }
         },
       });
     }

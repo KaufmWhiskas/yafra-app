@@ -7,6 +7,8 @@ import {
   createOneTimeInvite,
   fetchActiveInvites,
   updatePermanentInvite,
+  updateMemberRole,
+  removeGroupMember,
 } from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -327,5 +329,80 @@ describe('GroupDetailScreen', () => {
     fireEvent.press(targetMember);
 
     expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('triggers updateMemberRole when Promote to Admin is pressed', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [
+        { user_id: 'owner_user', role: 'owner', weight: 1 },
+        { user_id: 'target_user', role: 'member', weight: 0.5 },
+      ],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByText(/target_user/));
+
+    // 1. Capture the exact buttons array passed to Alert.alert
+    const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+    const buttons = alertCalls[0][2];
+
+    // 2. Find the 'Promote to Admin' button configuration object
+    const promoteBtn = buttons.find(
+      (b: { text: string; onPress: () => void }) =>
+        b.text === 'Promote to Admin',
+    );
+
+    // 3. Manually fire its onPress function
+    await act(async () => {
+      promoteBtn.onPress();
+    });
+
+    // 4. Assert that the service was invoked with correct relational mutations
+    expect(updateMemberRole).toHaveBeenCalledWith(
+      'group_1',
+      'target_user',
+      'admin',
+    );
+    expect(fetchGroupDetails).toHaveBeenCalledTimes(2); // Initial mount + reload after update
+  });
+
+  it('triggers removeGroupMember when Kick from Group is pressed', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [
+        { user_id: 'owner_user', role: 'owner', weight: 1 },
+        { user_id: 'target_user', role: 'member', weight: 0.5 },
+      ],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByText(/target_user/));
+
+    const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+    const buttons = alertCalls[0][2];
+    const kickBtn = buttons.find(
+      (b: { text: string; onPress: () => void }) =>
+        b.text === 'Kick from Group',
+    );
+
+    await act(async () => {
+      kickBtn.onPress();
+    });
+
+    expect(removeGroupMember).toHaveBeenCalledWith('group_1', 'target_user');
+    expect(fetchGroupDetails).toHaveBeenCalledTimes(2);
   });
 });
