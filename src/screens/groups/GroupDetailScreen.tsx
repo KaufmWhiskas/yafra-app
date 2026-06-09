@@ -9,11 +9,19 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  RouteProp,
+  useFocusEffect,
+} from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   fetchGroupDetails,
   createOneTimeInvite,
   fetchActiveInvites,
+  deleteGroup,
+  updatePermanentInvite,
 } from '../../services/groupService';
 import { Group, GroupMember, GroupInvite } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +38,8 @@ type GroupWithMembers = Group & {
 
 export default function GroupDetailScreen() {
   const route = useRoute<GroupDetailScreenRouteProp>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { groupId } = route.params;
 
   const { session } = useAuth();
@@ -79,6 +89,41 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const handleDeleteGroup = () => {
+    Alert.alert('Delete Group', 'Are you sure? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteGroup(groupId);
+            navigation.navigate('MainTabs');
+          } catch (error) {
+            console.error('Failed to delete group', error);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleTogglePermanentCode = async () => {
+    try {
+      if (group?.permanent_invite_code) {
+        await updatePermanentInvite(groupId, null);
+      } else {
+        const newCode = Math.random()
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase();
+        await updatePermanentInvite(groupId, newCode);
+      }
+      loadGroupDetails();
+    } catch (error) {
+      console.error('Failed to toggle code', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -111,11 +156,25 @@ export default function GroupDetailScreen() {
         <Text style={styles.title}>{group.name}</Text>
         <View style={styles.codeRow}>
           <Text style={styles.codeText}>
-            Code: {group.permanent_invite_code}
+            Code: {group.permanent_invite_code || 'Disabled'}
           </Text>
-          <TouchableOpacity style={styles.copyButton}>
-            <Text style={styles.copyButtonText}>Copy</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            {group.permanent_invite_code && (
+              <TouchableOpacity style={styles.copyButton}>
+                <Text style={styles.copyButtonText}>Copy</Text>
+              </TouchableOpacity>
+            )}
+            {isOwner && (
+              <TouchableOpacity
+                style={[styles.copyButton, { marginLeft: 8 }]}
+                onPress={handleTogglePermanentCode}
+              >
+                <Text style={styles.copyButtonText}>
+                  {group.permanent_invite_code ? 'Disable' : 'Enable'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 
@@ -173,7 +232,10 @@ export default function GroupDetailScreen() {
             </View>
           )}
 
-          <TouchableOpacity style={styles.deleteButton}>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteGroup}
+          >
             <Text style={styles.deleteButtonText}>Delete Group</Text>
           </TouchableOpacity>
         </View>

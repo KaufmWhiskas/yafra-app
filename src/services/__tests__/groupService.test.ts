@@ -1,10 +1,12 @@
 import {
   createGroup,
   createOneTimeInvite,
+  deleteGroup,
   fetchGroupDetails,
   fetchMyGroups,
   joinGroupWithCode,
   leaveGroup,
+  updatePermanentInvite,
 } from "../groupService";
 import { supabase } from "../supabase";
 
@@ -194,5 +196,37 @@ describe("Group Service", () => {
     `);
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.eq).toHaveBeenCalledWith("id", "1");
+  });
+
+  it("deleteGroup deletes the group record", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.delete as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({ error: null });
+
+    await deleteGroup("group_1");
+
+    expect(supabase.from).toHaveBeenCalledWith("groups");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.delete).toHaveBeenCalled();
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("id", "group_1");
+  });
+
+  it("updatePermanentInvite updates the code for the group", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.update as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({ error: null });
+
+    await updatePermanentInvite("group_1", "NEW123");
+
+    expect(supabase.from).toHaveBeenCalledWith("groups");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.update).toHaveBeenCalledWith({
+      permanent_invite_code: "NEW123",
+    });
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("id", "group_1");
   });
 });

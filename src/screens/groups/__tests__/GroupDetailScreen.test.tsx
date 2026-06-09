@@ -1,10 +1,12 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import GroupDetailScreen from '../GroupDetailScreen';
 import {
   fetchGroupDetails,
   createOneTimeInvite,
   fetchActiveInvites,
+  updatePermanentInvite,
 } from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -12,7 +14,11 @@ jest.mock('../../../services/groupService', () => ({
   fetchGroupDetails: jest.fn(),
   createOneTimeInvite: jest.fn(),
   fetchActiveInvites: jest.fn(),
+  deleteGroup: jest.fn(),
+  updatePermanentInvite: jest.fn(),
 }));
+
+const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   const actualNav = jest.requireActual('@react-navigation/native');
@@ -20,6 +26,7 @@ jest.mock('@react-navigation/native', () => {
   return {
     ...actualNav,
     useRoute: () => ({ params: { groupId: 'group_1' } }),
+    useNavigation: () => ({ navigate: mockNavigate }),
     useFocusEffect: (cb: React.EffectCallback) => {
       ReactActual.useEffect(cb, []);
     },
@@ -35,6 +42,8 @@ const flushMicrotasks = async (): Promise<void> => {
     await Promise.resolve();
   });
 };
+
+jest.spyOn(Alert, 'alert');
 
 describe('GroupDetailScreen', () => {
   beforeEach(() => {
@@ -162,5 +171,62 @@ describe('GroupDetailScreen', () => {
     expect(fetchActiveInvites).toHaveBeenCalledWith('group_1');
     expect(getByText('TEMP99')).toBeTruthy();
     expect(getByText('Created by: owner_user')).toBeTruthy();
+  });
+
+  it('Owner can delete the group', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const deleteBtn = getByText('Delete Group');
+    fireEvent.press(deleteBtn);
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Delete Group',
+      'Are you sure? This cannot be undone.',
+      expect.any(Array),
+    );
+  });
+
+  it('Owner can disable and enable the permanent invite code', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      permanent_invite_code: 'CODE12',
+      members: [],
+    });
+
+    const { getByText, rerender } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByText('Disable'));
+    expect(updatePermanentInvite).toHaveBeenCalledWith('group_1', null);
+
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      permanent_invite_code: null,
+      members: [],
+    });
+
+    rerender(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByText('Enable'));
+    expect(updatePermanentInvite).toHaveBeenCalledWith(
+      'group_1',
+      expect.any(String),
+    );
   });
 });

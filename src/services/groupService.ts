@@ -116,6 +116,31 @@ export async function leaveGroup(
 }
 
 /**
+ * Deletes a group entirely.
+ * Relies on ON DELETE CASCADE in the database to wipe associated members/invites.
+ */
+export async function deleteGroup(groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId);
+
+  if (error) throw error;
+}
+
+/**
+ * Enables or disables the permanent invite code for a group.
+ */
+export async function updatePermanentInvite(groupId: string, code: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("groups")
+    .update({ permanent_invite_code: code })
+    .eq("id", groupId);
+
+  if (error) throw error;
+}
+
+/**
  * Retrieves a group and all its active members in a single query.
  * Utilizes Supabase's foreign key projection to append the relational array.
  */
