@@ -6,6 +6,8 @@ import {
   fetchMyGroups,
   joinGroupWithCode,
   leaveGroup,
+  removeGroupMember,
+  updateMemberRole,
   updatePermanentInvite,
 } from "../groupService";
 import { supabase } from "../supabase";
@@ -228,5 +230,43 @@ describe("Group Service", () => {
     });
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.eq).toHaveBeenCalledWith("id", "group_1");
+  });
+
+  it("updateMemberRole updates the role of the specified member", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.update as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock)
+      .mockReturnValueOnce(supabase)
+      .mockResolvedValueOnce({ error: null });
+
+    await updateMemberRole("group_1", "user_123", "admin");
+
+    expect(supabase.from).toHaveBeenCalledWith("group_members");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.update).toHaveBeenCalledWith({ role: "admin" });
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("group_id", "group_1");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
+  });
+
+  it("removeGroupMember deletes the specified member", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.delete as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock)
+      .mockReturnValueOnce(supabase)
+      .mockResolvedValueOnce({ error: null });
+
+    await removeGroupMember("group_1", "user_123");
+
+    expect(supabase.from).toHaveBeenCalledWith("group_members");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.delete).toHaveBeenCalled();
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("group_id", "group_1");
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
   });
 });

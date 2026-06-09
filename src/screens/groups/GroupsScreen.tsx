@@ -61,11 +61,12 @@ export default function GroupsScreen() {
       setCreateModalVisible(false);
       setNewGroupName('');
       loadGroups();
-    } catch (error: any) {
-      console.error('Failed to create group', error);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Failed to create group', err);
       Alert.alert(
         'Cannot Create Group',
-        error.message || 'An unknown error occurred.',
+        err.message || 'An unknown error occurred.',
       );
     }
   };
@@ -77,11 +78,12 @@ export default function GroupsScreen() {
       setJoinModalVisible(false);
       setInviteCode('');
       loadGroups();
-    } catch (error: any) {
-      console.error('Failed to join group', error);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Failed to join group', err);
       Alert.alert(
         'Cannot Join Group',
-        error.message || 'An unknown error occurred.',
+        err.message || 'An unknown error occurred.',
       );
     }
   };

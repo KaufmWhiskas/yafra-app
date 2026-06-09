@@ -22,6 +22,8 @@ import {
   fetchActiveInvites,
   deleteGroup,
   updatePermanentInvite,
+  updateMemberRole,
+  removeGroupMember,
 } from '../../services/groupService';
 import { Group, GroupMember, GroupInvite } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -80,11 +82,12 @@ export default function GroupDetailScreen() {
       setTempCode(code);
       const invites = await fetchActiveInvites(groupId);
       setActiveInvites(invites);
-    } catch (error: any) {
-      console.error('Failed to generate temp invite', error);
+    } catch (error) {
+      const err = error as Error;
+      console.error('Failed to generate temp invite', err);
       Alert.alert(
         'Cannot Generate Invite',
-        error.message || 'An unknown error occurred.',
+        err.message || 'An unknown error occurred.',
       );
     }
   };
@@ -122,6 +125,48 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.error('Failed to toggle code', error);
     }
+  };
+
+  const currentUserRole = group?.members.find(
+    (m) => m.user_id === user?.id,
+  )?.role;
+
+  const handleMemberPress = (
+    member: GroupMember & { profiles: { username: string } },
+  ) => {
+    if (!user?.id) return;
+    if (currentUserRole !== 'owner' && currentUserRole !== 'admin') return;
+    if (member.user_id === user.id) return; // Prevent modifying self
+
+    Alert.alert(
+      'Manage Member',
+      `What would you like to do with ${member.profiles?.username || member.user_id}?`,
+      [
+        {
+          text: 'Promote to Admin',
+          onPress: async () => {
+            await updateMemberRole(groupId, member.user_id, 'admin');
+            loadGroupDetails();
+          },
+        },
+        {
+          text: 'Demote to Member',
+          onPress: async () => {
+            await updateMemberRole(groupId, member.user_id, 'member');
+            loadGroupDetails();
+          },
+        },
+        {
+          text: 'Kick from Group',
+          style: 'destructive',
+          onPress: async () => {
+            await removeGroupMember(groupId, member.user_id);
+            loadGroupDetails();
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
   };
 
   if (isLoading) {
@@ -183,13 +228,16 @@ export default function GroupDetailScreen() {
         data={group.members}
         keyExtractor={(item) => item.user_id}
         renderItem={({ item }) => (
-          <View style={styles.memberCard}>
+          <TouchableOpacity
+            style={styles.memberCard}
+            onPress={() => handleMemberPress(item)}
+          >
             <Text style={styles.memberText}>
               {/* Safely render the nested username, falling back to ID if missing */}
               {item.profiles?.username || item.user_id} - {item.role} (
               {item.weight})
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
         contentContainerStyle={styles.listContent}
       />

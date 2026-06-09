@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Group, GroupInvite, GroupMember } from "../types";
+import { Group, GroupInvite, GroupMember, GroupRole } from "../types";
 
 /**
  * Retrieves all groups the authenticated user is a member of.
@@ -131,7 +131,10 @@ export async function deleteGroup(groupId: string): Promise<void> {
 /**
  * Enables or disables the permanent invite code for a group.
  */
-export async function updatePermanentInvite(groupId: string, code: string | null): Promise<void> {
+export async function updatePermanentInvite(
+  groupId: string,
+  code: string | null,
+): Promise<void> {
   const { error } = await supabase
     .from("groups")
     .update({ permanent_invite_code: code })
@@ -162,7 +165,9 @@ export async function fetchGroupDetails(
     .single();
 
   if (error) throw error;
-  return data as any; // We cast to any here purely because Supabase nested types get highly complex, we will rely on the Promise return type.
+  return data as unknown as Group & {
+    members: (GroupMember & { profiles: { username: string } })[];
+  };
 }
 
 /**
@@ -224,9 +229,50 @@ export async function fetchActiveInvites(
 
   if (error) throw error;
 
-  return (data || []).filter(
-    (inv: any) =>
+  const invites = (data || []) as unknown as GroupInvite[];
+  return invites.filter(
+    (inv) =>
       inv.used_count < inv.max_uses &&
       (!inv.expires_at || new Date(inv.expires_at) > new Date()),
-  ) as GroupInvite[];
+  );
+}
+
+/**
+ * Updates the role of a specific member in a group.
+ *
+ * @param groupId The ID of the group.
+ * @param targetUserId The ID of the user whose role is being updated.
+ * @param role The new role to assign to the user.
+ */
+export async function updateMemberRole(
+  groupId: string,
+  targetUserId: string,
+  role: GroupRole,
+): Promise<void> {
+  const { error } = await supabase
+    .from("group_members")
+    .update({ role })
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId);
+
+  if (error) throw error;
+}
+
+/**
+ * Removes a specific member from a group.
+ *
+ * @param groupId The ID of the group.
+ * @param targetUserId The ID of the user to be removed.
+ */
+export async function removeGroupMember(
+  groupId: string,
+  targetUserId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId);
+
+  if (error) throw error;
 }

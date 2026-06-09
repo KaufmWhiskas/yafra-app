@@ -16,6 +16,8 @@ jest.mock('../../../services/groupService', () => ({
   fetchActiveInvites: jest.fn(),
   deleteGroup: jest.fn(),
   updatePermanentInvite: jest.fn(),
+  updateMemberRole: jest.fn(),
+  removeGroupMember: jest.fn(),
 }));
 
 const mockNavigate = jest.fn();
@@ -28,7 +30,8 @@ jest.mock('@react-navigation/native', () => {
     useRoute: () => ({ params: { groupId: 'group_1' } }),
     useNavigation: () => ({ navigate: mockNavigate }),
     useFocusEffect: (cb: React.EffectCallback) => {
-      ReactActual.useEffect(cb, []);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ReactActual.useEffect(() => cb(), []);
     },
   };
 });
@@ -228,5 +231,59 @@ describe('GroupDetailScreen', () => {
       'group_1',
       expect.any(String),
     );
+  });
+
+  it('Owner clicking a member displays promote/demote/kick options', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [
+        { user_id: 'owner_user', role: 'owner', weight: 1 },
+        { user_id: 'target_user', role: 'member', weight: 0.5 },
+      ],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const targetMember = getByText(/target_user/);
+    fireEvent.press(targetMember);
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Manage Member',
+      expect.any(String),
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Promote to Admin' }),
+        expect.objectContaining({ text: 'Demote to Member' }),
+        expect.objectContaining({ text: 'Kick from Group' }),
+        expect.objectContaining({ text: 'Cancel' }),
+      ]),
+    );
+  });
+
+  it('Regular member clicking a member does nothing', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'regular_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      created_by: 'owner_user',
+      members: [
+        { user_id: 'owner_user', role: 'owner', weight: 1 },
+        { user_id: 'regular_user', role: 'member', weight: 0.5 },
+        { user_id: 'target_user', role: 'member', weight: 0.5 },
+      ],
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const targetMember = getByText(/target_user/);
+    fireEvent.press(targetMember);
+
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 });
