@@ -1,0 +1,266 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, SIZES } from '../../constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { FilterGroup } from '../../constants/categories';
+
+const FILTER_GROUPS: FilterGroup[] = [
+  'Fast Food',
+  'Pizza & Italian',
+  'Asian',
+  'European',
+  'Americas',
+  'Middle Eastern & African',
+  'Breakfast & Cafe',
+  'Bars & Pubs',
+  'Snacks & Sweets',
+  'Specialty & Dietary',
+];
+
+export interface Filters {
+  cuisine: string | null;
+  minRating: number | null;
+  onlyBookmarks: boolean;
+  inAppReviewsOnly: boolean;
+}
+
+interface FilterModalProps {
+  visible: boolean;
+  initialFilters: Filters;
+  onApply: (filters: Filters) => void;
+  onClose: () => void;
+}
+
+export default function FilterModal({
+  visible,
+  initialFilters,
+  onApply,
+  onClose,
+}: FilterModalProps) {
+  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (visible) {
+      setFilters(initialFilters);
+    }
+  }, [visible, initialFilters]);
+
+  const handleApply = () => {
+    onApply(filters);
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View
+          style={[
+            styles.container,
+            { paddingBottom: Math.max(insets.bottom, SIZES.padding * 4) },
+          ]}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Filters</Text>
+            <TouchableOpacity onPress={onClose} testID="close-filter-modal">
+              <MaterialCommunityIcons
+                name="close"
+                size={24}
+                color={COLORS.text}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionTitle}>Cuisine</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
+            contentContainerStyle={styles.chipRowContent}
+          >
+            <TouchableOpacity
+              style={[styles.chip, !filters.cuisine && styles.chipActive]}
+              onPress={() => setFilters({ ...filters, cuisine: null })}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  !filters.cuisine && styles.chipTextActive,
+                ]}
+              >
+                All
+              </Text>
+            </TouchableOpacity>
+            {FILTER_GROUPS.map((c) => (
+              <TouchableOpacity
+                key={c}
+                style={[
+                  styles.chip,
+                  filters.cuisine === c && styles.chipActive,
+                ]}
+                onPress={() => setFilters({ ...filters, cuisine: c })}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    filters.cuisine === c && styles.chipTextActive,
+                  ]}
+                >
+                  {c}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.sectionTitle}>Minimum Rating</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
+            contentContainerStyle={styles.chipRowContent}
+          >
+            {[null, 3, 4, 4.5, 4.8].map((rating) => (
+              <TouchableOpacity
+                key={rating ?? 'Any'}
+                style={[
+                  styles.chip,
+                  filters.minRating === rating && styles.chipActive,
+                ]}
+                onPress={() => setFilters({ ...filters, minRating: rating })}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    filters.minRating === rating && styles.chipTextActive,
+                  ]}
+                >
+                  {rating ? `${rating}+` : 'Any'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.sectionTitle}>Show Bookmarks Only</Text>
+            <Switch
+              value={filters.onlyBookmarks}
+              onValueChange={(val) =>
+                setFilters({ ...filters, onlyBookmarks: val })
+              }
+              trackColor={{ false: '#ccc', true: COLORS.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.sectionTitle}>In-App Reviews Only</Text>
+            <Switch
+              value={filters.inAppReviewsOnly}
+              onValueChange={(val) =>
+                setFilters({ ...filters, inAppReviewsOnly: val })
+              }
+              trackColor={{ false: '#ccc', true: COLORS.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
+            <Text style={styles.applyButtonText}>Apply Filters</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  container: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: SIZES.largeRadius,
+    borderTopRightRadius: SIZES.largeRadius,
+    padding: SIZES.padding,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SIZES.base,
+    marginTop: SIZES.base,
+  },
+  chipRow: {
+    maxHeight: 50,
+    marginBottom: SIZES.padding,
+  },
+  chipRowContent: {
+    paddingRight: SIZES.padding,
+  },
+  chip: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  chipText: {
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: COLORS.surface,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.padding * 2,
+  },
+  applyButton: {
+    backgroundColor: COLORS.primary,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    color: COLORS.surface,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

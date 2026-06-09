@@ -183,6 +183,39 @@ describe('MapScreen Toggle Feature', () => {
     expect(markers.length).toBeGreaterThan(0);
   });
 
+  it('applying a cuisine filter restricts rendered restaurant markers', async () => {
+    (fetchRestaurants as jest.Mock).mockResolvedValueOnce([
+      {
+        id: '1',
+        name: 'Test Burger',
+        cuisine: 'american_restaurant',
+        latitude: 49.465,
+        longitude: 8.425,
+      },
+      {
+        id: '2',
+        name: 'Test Italian',
+        cuisine: 'italian_restaurant',
+        latitude: 49.466,
+        longitude: 8.426,
+      },
+    ] as Restaurant[]);
+
+    const { getByText, getAllByTestId, getByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByTestId('filter-button'));
+    await flushMicrotasks();
+
+    fireEvent.press(getByText('Pizza & Italian'));
+
+    fireEvent.press(getByText('Apply Filters'));
+    await flushMicrotasks();
+
+    const markers = getAllByTestId('restaurant-marker');
+    expect(markers.length).toBe(1);
+  });
+
   it('requests location permissions', async () => {
     render(<MapScreen />);
     await flushMicrotasks();

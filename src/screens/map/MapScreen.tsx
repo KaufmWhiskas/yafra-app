@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   fetchRestaurantDetails,
@@ -12,6 +12,7 @@ import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
 import RestaurantList from '../../components/ui/RestaurantList';
 import QuickAddModal from '../../components/ui/QuickAddModal';
+import FilterModal, { Filters } from '../../components/map/FilterModal';
 import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +28,7 @@ import {
   filterWithinRadius,
   getClosestRestaurants,
 } from '../../utils/geo';
+import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const MAX_ZOOM_OUT = 0.1;
@@ -47,6 +49,13 @@ export default function MapScreen() {
     [],
   );
   const [mapHeading, setMapHeading] = useState(0);
+  const [filters, setFilters] = useState<Filters>({
+    cuisine: null,
+    minRating: null,
+    onlyBookmarks: false,
+    inAppReviewsOnly: false,
+  });
+  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
   // Suppress unused variable warning as hasLocationPermission is reserved for future fallback triggers.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,6 +67,20 @@ export default function MapScreen() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const filteredRestaurants = useMemo(() => {
+    let list = filterRestaurants(restaurants, {
+      cuisine: filters.cuisine,
+      minRating: filters.minRating,
+      inAppReviewsOnly: filters.inAppReviewsOnly,
+    });
+
+    if (filters.onlyBookmarks) {
+      list = list.filter((r) => bookmarkedIds.has(r.id.toString()));
+    }
+
+    return list;
+  }, [restaurants, filters, bookmarkedIds]);
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
@@ -237,14 +260,18 @@ export default function MapScreen() {
 
   const handleQuickAddPress = () => {
     if (userLocation) {
-      const closest = getClosestRestaurants(restaurants, userLocation, 4);
+      const closest = getClosestRestaurants(
+        filteredRestaurants,
+        userLocation,
+        4,
+      );
       setQuickAddRestaurants(closest);
     } else if (mapRegion) {
       const center = {
         latitude: mapRegion.latitude,
         longitude: mapRegion.longitude,
       };
-      const closest = getClosestRestaurants(restaurants, center, 4);
+      const closest = getClosestRestaurants(filteredRestaurants, center, 4);
       setQuickAddRestaurants(closest);
     }
     setQuickAddVisible(true);
@@ -281,17 +308,21 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.floatingHeader} pointerEvents="box-none">
-        <SearchBar
-          onPlaceSelect={handleSearchSelect}
-          userLocation={
-            mapRegion
-              ? {
-                  latitude: mapRegion.latitude,
-                  longitude: mapRegion.longitude,
-                }
-              : undefined
-          }
-        />
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <SearchBar
+              onPlaceSelect={handleSearchSelect}
+              userLocation={
+                mapRegion
+                  ? {
+                      latitude: mapRegion.latitude,
+                      longitude: mapRegion.longitude,
+                    }
+                  : undefined
+              }
+            />
+          </View>
+        </View>
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
@@ -299,7 +330,7 @@ export default function MapScreen() {
         <>
           <RestaurantMap
             mapRef={mapRef}
-            restaurants={restaurants}
+            restaurants={filteredRestaurants}
             selectedRestaurant={selectedRestaurant}
             onRestaurantSelect={handleRestaurantSelect}
             onMapPress={() => {
@@ -324,6 +355,7 @@ export default function MapScreen() {
             style={[styles.fab, styles.compassFab]}
             onPress={handleCompassPress}
             testID="compass-button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <CompassIcon rotation={-mapHeading} />
           </TouchableOpacity>
@@ -332,10 +364,11 @@ export default function MapScreen() {
             style={[
               styles.fab,
               styles.invertedFab,
-              selectedRestaurant ? { bottom: 190 } : { bottom: 100 },
+              selectedRestaurant ? { bottom: 250 } : { bottom: 100 },
             ]}
             onPress={handleMyLocationPress}
             testID="my-location-button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <MaterialCommunityIcons
               name="crosshairs-gps"
@@ -347,17 +380,36 @@ export default function MapScreen() {
           <TouchableOpacity
             style={[
               styles.fab,
-              selectedRestaurant ? { bottom: 120 } : { bottom: 30 },
+              styles.invertedFab,
+              styles.smallFab,
+              styles.filterFab,
+            ]}
+            onPress={() => setFilterModalVisible(true)}
+            testID="filter-button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons
+              name="filter-variant"
+              size={22}
+              color={COLORS.text}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.fab,
+              selectedRestaurant ? { bottom: 320 } : { bottom: 30 },
             ]}
             onPress={handleQuickAddPress}
             testID="quick-add-fab"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <MaterialCommunityIcons name="plus" size={30} color="#fff" />
           </TouchableOpacity>
         </>
       ) : (
         <RestaurantList
-          restaurants={restaurants}
+          restaurants={filteredRestaurants}
           bookmarkedIds={bookmarkedIds}
           onPressReview={handleReviewPress}
           onToggleBookmark={handleToggleBookmark}
@@ -375,6 +427,13 @@ export default function MapScreen() {
         }}
         onClose={() => setQuickAddVisible(false)}
       />
+
+      <FilterModal
+        visible={isFilterModalVisible}
+        initialFilters={filters}
+        onApply={(newFilters) => setFilters(newFilters)}
+        onClose={() => setFilterModalVisible(false)}
+      />
     </View>
   );
 }
@@ -390,6 +449,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100, // Ensure search dropdown overlays the map
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.padding,
   },
   center: {
     flex: 1,
@@ -410,6 +474,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
+    zIndex: 101, // Force FABs above the floatingHeader (zIndex: 100)
   },
   invertedFab: {
     backgroundColor: COLORS.surface,
@@ -423,5 +488,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // Strips the primary color inherited from styles.fab
     elevation: 0, // Strips the inherited shadow
     shadowOpacity: 0, // Strips the inherited shadow
+  },
+  smallFab: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  filterFab: {
+    top: 184,
   },
 });
