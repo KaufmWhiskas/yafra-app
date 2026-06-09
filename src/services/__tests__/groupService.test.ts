@@ -117,7 +117,13 @@ describe("Group Service", () => {
       members: [{ user_id: "u1" }],
     });
     // @ts-expect-error: custom mock property not on root client
-    expect(supabase.select).toHaveBeenCalledWith("*, members:group_members(*)");
+    expect(supabase.select).toHaveBeenCalledWith(`
+      *, 
+      members:group_members(
+        *,
+        profiles(username)
+      )
+    `);
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.eq).toHaveBeenCalledWith("id", "1");
   });

@@ -18,7 +18,9 @@ type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
   'GroupDetailScreen'
 >;
-type GroupWithMembers = Group & { members: GroupMember[] };
+type GroupWithMembers = Group & {
+  members: (GroupMember & { profiles: { username: string } })[];
+};
 
 export default function GroupDetailScreen() {
   const route = useRoute<GroupDetailScreenRouteProp>();
@@ -73,7 +75,7 @@ export default function GroupDetailScreen() {
         styles.container,
         {
           paddingTop: Math.max(insets.top, 16),
-          paddingBottom: Math.max(insets.bottom, 16),
+          paddingBottom: Math.max(insets.bottom, 16) + 24,
         },
       ]}
     >
@@ -96,7 +98,9 @@ export default function GroupDetailScreen() {
         renderItem={({ item }) => (
           <View style={styles.memberCard}>
             <Text style={styles.memberText}>
-              {item.user_id} - {item.role} ({item.weight})
+              {/* Safely render the nested username, falling back to ID if missing */}
+              {item.profiles?.username || item.user_id} - {item.role} (
+              {item.weight})
             </Text>
           </View>
         )}

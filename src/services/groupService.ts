@@ -81,13 +81,21 @@ export async function leaveGroup(
  */
 export async function fetchGroupDetails(
   groupId: string,
-): Promise<Group & { members: GroupMember[] }> {
+): Promise<
+  Group & { members: (GroupMember & { profiles: { username: string } })[] }
+> {
   const { data, error } = await supabase
     .from("groups")
-    .select("*, members:group_members(*)")
+    .select(`
+      *, 
+      members:group_members(
+        *,
+        profiles(username)
+      )
+    `)
     .eq("id", groupId)
     .single();
 
   if (error) throw error;
-  return data as Group & { members: GroupMember[] };
+  return data as any; // We cast to any here purely because Supabase nested types get highly complex, we will rely on the Promise return type.
 }

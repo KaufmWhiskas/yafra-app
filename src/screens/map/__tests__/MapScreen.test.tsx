@@ -11,10 +11,6 @@ import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
 import MapView from 'react-native-maps';
 
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, left: 0, bottom: 0, right: 0 }),
-}));
-
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurants: jest.fn().mockResolvedValue([
     {

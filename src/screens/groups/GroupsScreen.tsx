@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -60,8 +61,12 @@ export default function GroupsScreen() {
       setCreateModalVisible(false);
       setNewGroupName('');
       loadGroups();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create group', error);
+      Alert.alert(
+        'Cannot Create Group',
+        error.message || 'An unknown error occurred.',
+      );
     }
   };
 
@@ -72,8 +77,12 @@ export default function GroupsScreen() {
       setJoinModalVisible(false);
       setInviteCode('');
       loadGroups();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to join group', error);
+      Alert.alert(
+        'Cannot Join Group',
+        error.message || 'An unknown error occurred.',
+      );
     }
   };
 
