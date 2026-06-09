@@ -134,6 +134,8 @@ describe("Group Service", () => {
 
   it("createOneTimeInvite inserts a row into the group_invites table and returns the code", async () => {
     // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({ data: [], error: null });
+    // @ts-expect-error: custom mock property not on root client
     (supabase.insert as jest.Mock).mockResolvedValueOnce({ error: null });
 
     const result = await createOneTimeInvite("group_1", "user_123");
@@ -148,6 +150,7 @@ describe("Group Service", () => {
         created_by: "user_123",
         code: expect.any(String),
         max_uses: 1,
+        expires_at: expect.any(String),
       }),
     );
   });

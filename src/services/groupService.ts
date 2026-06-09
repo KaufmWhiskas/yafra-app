@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Group, GroupMember } from "../types";
+import { Group, GroupInvite, GroupMember } from "../types";
 
 /**
  * Retrieves all groups the authenticated user is a member of.
@@ -151,7 +151,26 @@ export async function createOneTimeInvite(
   groupId: string,
   createdBy: string,
 ): Promise<string> {
+  const { data: activeInvites, error: countError } = await supabase
+    .from("group_invites")
+    .select("id, used_count, max_uses, expires_at")
+    .eq("group_id", groupId);
+
+  if (countError) throw countError;
+
+  const currentCount = (activeInvites || []).filter(
+    (inv) =>
+      inv.used_count < inv.max_uses &&
+      (!inv.expires_at || new Date(inv.expires_at) > new Date()),
+  ).length;
+
+  if (currentCount >= 10) {
+    throw new Error("Maximum of 10 active invites reached.");
+  }
+
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString();
 
   const { error } = await supabase
     .from("group_invites")
@@ -160,8 +179,29 @@ export async function createOneTimeInvite(
       created_by: createdBy,
       code: inviteCode,
       max_uses: 1,
+      expires_at: expiresAt,
     });
 
   if (error) throw error;
   return inviteCode;
+}
+
+/**
+ * Retrieves active one-time invite codes for a specific group.
+ */
+export async function fetchActiveInvites(
+  groupId: string,
+): Promise<GroupInvite[]> {
+  const { data, error } = await supabase
+    .from("group_invites")
+    .select(`*, profiles(username)`)
+    .eq("group_id", groupId);
+
+  if (error) throw error;
+
+  return (data || []).filter(
+    (inv: any) =>
+      inv.used_count < inv.max_uses &&
+      (!inv.expires_at || new Date(inv.expires_at) > new Date()),
+  ) as GroupInvite[];
 }

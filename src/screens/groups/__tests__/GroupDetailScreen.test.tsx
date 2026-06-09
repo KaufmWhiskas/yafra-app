@@ -1,12 +1,17 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import GroupDetailScreen from '../GroupDetailScreen';
-import { fetchGroupDetails, createOneTimeInvite } from '../../../services/groupService';
+import {
+  fetchGroupDetails,
+  createOneTimeInvite,
+  fetchActiveInvites,
+} from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
 jest.mock('../../../services/groupService', () => ({
   fetchGroupDetails: jest.fn(),
   createOneTimeInvite: jest.fn(),
+  fetchActiveInvites: jest.fn(),
 }));
 
 jest.mock('@react-navigation/native', () => {
@@ -34,6 +39,7 @@ const flushMicrotasks = async (): Promise<void> => {
 describe('GroupDetailScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (fetchActiveInvites as jest.Mock).mockResolvedValue([]);
   });
 
   it('fetches and displays group name, invite code, and members on mount', async () => {
@@ -128,5 +134,33 @@ describe('GroupDetailScreen', () => {
     await flushMicrotasks();
 
     expect(queryByText('Generate Temporary Invite')).toBeNull();
+  });
+
+  it('fetches and displays active invite codes for the owner', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'owner_user' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'The Elite Squad',
+      created_by: 'owner_user',
+      permanent_invite_code: 'ELITE123',
+      members: [],
+    });
+    (fetchActiveInvites as jest.Mock).mockResolvedValue([
+      {
+        id: 'inv_1',
+        code: 'TEMP99',
+        expires_at: new Date(Date.now() + 86400000).toISOString(),
+        profiles: { username: 'owner_user' },
+      },
+    ]);
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    expect(fetchActiveInvites).toHaveBeenCalledWith('group_1');
+    expect(getByText('TEMP99')).toBeTruthy();
+    expect(getByText('Created by: owner_user')).toBeTruthy();
   });
 });

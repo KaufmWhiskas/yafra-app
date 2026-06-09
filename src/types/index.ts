@@ -30,6 +30,18 @@ export interface GroupMember {
   joined_at: string; // ISO 8601 string
 }
 
+export interface GroupInvite {
+  id: string;
+  group_id: string;
+  created_by: string;
+  code: string;
+  max_uses: number;
+  used_count: number;
+  expires_at: string;
+  created_at: string;
+  profiles?: { username: string };
+}
+
 export interface Review {
   id: string;
   restaurant_id: string;

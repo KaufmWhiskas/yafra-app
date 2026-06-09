@@ -5,14 +5,17 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import {
   fetchGroupDetails,
   createOneTimeInvite,
+  fetchActiveInvites,
 } from '../../services/groupService';
-import { Group, GroupMember } from '../../types';
+import { Group, GroupMember, GroupInvite } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
@@ -35,6 +38,7 @@ export default function GroupDetailScreen() {
   const [group, setGroup] = useState<GroupWithMembers | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tempCode, setTempCode] = useState<string | null>(null);
+  const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
 
   const insets = useSafeAreaInsets();
 
@@ -42,12 +46,16 @@ export default function GroupDetailScreen() {
     try {
       const data = await fetchGroupDetails(groupId);
       setGroup(data);
+      if (user?.id === data.created_by) {
+        const invites = await fetchActiveInvites(groupId);
+        setActiveInvites(invites);
+      }
     } catch (error) {
       console.error('Failed to load group details', error);
     } finally {
       setIsLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,8 +68,14 @@ export default function GroupDetailScreen() {
     try {
       const code = await createOneTimeInvite(groupId, user.id);
       setTempCode(code);
-    } catch (error) {
+      const invites = await fetchActiveInvites(groupId);
+      setActiveInvites(invites);
+    } catch (error: any) {
       console.error('Failed to generate temp invite', error);
+      Alert.alert(
+        'Cannot Generate Invite',
+        error.message || 'An unknown error occurred.',
+      );
     }
   };
 
@@ -134,6 +148,31 @@ export default function GroupDetailScreen() {
           {tempCode && (
             <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
           )}
+
+          {activeInvites.length > 0 && (
+            <View style={styles.invitesContainer}>
+              <Text style={styles.invitesTitle}>Active Temporary Invites</Text>
+              <ScrollView
+                style={styles.invitesScrollArea}
+                nestedScrollEnabled={true}
+              >
+                {activeInvites.map((inv) => (
+                  <View key={inv.id} style={styles.inviteCard}>
+                    <Text style={styles.inviteCode}>{inv.code}</Text>
+                    <View>
+                      <Text style={styles.inviteMeta}>
+                        Created by: {inv.profiles?.username || 'Unknown'}
+                      </Text>
+                      <Text style={styles.inviteMeta}>
+                        Expires: {new Date(inv.expires_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           <TouchableOpacity style={styles.deleteButton}>
             <Text style={styles.deleteButtonText}>Delete Group</Text>
           </TouchableOpacity>
@@ -190,6 +229,7 @@ const styles = StyleSheet.create({
   memberText: { fontSize: 16 },
   ownerControls: {
     marginTop: SIZES.padding,
+    flexShrink: 1,
   },
   generateButton: {
     backgroundColor: COLORS.primary,
@@ -210,6 +250,32 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
     fontWeight: 'bold',
   },
+  invitesContainer: {
+    marginTop: SIZES.padding,
+    flexShrink: 1,
+  },
+  invitesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SIZES.base,
+  },
+  invitesScrollArea: {
+    maxHeight: 180,
+  },
+  inviteCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.base,
+    marginBottom: SIZES.base,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  inviteCode: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary },
+  inviteMeta: { fontSize: 14, color: COLORS.textLight, textAlign: 'right' },
   deleteButton: {
     backgroundColor: COLORS.danger,
     padding: SIZES.padding,
