@@ -364,6 +364,16 @@ describe('GroupDetailScreen', () => {
       promoteBtn.onPress();
     });
 
+    const confirmCalls = (Alert.alert as jest.Mock).mock.calls;
+    const confirmButtons = confirmCalls[1][2];
+    const confirmPromoteBtn = confirmButtons.find(
+      (b: { text: string; onPress: () => void }) => b.text === 'Promote',
+    );
+
+    await act(async () => {
+      confirmPromoteBtn.onPress();
+    });
+
     // 4. Assert that the service was invoked with correct relational mutations
     expect(updateMemberRole).toHaveBeenCalledWith(
       'group_1',
@@ -400,6 +410,16 @@ describe('GroupDetailScreen', () => {
 
     await act(async () => {
       kickBtn.onPress();
+    });
+
+    const confirmCalls = (Alert.alert as jest.Mock).mock.calls;
+    const confirmButtons = confirmCalls[1][2];
+    const confirmKickBtn = confirmButtons.find(
+      (b: { text: string; onPress: () => void }) => b.text === 'Kick',
+    );
+
+    await act(async () => {
+      confirmKickBtn.onPress();
     });
 
     expect(removeGroupMember).toHaveBeenCalledWith('group_1', 'target_user');

@@ -6,7 +6,10 @@ import { Group, GroupInvite, GroupMember, GroupRole } from "../types";
  * Relies on Row Level Security (RLS) to inherently filter results.
  */
 export async function fetchMyGroups(userId: string): Promise<Group[]> {
-  const { data, error } = await supabase.from("groups").select("*");
+  const { data, error } = await supabase
+    .from("groups")
+    .select("*, group_members!inner(user_id)")
+    .eq("group_members.user_id", userId);
 
   if (error) throw error;
   return data as Group[];

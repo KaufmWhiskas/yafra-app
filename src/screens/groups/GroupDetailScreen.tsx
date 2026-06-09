@@ -162,13 +162,26 @@ export default function GroupDetailScreen() {
     if (member.role === 'member' || member.role === 'trusted') {
       actions.push({
         text: 'Promote to Admin',
-        onPress: async () => {
-          try {
-            await updateMemberRole(groupId, member.user_id, 'admin');
-            loadGroupDetails();
-          } catch (error) {
-            console.warn('Failed to promote member:', error);
-          }
+        onPress: () => {
+          // Double Safety Confirmation
+          Alert.alert(
+            'Confirm Promotion',
+            `Are you sure you want to make ${member.profiles?.username || member.user_id} an Admin?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Promote',
+                onPress: async () => {
+                  try {
+                    await updateMemberRole(groupId, member.user_id, 'admin');
+                    loadGroupDetails();
+                  } catch (error) {
+                    console.warn('Failed to promote member:', error);
+                  }
+                },
+              },
+            ],
+          );
         },
       });
     }
@@ -193,13 +206,27 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Kick from Group',
         style: 'destructive',
-        onPress: async () => {
-          try {
-            await removeGroupMember(groupId, member.user_id);
-            loadGroupDetails();
-          } catch (error) {
-            console.warn('Failed to kick member:', error);
-          }
+        onPress: () => {
+          // Double Safety Confirmation
+          Alert.alert(
+            'Confirm Kick',
+            `Are you sure you want to remove ${member.profiles?.username || member.user_id} from the group?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Kick',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await removeGroupMember(groupId, member.user_id);
+                    loadGroupDetails();
+                  } catch (error) {
+                    console.warn('Failed to kick member:', error);
+                  }
+                },
+              },
+            ],
+          );
         },
       });
     }

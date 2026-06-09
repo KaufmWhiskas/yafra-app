@@ -31,20 +31,27 @@ describe("Group Service", () => {
   });
 
   it("fetchMyGroups returns a list of groups the user belongs to", async () => {
-    // We mock a flat select() chain because the database RLS policies handle the actual
-    // user filtering dynamically based on the session token, so the mock simply resolves
-    // immediately with the simulated payload.
     // @ts-expect-error: custom mock property not on root client
-    (supabase.select as jest.Mock).mockResolvedValueOnce({
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({
       data: [{ id: "1", name: "Test Group" }],
       error: null,
     });
 
     const result = await fetchMyGroups("user_123");
+
     expect(result).toEqual([{ id: "1", name: "Test Group" }]);
     expect(supabase.from).toHaveBeenCalledWith("groups");
     // @ts-expect-error: custom mock property not on root client
-    expect(supabase.select).toHaveBeenCalledWith("*");
+    expect(supabase.select).toHaveBeenCalledWith(
+      "*, group_members!inner(user_id)",
+    );
+    // @ts-expect-error: custom mock property not on root client
+    expect(supabase.eq).toHaveBeenCalledWith(
+      "group_members.user_id",
+      "user_123",
+    );
   });
 
   it("createGroup inserts a new group and returns the created record", async () => {
