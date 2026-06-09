@@ -1,8 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  TextInput,
+} from 'react-native';
 import { COLORS, SIZES } from '../../constants/theme';
-import { logout } from '../../services/authService';
-import { fetchUserProfile, UserProfile } from '../../services/profileService';
+import {
+  logout,
+  fetchUserProfile,
+  updateUsername,
+} from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
 import { Restaurant } from '../../types';
@@ -21,42 +31,61 @@ export default function ProfileScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [username, setUsername] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [bookmarks, setBookmarks] = useState<Restaurant[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await fetchUserProfile();
-        setProfileData(data);
-      } catch (error) {
-        console.error('Failed to load user profile:', error);
-      }
-    };
-
-    loadProfile();
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      if (user?.id) {
-        getBookmarks(user.id)
-          .then((data) => {
-            // Deduplicate the array by ID to prevent flatlist key errors
-            const uniqueBookmarks = Array.from(
-              new Map(data.map((item) => [item.id.toString(), item])).values(),
-            );
+      const loadProfileData = async () => {
+        if (!user?.id) return;
+        setIsLoading(true);
+        try {
+          const profile = await fetchUserProfile(user.id);
+          if (profile?.username) {
+            setUsername(profile.username);
+          }
 
-            setBookmarks(uniqueBookmarks);
-            setBookmarkedIds(
-              new Set(uniqueBookmarks.map((b) => b.id.toString())),
-            );
-          })
-          .catch((error) => console.error('Failed to load bookmarks:', error));
-      }
+          const data = await getBookmarks(user.id);
+          const uniqueBookmarks = Array.from(
+            new Map(data.map((item) => [item.id.toString(), item])).values(),
+          );
+          setBookmarks(uniqueBookmarks);
+          setBookmarkedIds(
+            new Set(uniqueBookmarks.map((b) => b.id.toString())),
+          );
+        } catch (error) {
+          console.error('Failed to load profile data:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadProfileData();
     }, [user?.id]),
   );
+
+  const handleSaveUsername = async () => {
+    if (!user?.id || !username.trim()) return;
+    try {
+      await updateUsername(user.id, username.trim());
+      Alert.alert('Success', 'Username updated successfully!');
+    } catch (error) {
+      const err = error as Error & { code?: string };
+      if (err.code === '23505') {
+        Alert.alert(
+          'Username Taken',
+          'That username is already in use. Please choose another.',
+        );
+      } else {
+        Alert.alert(
+          'Update Failed',
+          err.message || 'An error occurred while updating username.',
+        );
+      }
+    }
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -99,18 +128,31 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Profile Screen</Text>
+        <Text style={styles.title}>Profile Settings</Text>
 
-        {profileData ? (
-          <View style={styles.statsContainer}>
-            <Text style={styles.emailText}>{profileData.email}</Text>
-            <Text style={styles.statsText}>
-              Total Reviews: {profileData.reviewCount}
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        )}
+        <View style={styles.settingsContainer}>
+          <Text style={styles.label}>Username</Text>
+          {isLoading ? (
+            <Text style={styles.loadingText}>Loading...</Text>
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Choose a username"
+              placeholderTextColor={COLORS.textLight}
+              autoCapitalize="none"
+            />
+          )}
+
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveUsername}
+            disabled={isLoading || !username.trim()}
+          >
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.logoutButton}
@@ -154,31 +196,50 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: SIZES.padding,
   },
-  statsContainer: {
-    alignItems: 'center',
-    marginBottom: SIZES.padding * 2,
+  settingsContainer: {
+    width: '100%',
     backgroundColor: COLORS.surface,
     padding: SIZES.padding,
     borderRadius: SIZES.radius,
+    marginBottom: SIZES.padding * 2,
     elevation: 2,
-    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  emailText: {
+  label: {
     fontSize: 16,
+    fontWeight: '600',
     color: COLORS.text,
     marginBottom: 8,
   },
-  statsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: SIZES.base,
+    padding: 12,
+    marginBottom: SIZES.padding,
+    color: COLORS.text,
+    fontSize: 16,
   },
   loadingText: {
-    marginBottom: SIZES.padding * 2,
-    color: COLORS.text,
+    marginBottom: SIZES.padding,
+    color: COLORS.textLight,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+    padding: 12,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: COLORS.surface,
+    fontSize: 16,
+    fontWeight: '600',
   },
   logoutButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.textLight, // muted color for logout since Save is primary
     borderRadius: SIZES.radius,
     padding: SIZES.padding,
     alignItems: 'center',

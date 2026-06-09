@@ -62,3 +62,37 @@ export async function logout() {
     throw error;
   }
 }
+
+/**
+ * Fetches the user's profile information from the profiles table.
+ * @param userId - The UUID of the authenticated user.
+ * @returns The user's profile data.
+ */
+export async function fetchUserProfile(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Updates the user's username in the profiles table.
+ * @param userId - The UUID of the authenticated user.
+ * @param username - The new username.
+ * @returns The updated profile data.
+ */
+export async function updateUsername(userId: string, username: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ username })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

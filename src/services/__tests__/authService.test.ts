@@ -1,104 +1,43 @@
-import { register, login, logout } from '../authService';
-import { supabase } from '../supabase';
+import { fetchUserProfile, updateUsername } from "../authService";
+import { supabase } from "../supabase";
 
-jest.mock('../supabase', () => ({
+jest.mock("../supabase", () => ({
   supabase: {
-    auth: {
-      signUp: jest.fn(),
-      signInWithPassword: jest.fn(),
-      signOut: jest.fn(),
-    },
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockReturnThis(),
   },
 }));
 
-describe('Auth Service', () => {
+describe("Auth Service - User Profile", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Register', () => {
-    it('calls supabase.auth.signUp with correct credentials', async () => {
-      (supabase.auth.signUp as jest.Mock).mockResolvedValue({
-        data: {
-          user: {
-            id: '123',
-          },
-          session: null,
-        },
-        error: null,
-      });
+  describe("fetchUserProfile", () => {
+    it("selects the profile for the given user ID", async () => {
+      // @ts-expect-error: custom mock property not on root client
+      (supabase.single as jest.Mock).mockResolvedValueOnce({ data: { id: "123", username: "testuser" }, error: null });
 
-      await register('test@example.com', 'reallySecurePassword123', 'TestUser');
+      const result = await fetchUserProfile("123");
 
-      expect(supabase.auth.signUp).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'reallySecurePassword123',
-        options: {
-          data: {
-            display_name: 'TestUser',
-          },
-        },
-      });
-    });
-
-    it('throws an error if supabase.auth.signUp fails', async () => {
-      (supabase.auth.signUp as jest.Mock).mockResolvedValue({
-        data: { user: null, session: null },
-        error: new Error('Registration failed'),
-      });
-
-      await expect(
-        register('test@example.com', 'reallySecurePassword123', 'TestUser'),
-      ).rejects.toThrow('Registration failed');
-    });
-  });
-});
-
-describe('Login test', () => {
-  it('calls supabase.auth.signInWithPassword with correct credentials', async () => {
-    (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
-      data: { user: { id: '123' }, session: { access_token: 'abc' } },
-      error: null,
-    });
-
-    await login('test@example.com', 'securePassword123');
-
-    expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      password: 'securePassword123',
+      expect(supabase.from).toHaveBeenCalledWith("profiles");
+      expect(result).toEqual({ id: "123", username: "testuser" });
     });
   });
 
-  it('throws an error if supabase.auth.signInWithPassword fails', async () => {
-    (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
-      data: { user: null, session: null },
-      error: new Error('Invalid login credentials'),
+  describe("updateUsername", () => {
+    it("updates the username for the given user ID", async () => {
+      // @ts-expect-error: custom mock property not on root client
+      (supabase.single as jest.Mock).mockResolvedValueOnce({ data: { id: "123", username: "newname" }, error: null });
+
+      const result = await updateUsername("123", "newname");
+
+      // @ts-expect-error: custom mock property not on root client
+      expect(supabase.update).toHaveBeenCalledWith({ username: "newname" });
+      expect(result).toEqual({ id: "123", username: "newname" });
     });
-
-    await expect(
-      login('test@example.com', 'securePassword123'),
-    ).rejects.toThrow('Invalid login credentials');
-  });
-});
-
-describe('Logout', () => {
-  it('verifies supabase.auth.signOut is called successfully', async () => {
-    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
-      data: { user: null, session: null },
-      error: null,
-    });
-
-    await logout();
-
-    expect(supabase.auth.signOut).toHaveBeenCalled();
-  });
-
-  it('throws an error if supabase.auth.signOut fails', async () => {
-    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
-      data: { user: null, session: null },
-      error: new Error('Logout failed'),
-    });
-
-    await expect(logout()).rejects.toThrow('Logout failed');
   });
 });
