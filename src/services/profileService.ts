@@ -19,20 +19,32 @@ export const fetchUserProfile = async (): Promise<UserProfile> => {
 
 export const fetchUserStats = async (
   userId: string,
-): Promise<{ reviewCount: number; bookmarkCount: number }> => {
-  const [reviewsResponse, bookmarksResponse] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("bookmarks")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-  ]);
+): Promise<
+  {
+    username: string;
+    reviewCount: number;
+    uniqueRestaurantsVisited: number;
+    bookmarkCount: number;
+  }
+> => {
+  const [profileResponse, reviewsResponse, bookmarksResponse] = await Promise
+    .all([
+      supabase.from("profiles").select("username").eq("id", userId).single(),
+      supabase.from("reviews").select("restaurant_id").eq("user_id", userId),
+      supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq(
+        "user_id",
+        userId,
+      ),
+    ]);
+
+  const rawReviews = reviewsResponse.data || [];
+  const uniqueVisited =
+    new Set(rawReviews.map((r) => r.restaurant_id?.toString())).size;
 
   return {
-    reviewCount: reviewsResponse.count || 0,
+    username: profileResponse.data?.username || "Unknown User",
+    reviewCount: rawReviews.length,
+    uniqueRestaurantsVisited: uniqueVisited,
     bookmarkCount: bookmarksResponse.count || 0,
   };
 };

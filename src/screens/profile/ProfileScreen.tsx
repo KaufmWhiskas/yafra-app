@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { fetchUserStats } from '../../services/profileService';
+import { supabase } from '../../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
-  // @ts-expect-error: signOut is dynamically injected or available on context
-  const { session, signOut } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const user = session?.user;
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ reviewCount: 0, bookmarkCount: 0 });
+  const [stats, setStats] = useState({
+    username: '',
+    reviewCount: 0,
+    uniqueRestaurantsVisited: 0,
+    bookmarkCount: 0,
+  });
 
   useEffect(() => {
     const loadStats = async () => {
@@ -35,9 +49,8 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      if (signOut) {
-        await signOut();
-      }
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
       Alert.alert(
         'Logout Failed',
@@ -47,44 +60,47 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}>
       <View style={styles.header}>
-        <View style={styles.avatarPlaceholder}>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity style={styles.notificationButton}>
           <MaterialCommunityIcons
-            name="account"
-            size={40}
-            color={COLORS.textLight}
-          />
-        </View>
-        <Text style={styles.username}>{user?.email || 'User'}</Text>
-      </View>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {isLoading ? '-' : stats.reviewCount}
-          </Text>
-          <Text style={styles.statLabel}>Reviews</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {isLoading ? '-' : stats.bookmarkCount}
-          </Text>
-          <Text style={styles.statLabel}>Bookmarks</Text>
-        </View>
-      </View>
-
-      <View style={styles.actionMenu}>
-        <TouchableOpacity
-          style={styles.actionItem}
-          onPress={() => navigation.navigate('WantToVisitScreen')}
-        >
-          <MaterialCommunityIcons
-            name="bookmark-outline"
+            name="bell-outline"
             size={24}
             color={COLORS.text}
           />
-          <Text style={styles.actionText}>Want to Visit</Text>
+          <View style={styles.notificationBadge} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity style={styles.identityCard}>
+          <View style={styles.avatarPlaceholder}>
+            <MaterialCommunityIcons
+              name="account"
+              size={40}
+              color={COLORS.textLight}
+            />
+          </View>
+          <View style={styles.identityInfo}>
+            <Text style={styles.username}>
+              {isLoading ? 'Loading...' : stats.username}
+            </Text>
+            <View style={styles.statsContainer}>
+              <Text style={styles.statText}>
+                <Text style={styles.statBold}>
+                  {isLoading ? '-' : stats.reviewCount}
+                </Text>{' '}
+                Reviews
+              </Text>
+              <Text style={styles.statText}>
+                <Text style={styles.statBold}>
+                  {isLoading ? '-' : stats.uniqueRestaurantsVisited}
+                </Text>{' '}
+                Restaurants Visited
+              </Text>
+            </View>
+          </View>
           <MaterialCommunityIcons
             name="chevron-right"
             size={24}
@@ -92,33 +108,106 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionItem}>
-          <MaterialCommunityIcons
-            name="cog-outline"
-            size={24}
-            color={COLORS.text}
-          />
-          <Text style={styles.actionText}>Settings</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={24}
-            color={COLORS.textLight}
-          />
-        </TouchableOpacity>
+        <View style={styles.gridRow}>
+          <TouchableOpacity style={[styles.gridCard, styles.gridCardLeft]}>
+            <MaterialCommunityIcons
+              name="trophy-outline"
+              size={32}
+              color={COLORS.primary}
+              style={styles.gridIcon}
+            />
+            <Text style={styles.gridCardTitle}>Achievements</Text>
+            <Text style={styles.gridCardSub}>Coming soon</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionItem, styles.logoutItem]}
-          onPress={handleLogout}
-          testID="logout-button"
-        >
-          <MaterialCommunityIcons
-            name="logout"
-            size={24}
-            color={COLORS.danger}
-          />
-          <Text style={[styles.actionText, styles.logoutText]}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.gridCard, styles.gridCardRight]}
+            onPress={() => navigation.navigate('WantToVisitScreen')}
+          >
+            <MaterialCommunityIcons
+              name="bookmark-outline"
+              size={32}
+              color={COLORS.bookmark}
+              style={styles.gridIcon}
+            />
+            <Text style={styles.gridCardTitle}>Want to Visit</Text>
+            <Text style={styles.gridCardSub}>
+              {isLoading ? '-' : stats.bookmarkCount} places
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionMenu}>
+          <TouchableOpacity style={styles.actionItem}>
+            <MaterialCommunityIcons
+              name="account-edit-outline"
+              size={24}
+              color={COLORS.text}
+            />
+            <Text style={styles.actionText}>Profile Edit</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem}>
+            <MaterialCommunityIcons
+              name="cog-outline"
+              size={24}
+              color={COLORS.text}
+            />
+            <Text style={styles.actionText}>Settings</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem}>
+            <MaterialCommunityIcons
+              name="shield-account-outline"
+              size={24}
+              color={COLORS.text}
+            />
+            <Text style={styles.actionText}>Privacy</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionItem}>
+            <MaterialCommunityIcons
+              name="information-outline"
+              size={24}
+              color={COLORS.text}
+            />
+            <Text style={styles.actionText}>About</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionItem, styles.logoutItem]}
+            onPress={handleLogout}
+            testID="logout-button"
+          >
+            <MaterialCommunityIcons
+              name="logout"
+              size={24}
+              color={COLORS.danger}
+            />
+            <Text style={[styles.actionText, styles.logoutText]}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -129,60 +218,135 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SIZES.padding * 2,
+    justifyContent: 'space-between',
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: SIZES.padding,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  notificationButton: {
+    padding: 8,
     backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingTop: SIZES.padding * 4,
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.danger,
+  },
+  scrollContent: {
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: SIZES.padding * 2,
+  },
+  identityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    marginBottom: SIZES.padding,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SIZES.base,
+    marginRight: SIZES.padding,
+  },
+  identityInfo: {
+    flex: 1,
   },
   username: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
+    marginBottom: 4,
   },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: SIZES.padding,
-    backgroundColor: COLORS.surface,
-    marginBottom: SIZES.padding,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  statsContainer: {
+    flexDirection: 'column',
   },
-  statBox: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  statLabel: {
+  statText: {
     fontSize: 14,
+    color: COLORS.textLight,
+  },
+  statBold: {
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SIZES.padding,
+  },
+  gridCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  gridCardLeft: {
+    marginRight: SIZES.base,
+  },
+  gridCardRight: {
+    marginLeft: SIZES.base,
+  },
+  gridIcon: {
+    marginBottom: SIZES.base,
+  },
+  gridCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  gridCardSub: {
+    fontSize: 12,
     color: COLORS.textLight,
   },
   actionMenu: {
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
+    borderRadius: SIZES.radius,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: SIZES.padding,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
   actionText: {
     flex: 1,
