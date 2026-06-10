@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
+import { resolveRestaurantDisplay } from '../../utils/displayState';
 
 interface RestaurantCardProps {
   item: Restaurant;
@@ -35,10 +36,52 @@ export default function RestaurantCard({
   onToggleBookmark,
   distance,
 }: RestaurantCardProps) {
+  const displayState = resolveRestaurantDisplay(item, isBookmarked);
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{item.name}</Text>
+        <View style={styles.titleContainer}>
+          <View
+            testID="restaurant-badge"
+            style={[
+              styles.badge,
+              {
+                backgroundColor: displayState.isHollow
+                  ? '#ffffff'
+                  : displayState.color,
+                borderColor: displayState.color,
+              },
+            ]}
+          >
+            {displayState.display === 'bookmark-icon' ? (
+              <MaterialCommunityIcons
+                name="bookmark"
+                size={12}
+                color={displayState.isHollow ? displayState.color : '#fff'}
+              />
+            ) : displayState.display === 'unrated-icon' ? (
+              <MaterialCommunityIcons
+                name={getIconForCuisine(item.cuisine)}
+                size={12}
+                color={displayState.isHollow ? displayState.color : '#fff'}
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.badgeText,
+                  {
+                    color: displayState.isHollow ? displayState.color : '#fff',
+                  },
+                ]}
+              >
+                {displayState.display}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.title}>{item.name}</Text>
+        </View>
+
         {onToggleBookmark && (
           <TouchableOpacity
             onPress={onToggleBookmark}
@@ -75,7 +118,9 @@ export default function RestaurantCard({
 
         {item.rating ? (
           <Text style={styles.googleRatingText}>
-            {item.rating.toFixed(1)} ★ (Google)
+            {/* @ts-expect-error: extended google place property not yet strongly typed in interface */}
+            {item.rating.toFixed(1)} ★ ({item.user_ratings_total || 0} Google
+            Reviews)
           </Text>
         ) : null}
 
@@ -112,9 +157,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  title: {
+  titleContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: 8,
+    flexWrap: 'wrap',
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginRight: 8,
+    marginBottom: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 36,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  title: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,

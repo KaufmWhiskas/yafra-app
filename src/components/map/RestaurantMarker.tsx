@@ -4,6 +4,7 @@ import { Marker } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Restaurant } from '../../types';
 import { COLORS } from '../../constants/theme';
+import { resolveRestaurantDisplay } from '../../utils/displayState';
 
 /**
  * Base64 string representing a 1x1 transparent PNG pixel.
@@ -34,17 +35,6 @@ const getIconForCuisine = (
   if (c.includes('cafe') || c.includes('coffee')) return 'coffee';
   if (c.includes('sushi')) return 'food-variant';
   return 'silverware-fork-knife';
-};
-
-/**
- * Determines the background color of a marker based on its rating and bookmark state.
- */
-const getMarkerColor = (appRating?: number, isBookmarked?: boolean): string => {
-  if (isBookmarked) return COLORS.bookmark;
-  if (!appRating) return '#808080';
-  if (appRating >= 4.0) return COLORS.success;
-  if (appRating >= 3.0) return COLORS.warning;
-  return '#808080';
 };
 
 /**
@@ -81,8 +71,15 @@ function RestaurantMarker({
     return () => clearTimeout(timer);
   }, [isSelected, isBookmarked, scaleAnim]);
 
-  const displayRating = restaurant.app_rating || restaurant.rating;
-  const baseBgColor = getMarkerColor(restaurant.app_rating, isBookmarked);
+  const displayState = resolveRestaurantDisplay(restaurant, isBookmarked);
+  const bgColor = displayState.isHollow ? '#ffffff' : displayState.color;
+  const borderColor = isSelected
+    ? COLORS.primary
+    : displayState.isHollow
+      ? displayState.color
+      : '#fff';
+  const textColor = displayState.isHollow ? displayState.color : '#fff';
+
   const iconName = getIconForCuisine(restaurant.cuisine);
 
   const width = isSelected ? 56 : 42;
@@ -117,17 +114,30 @@ function RestaurantMarker({
                 width,
                 height,
                 borderRadius,
-                backgroundColor: baseBgColor,
-                borderColor: isSelected ? COLORS.primary : '#fff',
+                backgroundColor: bgColor,
+                borderColor,
                 borderWidth: isSelected ? 3 : 2,
                 transform: [{ scale: scaleAnim }],
               },
             ]}
+            testID="marker-inner"
           >
-            {displayRating ? (
-              <Text style={styles.markerText}>{displayRating.toFixed(1)}</Text>
+            {displayState.display === 'bookmark-icon' ? (
+              <MaterialCommunityIcons
+                name="bookmark"
+                size={14}
+                color={textColor}
+              />
+            ) : displayState.display === 'unrated-icon' ? (
+              <MaterialCommunityIcons
+                name={iconName}
+                size={14}
+                color={textColor}
+              />
             ) : (
-              <MaterialCommunityIcons name={iconName} size={14} color="#fff" />
+              <Text style={[styles.markerText, { color: textColor }]}>
+                {displayState.display}
+              </Text>
             )}
           </Animated.View>
         </View>
