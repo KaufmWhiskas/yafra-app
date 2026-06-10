@@ -1,15 +1,22 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  View,
+  Text,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { COLORS, SIZES } from '../../constants/theme';
 import { submitReview } from '../../services/reviewService';
+import ScoreSelector from '../../components/review/ScoreSelector';
+import EatInToggle from '../../components/review/EatInToggle';
+import TagSelector from '../../components/review/TagSelector';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 /**
  * Screen allowing users to submit a rating and text review for a restaurant.
@@ -19,60 +26,55 @@ export default function ReviewScreen() {
   const navigation = useNavigation();
   const { restaurant } = route.params;
 
-  const [rating, setRating] = useState('');
-  const [priceValueRating, setPriceValueRating] = useState('');
-  const [reviewText, setReviewText] = useState('');
+  const [isAdvanced, setIsAdvanced] = useState(false);
+  const [rating, setRating] = useState<number>(3.0);
+  const [priceScore, setPriceScore] = useState<number>(3.0);
+  const [isEatIn, setIsEatIn] = useState<boolean>(true);
+  const [description, setDescription] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showAllTags, setShowAllTags] = useState(false);
+
+  const [availableTags, setAvailableTags] = useState<string[]>([
+    'Great Value',
+    'Overpriced',
+    'Hidden Gem',
+    'Crowded',
+    'Fast Service',
+    'Slow Service',
+    'Vegan Options',
+    'Gluten-Free',
+    'Spicy',
+    'Comfort Food',
+    'Date Night',
+    'Family Friendly',
+    'Loud',
+    'Cozy',
+    'Outdoor Seating',
+    'Pet Friendly',
+  ]);
   const [error, setError] = useState('');
 
-  const formatRatingInput = (text: string) => {
-    let cleaned = text.replace(/[^0-9.]/g, '');
+  const displayedTags = showAllTags ? availableTags : availableTags.slice(0, 6);
 
-    const parts = cleaned.split('.');
-    if (parts.length > 2) {
-      cleaned = parts[0] + '.' + parts.slice(1).join('');
-    }
-
-    if (cleaned.includes('.')) {
-      const [whole, decimal] = cleaned.split('.');
-      cleaned = `${whole}.${decimal.slice(0, 1)}`;
-    }
-
-    if (parseFloat(cleaned) > 5) {
-      return '5.0';
-    }
-
-    return cleaned;
-  };
-
-  /**
-   * Validates inputs and "submits" the review before navigating back.
-   */
   const handleSubmitReview = async () => {
-    const parsedRating = parseFloat(rating);
-    const parsedPriceValue = parseFloat(priceValueRating);
-
     if (
-      isNaN(parsedRating) ||
-      parsedRating < 1 ||
-      parsedRating > 5 ||
-      isNaN(parsedPriceValue) ||
-      parsedPriceValue < 1 ||
-      parsedPriceValue > 5
+      rating < 1.0 ||
+      rating > 5.0 ||
+      (isAdvanced && (priceScore < 1.0 || priceScore > 5.0))
     ) {
-      setError(
-        'Ratings must be between 1.0 and 5.0 with up to one decimal place.',
-      );
+      setError('Rating must be between 1.0 and 5.0.');
       return;
     }
 
     setError('');
-
     try {
       await submitReview({
         restaurantId: restaurant.id.toString(),
-        rating: parsedRating,
-        priceValueRating: parsedPriceValue,
-        reviewText,
+        rating,
+        priceScore: isAdvanced ? priceScore : 0, // 0 or null if simple mode
+        isEatIn: isAdvanced ? isEatIn : true,
+        tags: isAdvanced ? selectedTags : [],
+        description: isAdvanced ? description : '',
       });
 
       navigation.goBack();
@@ -81,55 +83,115 @@ export default function ReviewScreen() {
     }
   };
 
+  const handleToggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
+  };
+
+  const handleAddCustomTag = (tag: string) => {
+    if (!availableTags.includes(tag))
+      setAvailableTags((prev) => [tag, ...prev]);
+    if (!selectedTags.includes(tag)) setSelectedTags((prev) => [...prev, tag]);
+    setShowAllTags(true);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Review for {restaurant.name}</Text>
-
-      <Text style={styles.label}>Overall Rating</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Rating (1.0 - 5.0)"
-        keyboardType="numeric"
-        value={rating}
-        onChangeText={(text) => setRating(formatRatingInput(text))}
-      />
-
-      <Text style={styles.label}>Price/Value</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Price/Value (1.0 - 5.0)"
-        keyboardType="numeric"
-        value={priceValueRating}
-        onChangeText={(text) => setPriceValueRating(formatRatingInput(text))}
-      />
-
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Write your review here..."
-        value={reviewText}
-        onChangeText={setReviewText}
-        multiline
-        numberOfLines={4}
-      />
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <TouchableOpacity
-        style={styles.submitButton}
-        onPress={handleSubmitReview}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.submitButtonText}>Submit Review</Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.title}>Review for {restaurant.name}</Text>
+
+        <ScoreSelector
+          value={rating}
+          onChange={setRating}
+          label="Overall Score"
+        />
+
+        <TouchableOpacity
+          style={styles.advancedToggle}
+          onPress={() => setIsAdvanced(!isAdvanced)}
+        >
+          <Text style={styles.advancedToggleText}>
+            {isAdvanced
+              ? 'Show Simple Review'
+              : 'Add Advanced Details (Optional)'}
+          </Text>
+          <MaterialCommunityIcons
+            name={isAdvanced ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={COLORS.primary}
+          />
+        </TouchableOpacity>
+
+        {isAdvanced && (
+          <View style={styles.advancedSection}>
+            <View style={styles.divider} />
+
+            <ScoreSelector
+              value={priceScore}
+              onChange={setPriceScore}
+              label="Price / Value"
+            />
+
+            <Text style={styles.sectionTitle}>Experience Type</Text>
+            <EatInToggle isEatIn={isEatIn} onChange={setIsEatIn} />
+
+            <View style={styles.tagsHeader}>
+              <Text style={styles.sectionTitle}>Tags & Highlights</Text>
+              {!showAllTags && (
+                <TouchableOpacity onPress={() => setShowAllTags(true)}>
+                  <Text style={styles.showMoreText}>Show All...</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TagSelector
+              tags={displayedTags}
+              selected={selectedTags}
+              onToggle={handleToggleTag}
+              onAddCustom={handleAddCustomTag}
+            />
+
+            <Text style={styles.sectionTitle}>Detailed Notes</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="What did you love or hate?"
+              placeholderTextColor={COLORS.textLight}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSubmitReview}
+        >
+          <Text style={styles.submitButtonText}>Submit Review</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: SIZES.padding,
     backgroundColor: COLORS.background,
-    justifyContent: 'center',
+  },
+  scrollContent: {
+    padding: SIZES.padding,
+    paddingBottom: SIZES.padding * 3,
   },
   title: {
     fontSize: 24,
@@ -138,23 +200,38 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.padding * 2,
     color: COLORS.text,
   },
-  label: {
-    marginRight: 10,
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  starsContainer: {
+  advancedToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SIZES.padding,
+    justifyContent: 'center',
+    paddingVertical: SIZES.padding,
+    marginTop: SIZES.base,
   },
-  starSelected: {
-    fontSize: 30,
-    color: '#FFD700',
+  advancedToggleText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 16,
+    marginRight: 4,
   },
-  starUnselected: {
-    fontSize: 30,
-    color: '#CCCCCC',
+  advancedSection: { marginTop: SIZES.base },
+  divider: { height: 1, backgroundColor: '#eee', marginBottom: SIZES.padding },
+  sectionTitle: {
+    marginTop: SIZES.base,
+    marginBottom: SIZES.base,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  tagsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: SIZES.padding,
+  },
+  showMoreText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginBottom: SIZES.base,
   },
   errorText: {
     color: COLORS.danger,

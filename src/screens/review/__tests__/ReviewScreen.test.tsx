@@ -7,26 +7,28 @@ jest.mock('../../../services/reviewService', () => ({
   submitReview: jest.fn(),
 }));
 
-const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   return {
     ...jest.requireActual('@react-navigation/native'),
     useNavigation: () => ({
-      navigate: mockNavigate,
       goBack: mockGoBack,
     }),
     useRoute: () => ({
       params: {
         restaurant: {
-          id: '123',
+          id: 'rest_123',
           name: 'Test Burger Joint',
         },
       },
     }),
   };
 });
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
 
 describe('ReviewScreen', () => {
   beforeEach(() => {
@@ -35,33 +37,56 @@ describe('ReviewScreen', () => {
 
   it('renders the restaurant name passed via route parameters', () => {
     const { getByText } = render(<ReviewScreen />);
-
     expect(getByText(/Test Burger Joint/i)).toBeTruthy();
   });
 
-  it('calls submitReview with the correct payload and navigates back on success', async () => {
-    (submitReview as jest.Mock).mockResolvedValueOnce({ error: null });
-    const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
+  it('calls submitReview with simple mode payload by default', async () => {
+    (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
+    const { getByText } = render(<ReviewScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Rating (1.0 - 5.0)'), '4.5');
-    fireEvent.changeText(
-      getByPlaceholderText('Price/Value (1.0 - 5.0)'),
-      '3.5',
-    );
-    fireEvent.changeText(
-      getByPlaceholderText('Write your review here...'),
-      'Amazing burgers!',
-    );
-
-    const submitButton = getByText('Submit Review');
-    fireEvent.press(submitButton);
+    fireEvent.press(getByText('Submit Review'));
 
     await waitFor(() => {
       expect(submitReview).toHaveBeenCalledWith({
-        restaurantId: '123',
+        restaurantId: 'rest_123',
+        rating: 3.0,
+        priceScore: 0,
+        isEatIn: true,
+        tags: [],
+        description: '',
+      });
+      expect(mockGoBack).toHaveBeenCalled();
+    });
+  });
+
+  it('calls submitReview with advanced payload when expanded', async () => {
+    (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
+    const { getByText, getAllByTestId, getByPlaceholderText } = render(
+      <ReviewScreen />,
+    );
+
+    // Expand Advanced details section
+    fireEvent.press(getByText('Add Advanced Details (Optional)'));
+
+    const scoreInputs = getAllByTestId('score-input');
+    fireEvent.changeText(scoreInputs[0], '4.5');
+    fireEvent.changeText(scoreInputs[1], '3.5');
+
+    fireEvent.press(getByText('Takeaway'));
+
+    const notesInput = getByPlaceholderText('What did you love or hate?');
+    fireEvent.changeText(notesInput, 'Amazing burgers!');
+
+    fireEvent.press(getByText('Submit Review'));
+
+    await waitFor(() => {
+      expect(submitReview).toHaveBeenCalledWith({
+        restaurantId: 'rest_123',
         rating: 4.5,
-        priceValueRating: 3.5,
-        reviewText: 'Amazing burgers!',
+        priceScore: 3.5,
+        isEatIn: false,
+        tags: [],
+        description: 'Amazing burgers!',
       });
       expect(mockGoBack).toHaveBeenCalled();
     });
@@ -71,49 +96,11 @@ describe('ReviewScreen', () => {
     (submitReview as jest.Mock).mockRejectedValueOnce(
       new Error('Network Error'),
     );
-    const { getByText, findByText, getByPlaceholderText } = render(
-      <ReviewScreen />,
-    );
-
-    // We MUST provide valid ratings to bypass the guard clause!
-    fireEvent.changeText(getByPlaceholderText('Rating (1.0 - 5.0)'), '4.0');
-    fireEvent.changeText(
-      getByPlaceholderText('Price/Value (1.0 - 5.0)'),
-      '4.0',
-    );
+    const { getByText, findByText } = render(<ReviewScreen />);
 
     fireEvent.press(getByText('Submit Review'));
 
     expect(await findByText('Network Error')).toBeTruthy();
     expect(mockGoBack).not.toHaveBeenCalled();
-  });
-
-  it('displays a validation error if ratings are missing', async () => {
-    const { getByText, findByText } = render(<ReviewScreen />);
-
-    fireEvent.press(getByText('Submit Review'));
-
-    expect(
-      await findByText(
-        'Ratings must be between 1.0 and 5.0 with up to one decimal place.',
-      ),
-    ).toBeTruthy();
-
-    expect(submitReview).not.toHaveBeenCalled();
-  });
-
-  it('prevents typing invalid rating formats (forces one decimal, max 5.0)', () => {
-    const { getByPlaceholderText } = render(<ReviewScreen />);
-
-    const ratingInput = getByPlaceholderText('Rating (1.0 - 5.0)');
-
-    fireEvent.changeText(ratingInput, '6');
-    expect(ratingInput.props.value).not.toBe('6');
-
-    fireEvent.changeText(ratingInput, '4.55');
-    expect(ratingInput.props.value).toBe('4.5');
-
-    fireEvent.changeText(ratingInput, 'abc');
-    expect(ratingInput.props.value).toBe('');
   });
 });
