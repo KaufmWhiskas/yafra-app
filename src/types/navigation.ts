@@ -1,4 +1,4 @@
-import { Restaurant } from './index';
+import { Restaurant } from "./index";
 
 export type RootStackParamList = {
   MainTabs: undefined;
@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Register: undefined;
   GroupDetailScreen: { groupId: string };
   WantToVisitScreen: undefined;
+  CollectionDetailScreen: { collectionId: string; collectionName: string };
 };
 
 export type TabParamList = {

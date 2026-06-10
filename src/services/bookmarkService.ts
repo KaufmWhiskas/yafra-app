@@ -29,6 +29,29 @@ export async function fetchCollections(
 }
 
 /**
+ * Fetches a user's bookmark collections along with the count of restaurants in each.
+ */
+export async function fetchCollectionSummaries(
+  userId: string,
+): Promise<(BookmarkCollection & { count: number })[]> {
+  const { data, error } = await supabase
+    .from("bookmark_collections")
+    .select("id, name, bookmarks(id)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return (data || []).map(
+    (c: { id: string; name: string; bookmarks?: { id: string }[] | null }) => ({
+      id: c.id,
+      name: c.name,
+      count: c.bookmarks ? c.bookmarks.length : 0,
+    }),
+  );
+}
+
+/**
  * Creates a new bookmark collection for the user.
  */
 export async function createCollection(
@@ -63,10 +86,21 @@ export async function toggleBookmarkInCollection(
       .eq("collection_id", collectionId);
     if (error) throw error;
   } else {
+    let targetCollectionId = collectionId;
+
+    // Fallback protection: If no collection ID is provided, locate the default Wishlist
+    if (!targetCollectionId) {
+      const collections = await fetchCollections(userId);
+      const wishlist = collections.find((c) => c.name === "Wishlist");
+      if (wishlist) {
+        targetCollectionId = wishlist.id;
+      }
+    }
+
     const { error } = await supabase.from("bookmarks").insert([{
       user_id: userId,
       restaurant_id: restaurantId.toString(),
-      collection_id: collectionId,
+      collection_id: targetCollectionId,
     }]);
     // Ignore unique constraint violations if accidentally clicked twice
     if (error && error.code !== "23505") throw error;

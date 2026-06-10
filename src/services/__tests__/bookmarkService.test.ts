@@ -1,6 +1,7 @@
 import {
   createCollection,
   fetchCollections,
+  fetchCollectionSummaries,
   fetchRestaurantSavedCollectionIds,
   fetchUserBookmarkedRestaurantIds,
   toggleBookmarkInCollection,
@@ -58,6 +59,37 @@ describe("bookmarkService", () => {
         { user_id: "user_123", name: "Wishlist" },
       ]);
       expect(result).toEqual([{ id: "c2", name: "Wishlist" }]);
+    });
+  });
+
+  describe("fetchCollectionSummaries", () => {
+    it("returns collections with their item counts", async () => {
+      // @ts-expect-error: custom mock property not on root client
+      (supabase.order as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            id: "c1",
+            name: "Favorites",
+            bookmarks: [{ id: "1" }, { id: "2" }],
+          },
+          { id: "c2", name: "Empty", bookmarks: [] },
+        ],
+        error: null,
+      });
+
+      const result = await fetchCollectionSummaries("user_123");
+      expect(supabase.from).toHaveBeenCalledWith("bookmark_collections");
+      // @ts-expect-error: custom mock property not on root client
+      expect(supabase.select).toHaveBeenCalledWith(
+        "id, name, bookmarks(id)",
+      );
+      // @ts-expect-error: custom mock property not on root client
+      expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
+
+      expect(result).toEqual([
+        { id: "c1", name: "Favorites", count: 2 },
+        { id: "c2", name: "Empty", count: 0 },
+      ]);
     });
   });
 
