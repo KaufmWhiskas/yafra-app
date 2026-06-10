@@ -1,179 +1,123 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  TextInput,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { COLORS, SIZES } from '../../constants/theme';
-import {
-  logout,
-  fetchUserProfile,
-  updateUsername,
-} from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
-import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
-import { Restaurant } from '../../types';
-import RestaurantList from '../../components/ui/RestaurantList';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { fetchUserStats } from '../../services/profileService';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-/**
- * Displays the user's profile information, statistics, and provides logout functionality.
- */
 export default function ProfileScreen() {
-  const { session } = useAuth();
+  // @ts-expect-error: signOut is dynamically injected or available on context
+  const { session, signOut } = useAuth();
   const user = session?.user;
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [bookmarks, setBookmarks] = useState<Restaurant[]>([]);
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [stats, setStats] = useState({ reviewCount: 0, bookmarkCount: 0 });
 
-  useFocusEffect(
-    useCallback(() => {
-      const loadProfileData = async () => {
-        if (!user?.id) return;
-        setIsLoading(true);
-        try {
-          const profile = await fetchUserProfile(user.id);
-          if (profile?.username) {
-            setUsername(profile.username);
-          }
-
-          const data = await getBookmarks(user.id);
-          const uniqueBookmarks = Array.from(
-            new Map(data.map((item) => [item.id.toString(), item])).values(),
-          );
-          setBookmarks(uniqueBookmarks);
-          setBookmarkedIds(
-            new Set(uniqueBookmarks.map((b) => b.id.toString())),
-          );
-        } catch (error) {
-          console.error('Failed to load profile data:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      loadProfileData();
-    }, [user?.id]),
-  );
-
-  const handleSaveUsername = async () => {
-    if (!user?.id || !username.trim()) return;
-    try {
-      await updateUsername(user.id, username.trim());
-      Alert.alert('Success', 'Username updated successfully!');
-    } catch (error) {
-      const err = error as Error & { code?: string };
-      if (err.code === '23505') {
-        Alert.alert(
-          'Username Taken',
-          'That username is already in use. Please choose another.',
-        );
-      } else {
-        Alert.alert(
-          'Update Failed',
-          err.message || 'An error occurred while updating username.',
-        );
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!user?.id) return;
+      try {
+        const data = await fetchUserStats(user.id);
+        setStats(data);
+      } catch (error) {
+        console.error('Failed to load stats', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  };
+    };
+    loadStats();
+  }, [user?.id]);
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
     try {
-      await logout();
+      if (signOut) {
+        await signOut();
+      }
     } catch (error) {
       Alert.alert(
         'Logout Failed',
         error instanceof Error ? error.message : 'An error occurred',
       );
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
-
-  const handleReviewPress = (restaurant: Restaurant) => {
-    navigation.navigate('ReviewScreen', { restaurant });
-  };
-
-  const handleToggleBookmark = async (restaurantId: string | number) => {
-    if (!user?.id) return;
-    const idStr = restaurantId.toString();
-
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(idStr)) next.delete(idStr);
-      else next.add(idStr);
-      return next;
-    });
-
-    setBookmarks((prev) => prev.filter((b) => b.id.toString() !== idStr));
-
-    try {
-      await toggleBookmark(restaurantId, user.id);
-    } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Profile Settings</Text>
-
-        <View style={styles.settingsContainer}>
-          <Text style={styles.label}>Username</Text>
-          {isLoading ? (
-            <Text style={styles.loadingText}>Loading...</Text>
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Choose a username"
-              placeholderTextColor={COLORS.textLight}
-              autoCapitalize="none"
-            />
-          )}
-
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSaveUsername}
-            disabled={isLoading || !username.trim()}
-          >
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          </TouchableOpacity>
+        <View style={styles.avatarPlaceholder}>
+          <MaterialCommunityIcons
+            name="account"
+            size={40}
+            color={COLORS.textLight}
+          />
         </View>
-
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          testID="logout-button"
-          disabled={isLoggingOut}
-        >
-          <Text style={styles.logoutButtonText}>
-            {isLoggingOut ? 'Logging Out...' : 'Logout'}
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.username}>{user?.email || 'User'}</Text>
       </View>
 
-      <View style={styles.listContainer}>
-        <Text style={styles.sectionTitle}>My Saved Places</Text>
-        <RestaurantList
-          restaurants={bookmarks}
-          bookmarkedIds={bookmarkedIds}
-          onPressReview={handleReviewPress}
-          onToggleBookmark={handleToggleBookmark}
-        />
+      <View style={styles.statsRow}>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>
+            {isLoading ? '-' : stats.reviewCount}
+          </Text>
+          <Text style={styles.statLabel}>Reviews</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>
+            {isLoading ? '-' : stats.bookmarkCount}
+          </Text>
+          <Text style={styles.statLabel}>Bookmarks</Text>
+        </View>
+      </View>
+
+      <View style={styles.actionMenu}>
+        <TouchableOpacity
+          style={styles.actionItem}
+          onPress={() => navigation.navigate('WantToVisitScreen')}
+        >
+          <MaterialCommunityIcons
+            name="bookmark-outline"
+            size={24}
+            color={COLORS.text}
+          />
+          <Text style={styles.actionText}>Want to Visit</Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={COLORS.textLight}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionItem}>
+          <MaterialCommunityIcons
+            name="cog-outline"
+            size={24}
+            color={COLORS.text}
+          />
+          <Text style={styles.actionText}>Settings</Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={COLORS.textLight}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionItem, styles.logoutItem]}
+          onPress={handleLogout}
+          testID="logout-button"
+        >
+          <MaterialCommunityIcons
+            name="logout"
+            size={24}
+            color={COLORS.danger}
+          />
+          <Text style={[styles.actionText, styles.logoutText]}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -182,84 +126,75 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: SIZES.padding + 20, // + 20 buffer for the status bar / notch
     backgroundColor: COLORS.background,
   },
   header: {
     alignItems: 'center',
-    paddingHorizontal: SIZES.padding,
-    width: '100%',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SIZES.padding,
-  },
-  settingsContainer: {
-    width: '100%',
+    paddingVertical: SIZES.padding * 2,
     backgroundColor: COLORS.surface,
-    padding: SIZES.padding,
-    borderRadius: SIZES.radius,
-    marginBottom: SIZES.padding * 2,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingTop: SIZES.padding * 4,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: SIZES.base,
-    padding: 12,
-    marginBottom: SIZES.padding,
-    color: COLORS.text,
-    fontSize: 16,
-  },
-  loadingText: {
-    marginBottom: SIZES.padding,
-    color: COLORS.textLight,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    padding: 12,
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: SIZES.base,
   },
-  saveButtonText: {
-    color: COLORS.surface,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    backgroundColor: COLORS.textLight, // muted color for logout since Save is primary
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    alignItems: 'center',
-    minWidth: 150,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  listContainer: {
-    flex: 1,
-    width: '100%',
-    marginTop: SIZES.padding,
-  },
-  sectionTitle: {
-    fontSize: 20,
+  username: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.text,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: SIZES.padding,
+    backgroundColor: COLORS.surface,
     marginBottom: SIZES.padding,
-    paddingHorizontal: SIZES.padding,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: COLORS.textLight,
+  },
+  actionMenu: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SIZES.padding,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  actionText: {
+    flex: 1,
+    fontSize: 16,
+    marginLeft: SIZES.padding,
+    color: COLORS.text,
+  },
+  logoutItem: {
+    borderBottomWidth: 0,
+  },
+  logoutText: {
+    color: COLORS.danger,
+    fontWeight: '600',
   },
 });

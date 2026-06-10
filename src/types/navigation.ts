@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   GroupDetailScreen: { groupId: string };
+  WantToVisitScreen: undefined;
 };
 
 export type TabParamList = {
