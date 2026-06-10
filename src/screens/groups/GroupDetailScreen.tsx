@@ -24,8 +24,10 @@ import {
   updatePermanentInvite,
   updateMemberRole,
   removeGroupMember,
+  fetchGroupRestaurants,
 } from '../../services/groupService';
-import { Group, GroupMember, GroupInvite } from '../../types';
+import { Group, GroupMember, GroupInvite, Restaurant } from '../../types';
+import RestaurantCard from '../../components/ui/RestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
@@ -51,6 +53,7 @@ export default function GroupDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [tempCode, setTempCode] = useState<string | null>(null);
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
+  const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
 
   const insets = useSafeAreaInsets();
 
@@ -62,6 +65,9 @@ export default function GroupDetailScreen() {
         const invites = await fetchActiveInvites(groupId);
         setActiveInvites(invites);
       }
+
+      const restaurants = await fetchGroupRestaurants(groupId);
+      setGroupRestaurants(restaurants);
     } catch (error) {
       console.error('Failed to load group details', error);
     } finally {
@@ -293,6 +299,30 @@ export default function GroupDetailScreen() {
           </View>
         </View>
       </View>
+
+      {groupRestaurants.length > 0 && (
+        <View style={{ marginBottom: SIZES.padding }}>
+          <Text style={styles.sectionTitle}>Group's Saved Restaurants</Text>
+          <FlatList
+            data={groupRestaurants}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={{ width: 280, marginRight: SIZES.padding }}>
+                <RestaurantCard
+                  item={item}
+                  onPressReview={() =>
+                    navigation.navigate('ReviewScreen', { restaurant: item })
+                  }
+                  isBookmarked={false}
+                  onToggleBookmark={() => {}}
+                />
+              </View>
+            )}
+          />
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>Members</Text>
       <FlatList

@@ -1,5 +1,11 @@
 import { supabase } from "./supabase";
-import { Group, GroupInvite, GroupMember, GroupRole } from "../types";
+import {
+  Group,
+  GroupInvite,
+  GroupMember,
+  GroupRole,
+  Restaurant,
+} from "../types";
 
 /**
  * Retrieves all groups the authenticated user is a member of.
@@ -287,33 +293,46 @@ export async function removeGroupMember(
 export async function fetchGroupSavedRestaurantIds(
   groupId: string,
 ): Promise<Set<string>> {
-  const { data, error } = await supabase
+  // 1. Get all user IDs in the group
+  const { data: members, error: memberError } = await supabase
     .from("group_members")
-    .select(`
-      user_id,
-      profiles (
-        bookmarks ( restaurant_id )
-      )
-    `)
+    .select("user_id")
     .eq("group_id", groupId);
 
-  if (error) throw error;
+  if (memberError) throw memberError;
+  if (!members || members.length === 0) return new Set();
+
+  const userIds = members.map((m) => m.user_id);
+
+  // 2. Fetch all bookmarks for those users
+  const { data: bookmarks, error: bookmarkError } = await supabase
+    .from("bookmarks")
+    .select("restaurant_id")
+    .in("user_id", userIds);
+
+  if (bookmarkError) throw bookmarkError;
 
   const restaurantIds = new Set<string>();
-
-  for (const member of data || []) {
-    // Accommodate array or object responses depending on foreign key cardinality
-    const profiles = Array.isArray(member.profiles)
-      ? member.profiles[0]
-      : member.profiles;
-    const bookmarks = profiles?.bookmarks || [];
-
-    for (const b of bookmarks) {
-      if (b.restaurant_id) {
-        restaurantIds.add(b.restaurant_id.toString());
-      }
-    }
+  for (const b of (bookmarks || [])) {
+    if (b.restaurant_id) restaurantIds.add(b.restaurant_id.toString());
   }
 
   return restaurantIds;
+}
+
+export async function fetchGroupRestaurants(
+  groupId: string,
+): Promise<Restaurant[]> {
+  const idsSet = await fetchGroupSavedRestaurantIds(groupId);
+  if (idsSet.size === 0) return [];
+
+  const idsArray = Array.from(idsSet);
+
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("*")
+    .in("id", idsArray);
+
+  if (error) throw error;
+  return data as Restaurant[];
 }

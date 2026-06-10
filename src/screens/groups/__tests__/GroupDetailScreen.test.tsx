@@ -9,6 +9,7 @@ import {
   updatePermanentInvite,
   updateMemberRole,
   removeGroupMember,
+  fetchGroupRestaurants,
 } from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -20,6 +21,7 @@ jest.mock('../../../services/groupService', () => ({
   updatePermanentInvite: jest.fn(),
   updateMemberRole: jest.fn(),
   removeGroupMember: jest.fn(),
+  fetchGroupRestaurants: jest.fn(),
 }));
 
 const mockNavigate = jest.fn();
@@ -53,6 +55,7 @@ describe('GroupDetailScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (fetchActiveInvites as jest.Mock).mockResolvedValue([]);
+    (fetchGroupRestaurants as jest.Mock).mockResolvedValue([]);
   });
 
   it('fetches and displays group name, invite code, and members on mount', async () => {
@@ -424,5 +427,28 @@ describe('GroupDetailScreen', () => {
 
     expect(removeGroupMember).toHaveBeenCalledWith('group_1', 'target_user');
     expect(fetchGroupDetails).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches and displays group restaurants', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'The Elite Squad',
+      created_by: 'user_1',
+      permanent_invite_code: 'ELITE123',
+      members: [],
+    });
+    (fetchGroupRestaurants as jest.Mock).mockResolvedValue([
+      { id: 'r1', name: 'Elite Pizza', cuisine: 'pizza', rating: 4.5 },
+    ]);
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    expect(fetchGroupRestaurants).toHaveBeenCalledWith('group_1');
+    expect(getByText("Group's Saved Restaurants")).toBeTruthy();
+    expect(getByText('Elite Pizza')).toBeTruthy();
   });
 });

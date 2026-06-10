@@ -3,6 +3,7 @@ import {
   createOneTimeInvite,
   deleteGroup,
   fetchGroupDetails,
+  fetchGroupRestaurants,
   fetchGroupSavedRestaurantIds,
   fetchMyGroups,
   joinGroupWithCode,
@@ -23,6 +24,7 @@ jest.mock("../supabase", () => ({
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
   },
 }));
 
@@ -279,34 +281,68 @@ describe("Group Service", () => {
   });
 
   it("fetchGroupSavedRestaurantIds returns a unique set of restaurant IDs saved by any group member", async () => {
-    // @ts-expect-error: custom mock property not on root client
+    // Mock Step 1: fetch group members
+    // @ts-expect-error: custom mock
     (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
-    // @ts-expect-error: custom mock property not on root client
+    // @ts-expect-error: custom mock
     (supabase.eq as jest.Mock).mockResolvedValueOnce({
-      data: [
-        {
-          user_id: "user_1",
-          profiles: {
-            bookmarks: [{ restaurant_id: "r1" }, { restaurant_id: "r2" }],
-          },
-        },
-        {
-          user_id: "user_2",
-          profiles: {
-            bookmarks: [{ restaurant_id: "r2" }, { restaurant_id: "r3" }],
-          },
-        },
-      ],
+      data: [{ user_id: "user_1" }, { user_id: "user_2" }],
+      error: null,
+    });
+
+    // Mock Step 2: fetch bookmarks using .in()
+    // @ts-expect-error: custom mock
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock
+    (supabase.in as jest.Mock).mockResolvedValueOnce({
+      data: [{ restaurant_id: "r1" }, { restaurant_id: "r2" }, {
+        restaurant_id: "r2",
+      }],
       error: null,
     });
 
     const result = await fetchGroupSavedRestaurantIds("group_1");
 
-    expect(supabase.from).toHaveBeenCalledWith("group_members");
+    expect(supabase.from).toHaveBeenNthCalledWith(1, "group_members");
+    expect(supabase.from).toHaveBeenNthCalledWith(2, "bookmarks");
+    // @ts-expect-error: custom mock
+    expect(supabase.in).toHaveBeenCalledWith("user_id", ["user_1", "user_2"]);
     expect(result).toBeInstanceOf(Set);
-    expect(result.size).toBe(3);
+    expect(result.size).toBe(2);
     expect(result.has("r1")).toBe(true);
     expect(result.has("r2")).toBe(true);
-    expect(result.has("r3")).toBe(true);
+  });
+
+  it("fetchGroupRestaurants returns a list of restaurant details for the group", async () => {
+    // @ts-expect-error: custom mock
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({
+      data: [{ user_id: "user_1" }],
+      error: null,
+    });
+
+    // @ts-expect-error: custom mock
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock
+    (supabase.in as jest.Mock).mockResolvedValueOnce({
+      data: [{ restaurant_id: "r1" }],
+      error: null,
+    });
+
+    // @ts-expect-error: custom mock
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock
+    (supabase.in as jest.Mock).mockResolvedValueOnce({
+      data: [{ id: "r1", name: "Saved Pizza" }],
+      error: null,
+    });
+
+    const result = await fetchGroupRestaurants("group_1");
+
+    expect(supabase.from).toHaveBeenNthCalledWith(3, "restaurants");
+    // @ts-expect-error: custom mock
+    expect(supabase.in).toHaveBeenNthCalledWith(2, "id", ["r1"]);
+    expect(result).toEqual([{ id: "r1", name: "Saved Pizza" }]);
   });
 });
