@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { Restaurant } from "../types";
 
 export interface BookmarkCollection {
   id: string;
@@ -49,6 +50,24 @@ export async function fetchCollectionSummaries(
       count: c.bookmarks ? c.bookmarks.length : 0,
     }),
   );
+}
+
+/**
+ * Fetches the full restaurant records saved within a specific collection.
+ */
+export async function fetchCollectionRestaurants(
+  collectionId: string,
+): Promise<Restaurant[]> {
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select("*, restaurants(*)")
+    .eq("collection_id", collectionId);
+
+  if (error) throw error;
+
+  return (data || [])
+    .map((row: { restaurants: unknown }) => row.restaurants as Restaurant)
+    .filter((r) => r != null);
 }
 
 /**
