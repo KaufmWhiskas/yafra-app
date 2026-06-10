@@ -4,6 +4,7 @@ import { Restaurant } from '../../types';
 import RestaurantCard from './RestaurantCard';
 import { SIZES } from '../../constants/theme';
 import { calculateDistance, Coordinate } from '../../utils/geo';
+import { getCategoryDisplayName } from '../../utils/categories';
 
 interface RestaurantListProps {
   restaurants: Restaurant[];
@@ -38,7 +39,10 @@ export default function RestaurantList({
 
         return (
           <RestaurantCard
-            item={item}
+            item={{
+              ...item,
+              cuisine: getCategoryDisplayName(item.cuisine),
+            }}
             onPressReview={() => onPressReview(item)}
             isBookmarked={bookmarkedIds.has(item.id.toString())}
             onToggleBookmark={() => onToggleBookmark(item.id)}

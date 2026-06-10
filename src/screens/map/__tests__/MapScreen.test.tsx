@@ -27,6 +27,11 @@ jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurantDetails: jest.fn().mockResolvedValue({}),
 }));
 
+jest.mock('../../../services/groupService', () => ({
+  fetchGroupSavedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+  fetchMyGroups: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('../../../services/bookmarkService', () => ({
   toggleBookmark: jest.fn(),
   getBookmarks: jest.fn().mockResolvedValue([]),

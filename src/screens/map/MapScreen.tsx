@@ -17,6 +17,7 @@ import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
+import { fetchGroupSavedRestaurantIds } from '../../services/groupService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -30,6 +31,7 @@ import {
 } from '../../utils/geo';
 import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getCategoryDisplayName } from '../../utils/categories';
 
 const MAX_ZOOM_OUT = 0.1;
 
@@ -54,6 +56,7 @@ export default function MapScreen() {
     minRating: null,
     onlyBookmarks: false,
     inAppReviewsOnly: false,
+    targetGroupId: null,
   });
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
@@ -68,6 +71,22 @@ export default function MapScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const [groupRestaurantIds, setGroupRestaurantIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    if (filters.targetGroupId) {
+      fetchGroupSavedRestaurantIds(filters.targetGroupId)
+        .then((ids) => setGroupRestaurantIds(ids))
+        .catch((err) =>
+          console.error('Failed to fetch group restaurant IDs:', err),
+        );
+    } else {
+      setGroupRestaurantIds(new Set());
+    }
+  }, [filters.targetGroupId]);
+
   const filteredRestaurants = useMemo(() => {
     let list = filterRestaurants(restaurants, {
       cuisine: filters.cuisine,
@@ -79,8 +98,12 @@ export default function MapScreen() {
       list = list.filter((r) => bookmarkedIds.has(r.id.toString()));
     }
 
+    if (filters.targetGroupId) {
+      list = list.filter((r) => groupRestaurantIds.has(r.id.toString()));
+    }
+
     return list;
-  }, [restaurants, filters, bookmarkedIds]);
+  }, [restaurants, filters, bookmarkedIds, groupRestaurantIds]);
 
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
@@ -331,7 +354,14 @@ export default function MapScreen() {
           <RestaurantMap
             mapRef={mapRef}
             restaurants={filteredRestaurants}
-            selectedRestaurant={selectedRestaurant}
+            selectedRestaurant={
+              selectedRestaurant
+                ? {
+                    ...selectedRestaurant,
+                    cuisine: getCategoryDisplayName(selectedRestaurant.cuisine),
+                  }
+                : null
+            }
             onRestaurantSelect={handleRestaurantSelect}
             onMapPress={() => {
               requestAnimationFrame(() => {

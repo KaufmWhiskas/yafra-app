@@ -12,6 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FilterGroup } from '../../constants/categories';
+import { useAuth } from '../../context/AuthContext';
+import { fetchMyGroups } from '../../services/groupService';
+import { Group } from '../../types';
 
 const FILTER_GROUPS: FilterGroup[] = [
   'Fast Food',
@@ -31,6 +34,7 @@ export interface Filters {
   minRating: number | null;
   onlyBookmarks: boolean;
   inAppReviewsOnly: boolean;
+  targetGroupId: string | null;
 }
 
 interface FilterModalProps {
@@ -48,12 +52,22 @@ export default function FilterModal({
 }: FilterModalProps) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+  const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (visible) {
       setFilters(initialFilters);
+
+      if (session?.user?.id) {
+        fetchMyGroups(session.user.id)
+          .then((data) => setGroups(data))
+          .catch((err) =>
+            console.error('Failed to load groups for filter', err),
+          );
+      }
     }
-  }, [visible, initialFilters]);
+  }, [visible, initialFilters, session?.user?.id]);
 
   const handleApply = () => {
     onApply(filters);
@@ -149,6 +163,47 @@ export default function FilterModal({
                   ]}
                 >
                   {rating ? `${rating}+` : 'Any'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.sectionTitle}>Filter by Group Activity</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipRow}
+            contentContainerStyle={styles.chipRowContent}
+          >
+            <TouchableOpacity
+              style={[styles.chip, !filters.targetGroupId && styles.chipActive]}
+              onPress={() => setFilters({ ...filters, targetGroupId: null })}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  !filters.targetGroupId && styles.chipTextActive,
+                ]}
+              >
+                None
+              </Text>
+            </TouchableOpacity>
+            {groups.map((g) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[
+                  styles.chip,
+                  filters.targetGroupId === g.id && styles.chipActive,
+                ]}
+                onPress={() => setFilters({ ...filters, targetGroupId: g.id })}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    filters.targetGroupId === g.id && styles.chipTextActive,
+                  ]}
+                >
+                  {g.name}
                 </Text>
               </TouchableOpacity>
             ))}

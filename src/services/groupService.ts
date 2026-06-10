@@ -279,3 +279,41 @@ export async function removeGroupMember(
 
   if (error) throw error;
 }
+
+/**
+ * Retrieves all unique restaurant IDs saved (bookmarked) by any member of a specific group.
+ * Utilizes PostgREST relational joins to traverse from group_members -> profiles -> bookmarks.
+ */
+export async function fetchGroupSavedRestaurantIds(
+  groupId: string,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("group_members")
+    .select(`
+      user_id,
+      profiles (
+        bookmarks ( restaurant_id )
+      )
+    `)
+    .eq("group_id", groupId);
+
+  if (error) throw error;
+
+  const restaurantIds = new Set<string>();
+
+  for (const member of data || []) {
+    // Accommodate array or object responses depending on foreign key cardinality
+    const profiles = Array.isArray(member.profiles)
+      ? member.profiles[0]
+      : member.profiles;
+    const bookmarks = profiles?.bookmarks || [];
+
+    for (const b of bookmarks) {
+      if (b.restaurant_id) {
+        restaurantIds.add(b.restaurant_id.toString());
+      }
+    }
+  }
+
+  return restaurantIds;
+}

@@ -3,6 +3,7 @@ import {
   createOneTimeInvite,
   deleteGroup,
   fetchGroupDetails,
+  fetchGroupSavedRestaurantIds,
   fetchMyGroups,
   joinGroupWithCode,
   leaveGroup,
@@ -275,5 +276,37 @@ describe("Group Service", () => {
     expect(supabase.eq).toHaveBeenCalledWith("group_id", "group_1");
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
+  });
+
+  it("fetchGroupSavedRestaurantIds returns a unique set of restaurant IDs saved by any group member", async () => {
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
+    // @ts-expect-error: custom mock property not on root client
+    (supabase.eq as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          user_id: "user_1",
+          profiles: {
+            bookmarks: [{ restaurant_id: "r1" }, { restaurant_id: "r2" }],
+          },
+        },
+        {
+          user_id: "user_2",
+          profiles: {
+            bookmarks: [{ restaurant_id: "r2" }, { restaurant_id: "r3" }],
+          },
+        },
+      ],
+      error: null,
+    });
+
+    const result = await fetchGroupSavedRestaurantIds("group_1");
+
+    expect(supabase.from).toHaveBeenCalledWith("group_members");
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(3);
+    expect(result.has("r1")).toBe(true);
+    expect(result.has("r2")).toBe(true);
+    expect(result.has("r3")).toBe(true);
   });
 });
