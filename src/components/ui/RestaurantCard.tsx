@@ -46,7 +46,7 @@ export default function RestaurantCard({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <MaterialCommunityIcons
-              name={isBookmarked ? 'heart' : 'heart-outline'}
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
               size={24}
               color={isBookmarked ? COLORS.bookmark : COLORS.text}
             />

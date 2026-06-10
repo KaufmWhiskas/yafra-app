@@ -6,7 +6,6 @@ import {
   fetchRestaurantDetails,
 } from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
-import { toggleBookmark } from '../../../services/bookmarkService';
 import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
 import MapView from 'react-native-maps';
@@ -33,8 +32,11 @@ jest.mock('../../../services/groupService', () => ({
 }));
 
 jest.mock('../../../services/bookmarkService', () => ({
-  toggleBookmark: jest.fn(),
-  getBookmarks: jest.fn().mockResolvedValue([]),
+  fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+  fetchCollections: jest.fn().mockResolvedValue([]),
+  fetchRestaurantSavedCollectionIds: jest.fn().mockResolvedValue(new Set()),
+  createCollection: jest.fn(),
+  toggleBookmarkInCollection: jest.fn(),
 }));
 
 jest.mock('../../../context/AuthContext', () => ({
@@ -166,8 +168,8 @@ describe('MapScreen Toggle Feature', () => {
     expect(queryByTestId('list-view')).toBeNull();
   });
 
-  it('calls toggleBookmark when the bookmark icon is pressed in List View', async () => {
-    const { getByText, getAllByTestId } = render(<MapScreen />);
+  it('opens the CollectionModal when the bookmark icon is pressed in List View', async () => {
+    const { getByText, getAllByTestId, findByText } = render(<MapScreen />);
     await flushMicrotasks();
 
     fireEvent.press(getByText('List View'));
@@ -177,7 +179,7 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(bookmarkBtns[0]);
     await flushMicrotasks();
 
-    expect(toggleBookmark).toHaveBeenCalledWith('1', 'user_123');
+    expect(await findByText('Save to Collection')).toBeTruthy();
   });
 
   it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
@@ -274,8 +276,8 @@ describe('MapScreen Toggle Feature', () => {
     expect(elements.length).toBeGreaterThan(0);
   });
 
-  it('passes toggleBookmark down to the floating preview card', async () => {
-    const { getAllByTestId, getByTestId } = render(<MapScreen />);
+  it('passes bookmark toggle down to the floating preview card and opens CollectionModal', async () => {
+    const { getAllByTestId, getByTestId, findByText } = render(<MapScreen />);
     await flushMicrotasks();
     await flushMicrotasks();
 
@@ -284,7 +286,12 @@ describe('MapScreen Toggle Feature', () => {
     await flushMicrotasks();
 
     expect(getByTestId('floating-preview-card')).toBeTruthy();
-    expect(getByTestId('bookmark-button')).toBeTruthy();
+
+    const bookmarkBtn = getByTestId('bookmark-button');
+    fireEvent.press(bookmarkBtn);
+    await flushMicrotasks();
+
+    expect(await findByText('Save to Collection')).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {

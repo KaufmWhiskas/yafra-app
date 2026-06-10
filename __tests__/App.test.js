@@ -44,6 +44,7 @@ jest.mock('../src/services/restaurantService', () => ({
 jest.mock('../src/services/bookmarkService', () => ({
   getBookmarks: jest.fn().mockResolvedValue([]),
   toggleBookmark: jest.fn(),
+  fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
 }));
 
 describe('<App />', () => {

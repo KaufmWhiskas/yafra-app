@@ -16,7 +16,7 @@ import FilterModal, { Filters } from '../../components/map/FilterModal';
 import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
-import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
+import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import { fetchGroupReviewedRestaurantIds } from '../../services/groupService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +32,7 @@ import {
 import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getCategoryDisplayName } from '../../utils/categories';
+import CollectionModal from '../../components/ui/CollectionModal';
 
 const MAX_ZOOM_OUT = 0.1;
 
@@ -50,6 +51,8 @@ export default function MapScreen() {
   const [quickAddRestaurants, setQuickAddRestaurants] = useState<Restaurant[]>(
     [],
   );
+  const [selectedRestaurantForBookmark, setSelectedRestaurantForBookmark] =
+    useState<string | number | null>(null);
   const [mapHeading, setMapHeading] = useState(0);
   const [filters, setFilters] = useState<Filters>({
     cuisine: null,
@@ -254,31 +257,18 @@ export default function MapScreen() {
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
-        getBookmarks(user.id)
-          .then((bookmarks) => {
-            setBookmarkedIds(new Set(bookmarks.map((b) => b.id.toString())));
+        fetchUserBookmarkedRestaurantIds(user.id)
+          .then((ids) => {
+            setBookmarkedIds(ids);
           })
           .catch((error) => console.error('Failed to load bookmarks:', error));
       }
     }, [user?.id]),
   );
 
-  const handleToggleBookmark = async (restaurantId: string | number) => {
+  const handleToggleBookmark = (restaurantId: string | number) => {
     if (!user?.id) return;
-    const idStr = restaurantId.toString();
-
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(idStr)) next.delete(idStr);
-      else next.add(idStr);
-      return next;
-    });
-
-    try {
-      await toggleBookmark(restaurantId, user.id);
-    } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
-    }
+    setSelectedRestaurantForBookmark(restaurantId);
   };
 
   const handleQuickAddPress = () => {
@@ -463,6 +453,20 @@ export default function MapScreen() {
         initialFilters={filters}
         onApply={(newFilters) => setFilters(newFilters)}
         onClose={() => setFilterModalVisible(false)}
+      />
+
+      <CollectionModal
+        visible={!!selectedRestaurantForBookmark}
+        restaurantId={selectedRestaurantForBookmark}
+        userId={user?.id}
+        onClose={() => {
+          setSelectedRestaurantForBookmark(null);
+          if (user?.id) {
+            fetchUserBookmarkedRestaurantIds(user.id)
+              .then(setBookmarkedIds)
+              .catch(console.error);
+          }
+        }}
       />
     </View>
   );

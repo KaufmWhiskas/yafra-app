@@ -1,64 +1,117 @@
 import { supabase } from "./supabase";
-import { Restaurant } from "../types";
 
-/**
- * Toggles a bookmark for a specific user and restaurant.
- * If the bookmark exists, it is removed. Otherwise, it is added.
- *
- * @param restaurantId The ID of the restaurant (converted to string to prevent BigInt casting issues in Supabase).
- * @param userId The UUID of the authenticated user.
- * @returns An object indicating the new bookmark state.
- */
-export async function toggleBookmark(
-  restaurantId: string | number,
-  userId: string,
-): Promise<{ bookmarked: boolean }> {
-  const { data } = await supabase
-    .from("bookmarks")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("restaurant_id", restaurantId.toString())
-    .maybeSingle();
-
-  if (data) {
-    await supabase
-      .from("bookmarks")
-      .delete()
-      .eq("user_id", userId)
-      .eq("restaurant_id", restaurantId.toString());
-    return { bookmarked: false };
-  }
-
-  const { error: insertError } = await supabase.from("bookmarks").insert([
-    { user_id: userId, restaurant_id: restaurantId.toString() },
-  ]);
-
-  // If the insert fails because of the unique constraint (race condition),
-  // it means it was already bookmarked, which is fine.
-  if (insertError && insertError.code !== "23505") {
-    throw insertError;
-  }
-
-  return { bookmarked: true };
+export interface BookmarkCollection {
+  id: string;
+  name: string;
 }
 
 /**
- * Retrieves all bookmarked restaurants for a specific user.
- *
- * @param userId The UUID of the authenticated user.
- * @returns An array of populated Restaurant objects.
+ * Fetches a user's bookmark collections.
+ * If none exist, automatically provisions a default 'Wishlist' collection.
  */
-export async function getBookmarks(userId: string): Promise<Restaurant[]> {
+export async function fetchCollections(
+  userId: string,
+): Promise<BookmarkCollection[]> {
+  const { data, error } = await supabase
+    .from("bookmark_collections")
+    .select("id, name")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  if (!data || data.length === 0) {
+    const wishlist = await createCollection(userId, "Wishlist");
+    return [wishlist];
+  }
+
+  return data as BookmarkCollection[];
+}
+
+/**
+ * Creates a new bookmark collection for the user.
+ */
+export async function createCollection(
+  userId: string,
+  name: string,
+): Promise<BookmarkCollection> {
+  const { data, error } = await supabase
+    .from("bookmark_collections")
+    .insert([{ user_id: userId, name }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as BookmarkCollection;
+}
+
+/**
+ * Toggles a restaurant in a specific bookmark collection.
+ */
+export async function toggleBookmarkInCollection(
+  userId: string,
+  restaurantId: string | number,
+  collectionId: string,
+  isCurrentlySaved: boolean,
+): Promise<void> {
+  if (isCurrentlySaved) {
+    const { error } = await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("user_id", userId)
+      .eq("restaurant_id", restaurantId.toString())
+      .eq("collection_id", collectionId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from("bookmarks").insert([{
+      user_id: userId,
+      restaurant_id: restaurantId.toString(),
+      collection_id: collectionId,
+    }]);
+    // Ignore unique constraint violations if accidentally clicked twice
+    if (error && error.code !== "23505") throw error;
+  }
+}
+
+/**
+ * Fetches a unique Set of restaurant IDs that a user has bookmarked across ALL collections.
+ * Provides a fast cache for map and list views to toggle bookmark icons.
+ */
+export async function fetchUserBookmarkedRestaurantIds(
+  userId: string,
+): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("bookmarks")
-    .select("*, restaurants(*)")
+    .select("restaurant_id")
     .eq("user_id", userId);
 
   if (error) throw error;
 
-  // Supabase returns relational data nested under the foreign table name.
-  // We extract the nested objects and filter out any failed or orphaned joins.
-  return (data || [])
-    .map((row: { restaurants: unknown }) => row.restaurants as Restaurant)
-    .filter((restaurant) => restaurant != null);
+  const ids = new Set<string>();
+  for (const row of data || []) {
+    if (row.restaurant_id) ids.add(row.restaurant_id.toString());
+  }
+  return ids;
+}
+
+/**
+ * Fetches the specific collections a user has saved a restaurant into.
+ */
+export async function fetchRestaurantSavedCollectionIds(
+  userId: string,
+  restaurantId: string | number,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select("collection_id")
+    .eq("user_id", userId)
+    .eq("restaurant_id", restaurantId.toString());
+
+  if (error) throw error;
+
+  const ids = new Set<string>();
+  for (const row of data || []) {
+    if (row.collection_id) ids.add(row.collection_id.toString());
+  }
+  return ids;
 }
