@@ -4,7 +4,7 @@ import {
   deleteGroup,
   fetchGroupDetails,
   fetchGroupRestaurants,
-  fetchGroupSavedRestaurantIds,
+  fetchGroupReviewedRestaurantIds,
   fetchMyGroups,
   joinGroupWithCode,
   leaveGroup,
@@ -280,7 +280,7 @@ describe("Group Service", () => {
     expect(supabase.eq).toHaveBeenCalledWith("user_id", "user_123");
   });
 
-  it("fetchGroupSavedRestaurantIds returns a unique set of restaurant IDs saved by any group member", async () => {
+  it("fetchGroupReviewedRestaurantIds returns a unique set of restaurant IDs reviewed by any group member", async () => {
     // Mock Step 1: fetch group members
     // @ts-expect-error: custom mock
     (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
@@ -290,7 +290,7 @@ describe("Group Service", () => {
       error: null,
     });
 
-    // Mock Step 2: fetch bookmarks using .in()
+    // Mock Step 2: fetch reviews using .in()
     // @ts-expect-error: custom mock
     (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
     // @ts-expect-error: custom mock
@@ -301,10 +301,10 @@ describe("Group Service", () => {
       error: null,
     });
 
-    const result = await fetchGroupSavedRestaurantIds("group_1");
+    const result = await fetchGroupReviewedRestaurantIds("group_1");
 
     expect(supabase.from).toHaveBeenNthCalledWith(1, "group_members");
-    expect(supabase.from).toHaveBeenNthCalledWith(2, "bookmarks");
+    expect(supabase.from).toHaveBeenNthCalledWith(2, "reviews");
     // @ts-expect-error: custom mock
     expect(supabase.in).toHaveBeenCalledWith("user_id", ["user_1", "user_2"]);
     expect(result).toBeInstanceOf(Set);

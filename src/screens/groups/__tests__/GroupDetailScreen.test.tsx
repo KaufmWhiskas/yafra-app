@@ -448,7 +448,7 @@ describe('GroupDetailScreen', () => {
     await flushMicrotasks();
 
     expect(fetchGroupRestaurants).toHaveBeenCalledWith('group_1');
-    expect(getByText("Group's Saved Restaurants")).toBeTruthy();
+    expect(getByText("Group's Rated Restaurants")).toBeTruthy();
     expect(getByText('Elite Pizza')).toBeTruthy();
   });
 });

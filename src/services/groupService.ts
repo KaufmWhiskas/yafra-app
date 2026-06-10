@@ -287,10 +287,10 @@ export async function removeGroupMember(
 }
 
 /**
- * Retrieves all unique restaurant IDs saved (bookmarked) by any member of a specific group.
- * Utilizes PostgREST relational joins to traverse from group_members -> profiles -> bookmarks.
+ * Retrieves all unique restaurant IDs reviewed by any member of a specific group.
+ * Utilizes PostgREST relational joins to traverse from group_members -> profiles -> reviews.
  */
-export async function fetchGroupSavedRestaurantIds(
+export async function fetchGroupReviewedRestaurantIds(
   groupId: string,
 ): Promise<Set<string>> {
   // 1. Get all user IDs in the group
@@ -304,17 +304,17 @@ export async function fetchGroupSavedRestaurantIds(
 
   const userIds = members.map((m) => m.user_id);
 
-  // 2. Fetch all bookmarks for those users
-  const { data: bookmarks, error: bookmarkError } = await supabase
-    .from("bookmarks")
+  // 2. Fetch all REVIEWS for those users instead of bookmarks
+  const { data: reviews, error: reviewError } = await supabase
+    .from("reviews")
     .select("restaurant_id")
     .in("user_id", userIds);
 
-  if (bookmarkError) throw bookmarkError;
+  if (reviewError) throw reviewError;
 
   const restaurantIds = new Set<string>();
-  for (const b of (bookmarks || [])) {
-    if (b.restaurant_id) restaurantIds.add(b.restaurant_id.toString());
+  for (const r of (reviews || [])) {
+    if (r.restaurant_id) restaurantIds.add(r.restaurant_id.toString());
   }
 
   return restaurantIds;
@@ -323,7 +323,7 @@ export async function fetchGroupSavedRestaurantIds(
 export async function fetchGroupRestaurants(
   groupId: string,
 ): Promise<Restaurant[]> {
-  const idsSet = await fetchGroupSavedRestaurantIds(groupId);
+  const idsSet = await fetchGroupReviewedRestaurantIds(groupId);
   if (idsSet.size === 0) return [];
 
   const idsArray = Array.from(idsSet);

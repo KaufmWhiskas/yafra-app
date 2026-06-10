@@ -17,7 +17,7 @@ import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { getBookmarks, toggleBookmark } from '../../services/bookmarkService';
-import { fetchGroupSavedRestaurantIds } from '../../services/groupService';
+import { fetchGroupReviewedRestaurantIds } from '../../services/groupService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
@@ -77,7 +77,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (filters.targetGroupId) {
-      fetchGroupSavedRestaurantIds(filters.targetGroupId)
+      fetchGroupReviewedRestaurantIds(filters.targetGroupId)
         .then((ids) => setGroupRestaurantIds(ids))
         .catch((err) =>
           console.error('Failed to fetch group restaurant IDs:', err),

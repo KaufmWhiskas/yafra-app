@@ -302,7 +302,7 @@ export default function GroupDetailScreen() {
 
       {groupRestaurants.length > 0 && (
         <View style={{ marginBottom: SIZES.padding }}>
-          <Text style={styles.sectionTitle}>Group's Saved Restaurants</Text>
+          <Text style={styles.sectionTitle}>Group's Rated Restaurants</Text>
           <FlatList
             data={groupRestaurants}
             horizontal
