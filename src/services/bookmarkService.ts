@@ -168,3 +168,30 @@ export async function fetchRestaurantSavedCollectionIds(
   }
   return ids;
 }
+
+/**
+ * Toggles a restaurant in the user's bookmarks (adds to default Wishlist if not saved, removes from ALL if saved).
+ */
+export async function toggleBookmark(
+  userId: string,
+  restaurantId: string | number,
+): Promise<void> {
+  const savedCollections = await fetchRestaurantSavedCollectionIds(
+    userId,
+    restaurantId,
+  );
+  const isCurrentlySaved = savedCollections.size > 0;
+
+  if (isCurrentlySaved) {
+    // Remove from all collections
+    const { error } = await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("user_id", userId)
+      .eq("restaurant_id", restaurantId.toString());
+    if (error) throw error;
+  } else {
+    // Add to default Wishlist collection fallback
+    await toggleBookmarkInCollection(userId, restaurantId, "", false);
+  }
+}

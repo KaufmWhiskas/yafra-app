@@ -15,4 +15,11 @@ describe('RatingBadge', () => {
     const { getByText } = render(<RatingBadge label="Yours" color="#000" />);
     expect(getByText('-')).toBeTruthy();
   });
+
+  it('renders subValueText when provided', () => {
+    const { getByText } = render(
+      <RatingBadge label="Google" color="#000" subValueText="(123)" />,
+    );
+    expect(getByText('(123)')).toBeTruthy();
+  });
 });

@@ -12,6 +12,7 @@ jest.mock("../supabase", () => ({
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    upsert: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     functions: {
       invoke: jest.fn(),
@@ -101,7 +102,7 @@ describe("fetchRestaurantDetails", () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({
-        data: { app_rating: 4.2, group_rating: 4.8 },
+        data: { id: "1", app_rating: 4.2, group_rating: 4.8 },
         error: null,
       }),
     });
@@ -116,6 +117,7 @@ describe("fetchRestaurantDetails", () => {
     );
     expect(result).toEqual({
       ...mockDetails,
+      id: "1",
       app_rating: 4.2,
       group_rating: 4.8,
     });

@@ -1,5 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  Linking,
+  Platform,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 
@@ -7,12 +14,14 @@ interface RouteButtonProps {
   latitude: number;
   longitude: number;
   label: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 export default function RouteButton({
   latitude,
   longitude,
   label,
+  style,
 }: RouteButtonProps) {
   const handlePress = () => {
     const scheme = Platform.select({
@@ -30,11 +39,12 @@ export default function RouteButton({
 
   return (
     <TouchableOpacity
-      style={styles.button}
+      style={[styles.button, style]}
       onPress={handlePress}
       testID="route-button"
+      activeOpacity={0.8}
     >
-      <MaterialCommunityIcons name="directions" size={24} color="#fff" />
+      <MaterialCommunityIcons name="directions" size={26} color="#fff" />
     </TouchableOpacity>
   );
 }
@@ -42,15 +52,19 @@ export default function RouteButton({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.primary,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 16, // Clean structural rounded-square configuration matching main design FABs
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
+    position: 'absolute',
+    right: 20,
+    bottom: 110, // Default fallback
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.5,
+    elevation: 6,
+    zIndex: 999,
   },
 });

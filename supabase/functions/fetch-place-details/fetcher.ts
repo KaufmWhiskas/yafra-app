@@ -12,7 +12,7 @@ export async function fetchProDetails(placeId: string, apiKey: string) {
     headers: {
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "rating,priceLevel,regularOpeningHours,currentOpeningHours,reviews,location,displayName,primaryType",
+        "rating,priceLevel,regularOpeningHours,currentOpeningHours,reviews,location,displayName,primaryType,formattedAddress,userRatingCount",
     },
   });
 
@@ -32,5 +32,9 @@ export async function fetchProDetails(placeId: string, apiKey: string) {
     opening_hours: data.regularOpeningHours?.weekdayDescriptions ||
       data.currentOpeningHours?.weekdayDescriptions || undefined,
     google_reviews,
+    address: data.formattedAddress,
+    user_ratings_total: data.userRatingCount || 0,
+    latitude: data.location?.latitude,
+    longitude: data.location?.longitude,
   };
 }

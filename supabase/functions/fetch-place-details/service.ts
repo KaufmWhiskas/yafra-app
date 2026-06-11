@@ -38,8 +38,16 @@ export async function getOrFetchPlaceDetails(
   }
 
   if (data?.details && data.details_updated_at) {
-    const cacheAgeMs = Date.now() - new Date(data.details_updated_at).getTime();
-    if (cacheAgeMs < FOURTEEN_DAYS_MS) return data.details;
+    const detailsObj = data.details as Record<string, unknown>;
+    if (
+      (detailsObj.address !== undefined ||
+        detailsObj.formattedAddress !== undefined) &&
+      detailsObj.user_ratings_total !== undefined
+    ) {
+      const cacheAgeMs = Date.now() -
+        new Date(data.details_updated_at).getTime();
+      if (cacheAgeMs < FOURTEEN_DAYS_MS) return data.details;
+    }
   }
 
   const freshDetails = await fetcher(placeId, apiKey);

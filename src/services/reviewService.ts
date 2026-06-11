@@ -42,3 +42,25 @@ export const submitReview = async (review: {
   }
   return { success: true, data: insertData };
 };
+
+/**
+ * Fetches the current user's latest rating for a specific restaurant.
+ */
+export const fetchPersonalRating = async (
+  userId: string,
+  restaurantId: string | number,
+): Promise<number | undefined> => {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("user_id", userId)
+    .eq("restaurant_id", restaurantId.toString())
+    .order("created_at", { ascending: false }); // Grab newest review first if created_at exists
+
+  if (error) {
+    console.error("Error fetching personal rating:", error);
+    return undefined;
+  }
+
+  return data && data.length > 0 ? data[0].rating : undefined;
+};

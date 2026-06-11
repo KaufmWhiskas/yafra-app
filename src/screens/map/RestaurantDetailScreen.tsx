@@ -15,16 +15,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchRestaurantDetails } from '../../services/restaurantService';
 import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
-// @ts-expect-error: toggleBookmark is not yet exported from bookmarkService
-import { toggleBookmark } from '../../services/bookmarkService';
-import ReviewSummary from '../../components/ui/ReviewSummary';
 import RatingBadge from '../../components/ui/RatingBadge';
 import OpeningHours from '../../components/ui/OpeningHours';
 import RouteButton from '../../components/ui/RouteButton';
-import GoogleReviewList from '../../components/ui/GoogleReviewList';
+import { resolveRestaurantDisplay } from '../../utils/displayState';
 import { COLORS } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { fetchPersonalRating } from '../../services/reviewService';
+import CollectionModal from '../../components/ui/CollectionModal';
 
 type RestaurantDetailRouteProp = RouteProp<
   { RestaurantDetail: { restaurantId: string; restaurantName: string } },
@@ -44,6 +43,8 @@ export default function RestaurantDetailScreen() {
   const [bookmarkedRestaurantIds, setBookmarkedRestaurantIds] = useState<
     Set<string>
   >(new Set());
+  const [personalRating, setPersonalRating] = useState<number | undefined>();
+  const [isCollectionModalVisible, setCollectionModalVisible] = useState(false);
 
   const isCurrentlyBookmarked = details?.id
     ? bookmarkedRestaurantIds.has(details.id.toString())
@@ -65,6 +66,7 @@ export default function RestaurantDetailScreen() {
       });
   }, [restaurantId]);
 
+  // Split these into dedicated single-responsibility tracking blocks
   useEffect(() => {
     if (user?.id) {
       fetchUserBookmarkedRestaurantIds(user.id)
@@ -72,6 +74,12 @@ export default function RestaurantDetailScreen() {
         .catch(console.error);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id && details?.id) {
+      fetchPersonalRating(user.id, details.id).then(setPersonalRating);
+    }
+  }, [user?.id, details?.id]); // Re-evaluates instantly when the internal ID updates
 
   const handleToggleBookmark = () => {
     if (!user) {
@@ -82,24 +90,15 @@ export default function RestaurantDetailScreen() {
       return;
     }
 
-    if (details?.id) {
-      const restaurantIdStr = details.id.toString();
-      const wasBookmarked = isCurrentlyBookmarked;
-
-      // Eagerly update local state
-      setBookmarkedRestaurantIds((prev) => {
-        const next = new Set(prev);
-        if (wasBookmarked) next.delete(restaurantIdStr);
-        else next.add(restaurantIdStr);
-        return next;
-      });
-
-      // Call backend
-      toggleBookmark(user.id, details.id).catch((err: Error) => {
-        console.error('Failed to toggle bookmark:', err);
-        // The UI will optimistically assume success, but if we wanted we could revert the state here on error
-      });
+    if (!details?.id) {
+      Alert.alert(
+        'Not Saved Yet',
+        'This restaurant could not be saved to the database. Please try again.',
+      );
+      return;
     }
+
+    setCollectionModalVisible(true);
   };
 
   const handleAddReview = () => {
@@ -157,7 +156,11 @@ export default function RestaurantDetailScreen() {
           <MaterialCommunityIcons
             name={isCurrentlyBookmarked ? 'bookmark' : 'bookmark-outline'}
             size={24}
-            color={isCurrentlyBookmarked ? COLORS.primary : COLORS.text}
+            color={
+              isCurrentlyBookmarked
+                ? (COLORS as Record<string, string>).bookmark || COLORS.primary
+                : COLORS.text
+            }
           />
         </TouchableOpacity>
       </View>
@@ -166,23 +169,9 @@ export default function RestaurantDetailScreen() {
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Photo Gallery Placeholder */}
-        <View style={styles.photoPlaceholder}>
-          <Text style={styles.photoPlaceholderText}>Photo Gallery</Text>
-        </View>
-
         <View style={styles.contentContainer}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{restaurantName}</Text>
-            {details &&
-              details.latitude !== undefined &&
-              details.longitude !== undefined && (
-                <RouteButton
-                  latitude={details.latitude}
-                  longitude={details.longitude}
-                  label={restaurantName}
-                />
-              )}
           </View>
 
           {details && (
@@ -194,13 +183,35 @@ export default function RestaurantDetailScreen() {
               <View style={styles.ratingsRow}>
                 <RatingBadge
                   label="Yours"
-                  value={details.app_rating}
-                  color={COLORS.primary}
+                  value={personalRating}
+                  color={
+                    personalRating
+                      ? resolveRestaurantDisplay({
+                          app_rating: personalRating,
+                        } as Restaurant).color
+                      : COLORS.primary
+                  }
                 />
                 <RatingBadge
-                  label="Groups"
-                  value={details.group_rating}
-                  color="#ff9800"
+                  label="App"
+                  value={details.app_rating}
+                  color={
+                    details.app_rating
+                      ? resolveRestaurantDisplay({
+                          app_rating: details.app_rating,
+                        } as Restaurant).color
+                      : '#ff9800'
+                  }
+                />
+                <RatingBadge
+                  label="Google"
+                  value={details.rating}
+                  color="#4285F4"
+                  subValueText={
+                    details.user_ratings_total
+                      ? `(${details.user_ratings_total})`
+                      : undefined
+                  }
                 />
               </View>
 
@@ -208,30 +219,45 @@ export default function RestaurantDetailScreen() {
                 <Text style={styles.sectionTitle}>Opening Hours</Text>
                 <OpeningHours hours={details.opening_hours} />
               </View>
-
-              <View style={styles.reviewSection}>
-                <Text style={styles.sectionTitle}>Reviews</Text>
-                <ReviewSummary
-                  rating={details.rating}
-                  reviewCount={details.user_ratings_total}
-                />
-                <GoogleReviewList reviews={details.google_reviews} />
-              </View>
             </View>
           )}
         </View>
       </ScrollView>
 
       <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom + 16, 24) },
-        ]}
+        style={[styles.footer, { bottom: Math.max(insets.bottom + 16, 24) }]}
       >
         <TouchableOpacity style={styles.reviewButton} onPress={handleAddReview}>
           <Text style={styles.reviewButtonText}>Add Review</Text>
         </TouchableOpacity>
       </View>
+
+      {details &&
+        details.latitude !== undefined &&
+        details.longitude !== undefined && (
+          <RouteButton
+            latitude={details.latitude}
+            longitude={details.longitude}
+            label={restaurantName}
+            style={{ bottom: Math.max(insets.bottom + 16, 24) + 72 }}
+          />
+        )}
+
+      {details?.id && (
+        <CollectionModal
+          visible={isCollectionModalVisible}
+          restaurantId={details.id}
+          userId={user?.id}
+          onClose={() => {
+            setCollectionModalVisible(false);
+            if (user?.id) {
+              fetchUserBookmarkedRestaurantIds(user.id)
+                .then(setBookmarkedRestaurantIds)
+                .catch(console.error);
+            }
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -268,18 +294,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
-  },
-  photoPlaceholder: {
-    height: 200,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoPlaceholderText: {
-    color: '#888',
-    fontSize: 16,
-    fontWeight: 'bold',
+    paddingBottom: 120,
   },
   contentContainer: {
     padding: 16,
@@ -300,6 +315,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
     marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0', // Clean horizontal section separation border
   },
   ratingsRow: {
     flexDirection: 'row',
@@ -313,37 +331,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
-  },
-  reviewSection: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  placeholderText: {
-    color: '#888',
-    marginTop: 8,
-    fontStyle: 'italic',
+    paddingTop: 12,
   },
   footer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    left: 16,
+    right: 16,
   },
   reviewButton: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 30,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   reviewButtonText: {
     color: '#fff',

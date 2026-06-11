@@ -29,9 +29,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   text: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   closed: {
     color: '#d32f2f',

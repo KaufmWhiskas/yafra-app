@@ -2,8 +2,6 @@ import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import RestaurantDetailScreen from '../RestaurantDetailScreen';
 import { fetchRestaurantDetails } from '../../../services/restaurantService';
-// @ts-expect-error: toggleBookmark is not yet exported from bookmarkService
-import { toggleBookmark } from '../../../services/bookmarkService';
 
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurantDetails: jest.fn(),
@@ -11,7 +9,10 @@ jest.mock('../../../services/restaurantService', () => ({
 
 jest.mock('../../../services/bookmarkService', () => ({
   fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
-  toggleBookmark: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../../services/reviewService', () => ({
+  fetchPersonalRating: jest.fn().mockResolvedValue(4.5),
 }));
 
 const mockGoBack = jest.fn();
@@ -44,6 +45,19 @@ jest.mock('../../../context/AuthContext', () => ({
   }),
 }));
 
+jest.mock('../../../components/ui/CollectionModal', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View, Text } = require('react-native');
+  const MockCollectionModal = (props: { visible: boolean }) =>
+    props.visible ? (
+      <View>
+        <Text>Mock Collection Modal</Text>
+      </View>
+    ) : null;
+  MockCollectionModal.displayName = 'MockCollectionModal';
+  return MockCollectionModal;
+});
+
 describe('RestaurantDetailScreen', () => {
   it('renders the restaurant name from params and calls fetchRestaurantDetails', async () => {
     (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
@@ -71,13 +85,15 @@ describe('RestaurantDetailScreen', () => {
     expect(await findByText('123 Main St')).toBeTruthy();
   });
 
-  it('calls toggleBookmark when the bookmark button is pressed', async () => {
+  it('opens the collection modal when the bookmark button is pressed', async () => {
     (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
       id: '1',
       name: 'Test Restaurant',
     });
 
-    const { getByTestId, findAllByText } = render(<RestaurantDetailScreen />);
+    const { getByTestId, findAllByText, findByText } = render(
+      <RestaurantDetailScreen />,
+    );
 
     // Wait for details to load so the button is enabled
     await findAllByText('Test Restaurant');
@@ -85,7 +101,7 @@ describe('RestaurantDetailScreen', () => {
     const bookmarkButton = getByTestId('bookmark-header-button');
     fireEvent.press(bookmarkButton);
 
-    expect(toggleBookmark).toHaveBeenCalledWith('test-user-id', '1');
+    expect(await findByText('Mock Collection Modal')).toBeTruthy();
   });
 
   it('navigates to ReviewScreen when "Add Review" is pressed', async () => {
