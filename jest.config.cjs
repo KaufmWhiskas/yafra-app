@@ -1,6 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   // This tells Jest: "Whenever you see these imports, use these mocks instead."
   moduleNameMapper: {
     '^expo-asset$': '<rootDir>/__mocks__/expo-asset.js',

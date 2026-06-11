@@ -17,6 +17,10 @@ jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({ session: { user: { id: 'user_123' } } }),
 }));
 
+jest.mock('../../../constants/categories', () => ({
+  getCategoryDisplayName: (key: string) => key,
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {

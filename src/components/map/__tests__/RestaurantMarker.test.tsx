@@ -54,9 +54,7 @@ describe('RestaurantMarker UI', () => {
     );
     const markerInner = getByTestId('marker-inner');
     expect(markerInner.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ backgroundColor: '#123456' }),
-      ]),
+      expect.objectContaining({ backgroundColor: '#123456' }),
     );
     const textNode = getByText('4.5');
     expect(textNode.props.style).toEqual(
@@ -80,12 +78,10 @@ describe('RestaurantMarker UI', () => {
     );
     const markerInner = getByTestId('marker-inner');
     expect(markerInner.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          backgroundColor: '#ffffff',
-          borderColor: '#654321',
-        }),
-      ]),
+      expect.objectContaining({
+        backgroundColor: '#ffffff',
+        borderColor: '#654321',
+      }),
     );
     const textNode = getByText('4.1');
     expect(textNode.props.style).toEqual(
@@ -110,9 +106,7 @@ describe('RestaurantMarker UI', () => {
     );
     const markerInner = getByTestId('marker-inner');
     expect(markerInner.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ backgroundColor: '#673ab7' }),
-      ]),
+      expect.objectContaining({ backgroundColor: '#673ab7' }),
     );
   });
 });

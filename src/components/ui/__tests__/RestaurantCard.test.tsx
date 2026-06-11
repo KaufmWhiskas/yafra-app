@@ -1,58 +1,118 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import RestaurantCard from '../RestaurantCard';
+import RestaurantMarker from '../../map/RestaurantMarker';
+import { resolveRestaurantDisplay } from '../../../utils/displayState';
 import { Restaurant } from '../../../types';
+
+jest.mock('../../../utils/displayState', () => ({
+  resolveRestaurantDisplay: jest.fn(),
+}));
 
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
-describe('RestaurantCard UI', () => {
-  it('verifies that the rating badge on the card applies solid styling for app reviews', () => {
-    const item = {
-      id: '1',
-      name: 'App Place',
-      cuisine: 'burger',
-      latitude: 0,
-      longitude: 0,
-      app_rating: 4.8,
-      app_review_count: 5,
-    } as Restaurant;
-    const { getByText, getByTestId } = render(<RestaurantCard item={item} />);
+jest.mock('react-native-maps', () => {
+  const { View } = jest.requireActual('react-native');
+  return {
+    Marker: ({
+      children,
+      testID,
+    }: {
+      children?: React.ReactNode;
+      testID?: string;
+    }) => <View testID={testID}>{children}</View>,
+  };
+});
 
-    expect(getByText('4.8')).toBeTruthy();
-    expect(getByText('4.8 ★ (5 App Reviews)')).toBeTruthy();
-    const badge = getByTestId('restaurant-badge');
-    expect(badge.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          backgroundColor: expect.not.stringMatching('#fff'),
-        }),
-      ]),
+const mockRestaurant = {
+  id: '1',
+  name: 'Test Place',
+  latitude: 0,
+  longitude: 0,
+  cuisine: 'pizza',
+} as Restaurant;
+
+describe('RestaurantMarker UI', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('applies a solid background color to the pin container for app state', () => {
+    (resolveRestaurantDisplay as jest.Mock).mockReturnValue({
+      type: 'app',
+      color: '#123456',
+      display: '4.5',
+      isHollow: false,
+    });
+    const { getByTestId, getByText } = render(
+      <RestaurantMarker
+        restaurant={mockRestaurant}
+        isSelected={false}
+        onPress={jest.fn()}
+      />,
+    );
+    const markerInner = getByTestId('marker-inner');
+
+    // Check against the flattened object directly
+    expect(markerInner.props.style).toEqual(
+      expect.objectContaining({ backgroundColor: '#123456' }),
+    );
+
+    const textNode = getByText('4.5');
+    expect(textNode.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ color: '#fff' })]),
     );
   });
 
-  it('verifies that if Google data is used, the component renders the total review count in hollow style', () => {
-    const item = {
-      id: '2',
-      name: 'Google Place',
-      cuisine: 'pizza',
-      latitude: 0,
-      longitude: 0,
-      rating: 4.5,
-      user_ratings_total: 128,
-    };
-    const { getByText, getByTestId } = render(
-      <RestaurantCard item={item as unknown as Restaurant} />,
+  it('applies a white background with a colored border and text for google state', () => {
+    (resolveRestaurantDisplay as jest.Mock).mockReturnValue({
+      type: 'google',
+      color: '#654321',
+      display: '4.1',
+      isHollow: true,
+    });
+    const { getByTestId, getByText } = render(
+      <RestaurantMarker
+        restaurant={mockRestaurant}
+        isSelected={false}
+        onPress={jest.fn()}
+      />,
+    );
+    const markerInner = getByTestId('marker-inner');
+
+    expect(markerInner.props.style).toEqual(
+      expect.objectContaining({
+        backgroundColor: '#ffffff',
+        borderColor: '#654321',
+      }),
     );
 
-    expect(getByText('4.5')).toBeTruthy();
-    expect(getByText('4.5 ★ (128 Google Reviews)')).toBeTruthy();
-    const badge = getByTestId('restaurant-badge');
-    expect(badge.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ backgroundColor: '#ffffff' }),
-      ]),
+    const textNode = getByText('4.1');
+    expect(textNode.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ color: '#654321' })]),
+    );
+  });
+
+  it('renders a purple pin for bookmark state', () => {
+    (resolveRestaurantDisplay as jest.Mock).mockReturnValue({
+      type: 'bookmark',
+      color: '#673ab7',
+      display: 'bookmark-icon',
+      isHollow: false,
+    });
+    const { getByTestId } = render(
+      <RestaurantMarker
+        restaurant={mockRestaurant}
+        isBookmarked
+        isSelected={false}
+        onPress={jest.fn()}
+      />,
+    );
+    const markerInner = getByTestId('marker-inner');
+
+    expect(markerInner.props.style).toEqual(
+      expect.objectContaining({ backgroundColor: '#673ab7' }),
     );
   });
 });

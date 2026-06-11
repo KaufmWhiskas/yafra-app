@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
 import * as Location from "expo-location";
-import { FALLBACK_COORDINATE, useLocation } from "./useLocation";
+import { FALLBACK_COORDINATE, useLocation } from "../useLocation";
 
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: jest.fn(),

@@ -10,6 +10,10 @@ import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
 import MapView from 'react-native-maps';
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurants: jest.fn().mockResolvedValue([
     {
@@ -115,6 +119,14 @@ jest.mock('expo-location', () => ({
   }),
   Accuracy: { Balanced: 3 },
 }));
+
+jest.mock('../../../constants/categories', () => {
+  const actual = jest.requireActual('../../../constants/categories');
+  return {
+    ...actual,
+    getCategoryDisplayName: (key: string) => key,
+  };
+});
 
 const flushMicrotasks = async (): Promise<void> => {
   await act(async () => {

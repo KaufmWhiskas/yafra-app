@@ -31,7 +31,6 @@ import {
 } from '../../utils/geo';
 import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getCategoryDisplayName } from '../../utils/categories';
 import CollectionModal from '../../components/ui/CollectionModal';
 
 const MAX_ZOOM_OUT = 0.1;
@@ -344,14 +343,7 @@ export default function MapScreen() {
           <RestaurantMap
             mapRef={mapRef}
             restaurants={filteredRestaurants}
-            selectedRestaurant={
-              selectedRestaurant
-                ? {
-                    ...selectedRestaurant,
-                    cuisine: getCategoryDisplayName(selectedRestaurant.cuisine),
-                  }
-                : null
-            }
+            selectedRestaurant={selectedRestaurant}
             onRestaurantSelect={handleRestaurantSelect}
             onMapPress={() => {
               requestAnimationFrame(() => {

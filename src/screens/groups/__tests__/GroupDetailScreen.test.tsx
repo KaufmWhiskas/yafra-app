@@ -13,6 +13,10 @@ import {
 } from '../../../services/groupService';
 import { useAuth } from '../../../context/AuthContext';
 
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 jest.mock('../../../services/groupService', () => ({
   fetchGroupDetails: jest.fn(),
   createOneTimeInvite: jest.fn(),

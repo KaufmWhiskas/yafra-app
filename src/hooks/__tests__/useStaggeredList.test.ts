@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { useStaggeredList } from "./useStaggeredList";
-import { Restaurant } from "../types";
+import { useStaggeredList } from "../useStaggeredList";
+import { Restaurant } from "../../types";
 
 describe("useStaggeredList", () => {
   const createMockRestaurant = (overrides: Partial<Restaurant>): Restaurant => {
