@@ -7,7 +7,7 @@ import { resolveRestaurantDisplay } from '../../utils/displayState';
 
 interface RestaurantCardProps {
   item: Restaurant;
-  onPress?: () => void;
+  onPress?: (item: Restaurant) => void;
   /** Triggered when the user initiates the review flow */
   onPressReview?: () => void;
   isBookmarked?: boolean;
@@ -43,7 +43,7 @@ export default function RestaurantCard({
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={onPress}
+      onPress={() => onPress?.(item)}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={styles.headerRow}>

@@ -9,6 +9,15 @@ export interface Restaurant {
   app_rating?: number;
   app_review_count?: number;
   user_ratings_total?: number;
+  opening_hours?: string[];
+  group_rating?: number;
+  address?: string;
+  google_reviews?: {
+    author_name: string;
+    rating: number;
+    text: string;
+    time: string;
+  }[];
 }
 
 export type GroupRole = "owner" | "admin" | "trusted" | "member";

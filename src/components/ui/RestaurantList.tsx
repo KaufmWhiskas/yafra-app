@@ -40,7 +40,7 @@ export default function RestaurantList({
 
         return (
           <RestaurantCard
-            onPress={onPressItem ? () => onPressItem(item) : undefined}
+            onPress={onPressItem}
             item={item}
             onPressReview={() => onPressReview(item)}
             isBookmarked={bookmarkedIds.has(item.id.toString())}

@@ -109,6 +109,8 @@ export default function MapScreen() {
 
   const handleItemPress = (restaurant: Restaurant) => {
     if (restaurant.google_place_id) {
+      console.log('Navigation Object:', !!navigation);
+      console.log('Target Screen:', 'RestaurantDetail');
       navigation.navigate('RestaurantDetail', {
         restaurantId: restaurant.google_place_id,
         restaurantName: restaurant.name,
@@ -171,10 +173,14 @@ export default function MapScreen() {
   const handleSearchSelect = async (place: Prediction) => {
     try {
       const details = await fetchRestaurantDetails(place.placeId);
-      if (details.location) {
+      if (
+        details &&
+        details.latitude !== undefined &&
+        details.longitude !== undefined
+      ) {
         const newRegion = {
-          latitude: details.location.latitude,
-          longitude: details.location.longitude,
+          latitude: details.latitude,
+          longitude: details.longitude,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         };

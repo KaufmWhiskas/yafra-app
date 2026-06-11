@@ -27,7 +27,7 @@ Deno.test("fetchProDetails makes a GET request to the correct Google Places URL 
     assertEquals(headers.get("X-Goog-Api-Key"), "DUMMY_KEY");
     assertEquals(
       headers.get("X-Goog-FieldMask"),
-      "rating,priceLevel,regularOpeningHours,reviews,location,displayName,primaryType",
+      "rating,priceLevel,regularOpeningHours,currentOpeningHours,reviews,location,displayName,primaryType",
     );
   } finally {
     globalThis.fetch = originalFetch;

@@ -1,19 +1,48 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import RestaurantDetailScreen from '../RestaurantDetailScreen';
 import { fetchRestaurantDetails } from '../../../services/restaurantService';
+// @ts-expect-error: toggleBookmark is not yet exported from bookmarkService
+import { toggleBookmark } from '../../../services/bookmarkService';
 
 jest.mock('../../../services/restaurantService', () => ({
   fetchRestaurantDetails: jest.fn(),
 }));
+
+jest.mock('../../../services/bookmarkService', () => ({
+  fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+  toggleBookmark: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   return {
     useRoute: () => ({
       params: { restaurantId: 'place_123', restaurantName: 'Test Restaurant' },
     }),
+    useNavigation: () => ({
+      goBack: mockGoBack,
+      navigate: mockNavigate,
+    }),
   };
 });
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
+
+jest.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    session: { user: { id: 'test-user-id' } },
+    isLoading: false,
+  }),
+}));
 
 describe('RestaurantDetailScreen', () => {
   it('renders the restaurant name from params and calls fetchRestaurantDetails', async () => {
@@ -28,12 +57,56 @@ describe('RestaurantDetailScreen', () => {
       address: '123 Main St',
     });
 
-    const { getByText } = render(<RestaurantDetailScreen />);
+    const { findAllByText, findByText } = render(<RestaurantDetailScreen />);
 
-    expect(getByText('Test Restaurant')).toBeTruthy();
+    // Wait for loading to finish and find the name in both header and body
+    const titleElements = await findAllByText('Test Restaurant');
+    expect(titleElements.length).toBeGreaterThan(0);
 
     await waitFor(() => {
       expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
+    });
+
+    // Wait for the async state update to render to avoid "not wrapped in act(...)" warnings
+    expect(await findByText('123 Main St')).toBeTruthy();
+  });
+
+  it('calls toggleBookmark when the bookmark button is pressed', async () => {
+    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
+      id: '1',
+      name: 'Test Restaurant',
+    });
+
+    const { getByTestId, findAllByText } = render(<RestaurantDetailScreen />);
+
+    // Wait for details to load so the button is enabled
+    await findAllByText('Test Restaurant');
+
+    const bookmarkButton = getByTestId('bookmark-header-button');
+    fireEvent.press(bookmarkButton);
+
+    expect(toggleBookmark).toHaveBeenCalledWith('test-user-id', '1');
+  });
+
+  it('navigates to ReviewScreen when "Add Review" is pressed', async () => {
+    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({
+      id: '1',
+      name: 'Test Restaurant',
+      cuisine: 'American',
+      latitude: 0,
+      longitude: 0,
+    });
+
+    const { findByText, findAllByText } = render(<RestaurantDetailScreen />);
+
+    // Wait for the details to finish loading
+    await findAllByText('Test Restaurant');
+
+    const reviewButton = await findByText('Add Review');
+    fireEvent.press(reviewButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
+      restaurant: expect.objectContaining({ id: '1', name: 'Test Restaurant' }),
     });
   });
 });

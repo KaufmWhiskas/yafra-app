@@ -17,6 +17,6 @@
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
-  "cSpell.words": ["Bbox"],
+  "cSpell.words": ["Bbox", "Piccola"],
   "cSpell.ignoreWords": ["apikey"]
 }

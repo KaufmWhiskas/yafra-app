@@ -64,10 +64,23 @@ export async function fetchRestaurantDetails(
   }
 
   if (data) {
+    const { data: localData } = await supabase
+      .from("restaurants")
+      .select("app_rating, group_rating")
+      .eq("google_place_id", googlePlaceId)
+      .maybeSingle();
+
     return {
       ...data,
       rating: data.rating ? Number(data.rating) : undefined,
       user_ratings_total: Number(data.user_ratings_total) || 0,
+      app_rating: localData?.app_rating
+        ? Number(localData.app_rating)
+        : (data.app_rating ? Number(data.app_rating) : undefined),
+      group_rating: localData?.group_rating
+        ? Number(localData.group_rating)
+        : (data.group_rating ? Number(data.group_rating) : undefined),
+      opening_hours: data.opening_hours || undefined,
     } as Partial<Restaurant>;
   }
   return null;

@@ -10,6 +10,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
 import WantToVisitScreen from '../screens/profile/WantToVisitScreen';
 import CollectionDetailScreen from '../screens/profile/CollectionDetailScreen';
+import RestaurantDetailScreen from '../screens/map/RestaurantDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -32,20 +33,25 @@ export default function MainNavigator() {
               component={ReviewScreen}
               options={{ headerShown: true, title: 'Add Review' }}
             />
-            <Stack.Screen 
-              name="GroupDetailScreen" 
-              component={GroupDetailScreen} 
-              options={{ title: 'Group Details' }} 
+            <Stack.Screen
+              name="GroupDetailScreen"
+              component={GroupDetailScreen}
+              options={{ title: 'Group Details' }}
             />
-            <Stack.Screen 
-              name="WantToVisitScreen" 
-              component={WantToVisitScreen} 
+            <Stack.Screen
+              name="WantToVisitScreen"
+              component={WantToVisitScreen}
               options={{ title: 'Want to Visit' }}
             />
-            <Stack.Screen 
-              name="CollectionDetailScreen" 
-              component={CollectionDetailScreen} 
+            <Stack.Screen
+              name="CollectionDetailScreen"
+              component={CollectionDetailScreen}
               options={({ route }) => ({ title: route.params.collectionName })}
+            />
+            <Stack.Screen
+              name="RestaurantDetail"
+              component={RestaurantDetailScreen}
+              options={{ headerShown: false }}
             />
           </>
         ) : (

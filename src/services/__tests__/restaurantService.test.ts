@@ -11,6 +11,8 @@ jest.mock("../supabase", () => ({
     select: jest.fn().mockReturnThis(),
     gte: jest.fn().mockReturnThis(),
     lte: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     functions: {
       invoke: jest.fn(),
     },
@@ -87,11 +89,21 @@ describe("triggerIngest", () => {
 });
 
 describe("fetchRestaurantDetails", () => {
-  it("invokes the fetch-place-details edge function with the correct googlePlaceId", async () => {
+  it("invokes the fetch-place-details edge function and merges local db stats", async () => {
     const mockDetails = { rating: 4.5, price_level: 2, user_ratings_total: 0 };
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
       data: mockDetails,
       error: null,
+    });
+
+    // Mock the subsequent local DB call
+    (supabase.from as jest.Mock).mockReturnValueOnce({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { app_rating: 4.2, group_rating: 4.8 },
+        error: null,
+      }),
     });
 
     const result = await fetchRestaurantDetails("place_123");
@@ -102,6 +114,10 @@ describe("fetchRestaurantDetails", () => {
         body: { googlePlaceId: "place_123" },
       },
     );
-    expect(result).toEqual(mockDetails);
+    expect(result).toEqual({
+      ...mockDetails,
+      app_rating: 4.2,
+      group_rating: 4.8,
+    });
   });
 });

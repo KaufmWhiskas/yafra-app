@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import RestaurantMarker from '../../map/RestaurantMarker';
 import RestaurantCard from '../RestaurantCard';
 import { resolveRestaurantDisplay } from '../../../utils/displayState';
@@ -140,5 +140,15 @@ describe('RestaurantCard UI', () => {
     );
 
     expect(getByText(/1234/)).toBeTruthy();
+  });
+
+  it('calls onPress with the restaurant when the card is tapped', () => {
+    const onPressMock = jest.fn();
+    const { getByText } = render(
+      <RestaurantCard item={mockRestaurant} onPress={onPressMock} />,
+    );
+
+    fireEvent.press(getByText('Test Place'));
+    expect(onPressMock).toHaveBeenCalledWith(mockRestaurant);
   });
 });
