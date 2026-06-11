@@ -31,7 +31,7 @@ export async function fetchRestaurants(
     throw error;
   }
 
-  return data.map((r: Record<string, unknown>) => {
+  return (data || []).map((r: Record<string, unknown>) => {
     const { google_rating, app_rating, user_ratings_total, ...rest } = r;
     return {
       ...rest,
@@ -47,8 +47,12 @@ export async function fetchRestaurants(
  * @param googlePlaceId The Google Place ID of the restaurant.
  * @throws Will throw an error if the function invocation fails.
  */
-export async function fetchRestaurantDetails(googlePlaceId: string) {
-  const { data, error } = await supabase.functions.invoke(
+export async function fetchRestaurantDetails(
+  googlePlaceId: string,
+): Promise<Partial<Restaurant> | null> {
+  const { data, error } = await supabase.functions.invoke<
+    Record<string, unknown>
+  >(
     "fetch-place-details",
     {
       body: { googlePlaceId },
@@ -63,10 +67,10 @@ export async function fetchRestaurantDetails(googlePlaceId: string) {
     return {
       ...data,
       rating: data.rating ? Number(data.rating) : undefined,
-      user_ratings_total: data.user_ratings_total || 0,
-    };
+      user_ratings_total: Number(data.user_ratings_total) || 0,
+    } as Partial<Restaurant>;
   }
-  return data;
+  return null;
 }
 
 /**
@@ -74,8 +78,8 @@ export async function fetchRestaurantDetails(googlePlaceId: string) {
  * @param bbox The geographic bounding box to scan.
  * @throws Will throw an error if the function invocation fails.
  */
-export async function triggerIngest(bbox: BoundingBox) {
-  const { data, error } = await supabase.functions.invoke(
+export async function triggerIngest(bbox: BoundingBox): Promise<unknown> {
+  const { data, error } = await supabase.functions.invoke<unknown>(
     "ingest-restaurants",
     {
       body: { bbox },

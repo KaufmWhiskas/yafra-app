@@ -1,5 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react-native';
 import App from '../App';
 
 // Tell Jest to use the clean __mocks__ file we created earlier
@@ -39,17 +43,44 @@ jest.mock('../src/services/restaurantService', () => ({
       longitude: 8.425,
     },
   ]),
+  fetchRestaurantDetails: jest.fn().mockResolvedValue({}),
+  triggerIngest: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../src/services/bookmarkService', () => ({
   getBookmarks: jest.fn().mockResolvedValue([]),
   toggleBookmark: jest.fn(),
   fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+  fetchCollections: jest.fn().mockResolvedValue([]),
+  fetchCollectionSummaries: jest.fn().mockResolvedValue([]),
+  fetchRestaurantSavedCollectionIds: jest.fn().mockResolvedValue(new Set()),
+  createCollection: jest.fn(),
+  toggleBookmarkInCollection: jest.fn(),
+}));
+
+jest.mock('../src/services/groupService', () => ({
+  fetchMyGroups: jest.fn().mockResolvedValue([]),
+  fetchGroupReviewedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+}));
+
+jest.mock('../src/services/searchService', () => ({
+  getPlacePredictions: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../src/services/profileService', () => ({
+  fetchUserStats: jest.fn().mockResolvedValue({}),
 }));
 
 describe('<App />', () => {
   it('renders the main tab navigator and initial screen', async () => {
     render(<App />);
+
+    const loading = screen.queryByText('Loading restaurants from database...');
+    if (loading) {
+      await waitForElementToBeRemoved(() =>
+        screen.queryByText('Loading restaurants from database...'),
+      );
+    }
 
     const mapToggleBtn = await screen.findByText('Map View');
     expect(mapToggleBtn).toBeTruthy();

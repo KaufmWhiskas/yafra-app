@@ -88,7 +88,7 @@ describe("triggerIngest", () => {
 
 describe("fetchRestaurantDetails", () => {
   it("invokes the fetch-place-details edge function with the correct googlePlaceId", async () => {
-    const mockDetails = { rating: 4.5, price_level: 2 };
+    const mockDetails = { rating: 4.5, price_level: 2, user_ratings_total: 0 };
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
       data: mockDetails,
       error: null,
