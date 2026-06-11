@@ -32,11 +32,12 @@ export async function fetchRestaurants(
   }
 
   return data.map((r: Record<string, unknown>) => {
-    const { google_rating, app_rating, ...rest } = r;
+    const { google_rating, app_rating, user_ratings_total, ...rest } = r;
     return {
       ...rest,
       rating: google_rating ? parseFloat(google_rating as string) : undefined,
       app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
+      user_ratings_total: Number(user_ratings_total) || 0,
     };
   }) as Restaurant[];
 }
@@ -58,6 +59,13 @@ export async function fetchRestaurantDetails(googlePlaceId: string) {
     throw error;
   }
 
+  if (data) {
+    return {
+      ...data,
+      rating: data.rating ? Number(data.rating) : undefined,
+      user_ratings_total: data.user_ratings_total || 0,
+    };
+  }
   return data;
 }
 

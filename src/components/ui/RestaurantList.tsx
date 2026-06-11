@@ -8,6 +8,7 @@ import { calculateDistance, Coordinate } from '../../utils/geo';
 interface RestaurantListProps {
   restaurants: Restaurant[];
   bookmarkedIds: Set<string>;
+  onPressItem?: (restaurant: Restaurant) => void;
   onPressReview: (restaurant: Restaurant) => void;
   onToggleBookmark: (restaurantId: string | number) => void;
   userLocation?: Coordinate;
@@ -17,6 +18,7 @@ interface RestaurantListProps {
 export default function RestaurantList({
   restaurants,
   bookmarkedIds,
+  onPressItem,
   onPressReview,
   onToggleBookmark,
   userLocation,
@@ -38,6 +40,7 @@ export default function RestaurantList({
 
         return (
           <RestaurantCard
+            onPress={onPressItem ? () => onPressItem(item) : undefined}
             item={item}
             onPressReview={() => onPressReview(item)}
             isBookmarked={bookmarkedIds.has(item.id.toString())}

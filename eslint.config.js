@@ -24,7 +24,7 @@ export default [
       '**/__tests__/**/*.[jt]s?(x)',
       '**/*.test.[jt]s?(x)',
       '**/__mocks__/**/*.[jt]s?(x)',
-      'jest.setup.js',
+      'jest.setup.cjs',
     ],
     languageOptions: {
       globals: {
@@ -34,11 +34,13 @@ export default [
         jest: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
       },
     },
   },
   {
-    files: ['*.config.cjs', 'jest.setup.js', '**/__mocks__/**/*.js'],
+    files: ['*.config.cjs', 'jest.setup.cjs', '**/__mocks__/**/*.js'],
     languageOptions: {
       sourceType: 'commonjs',
     },

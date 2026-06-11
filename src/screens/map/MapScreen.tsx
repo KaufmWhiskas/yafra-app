@@ -107,6 +107,18 @@ export default function MapScreen() {
     return list;
   }, [restaurants, filters, bookmarkedIds, groupRestaurantIds]);
 
+  const handleItemPress = (restaurant: Restaurant) => {
+    if (restaurant.google_place_id) {
+      navigation.navigate('RestaurantDetail', {
+        restaurantId: restaurant.google_place_id,
+        restaurantName: restaurant.name,
+      });
+    } else {
+      console.warn(
+        'Cannot view details for a restaurant without a google_place_id',
+      );
+    }
+  };
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
   };
@@ -423,6 +435,7 @@ export default function MapScreen() {
         <RestaurantList
           restaurants={filteredRestaurants}
           bookmarkedIds={bookmarkedIds}
+          onPressItem={handleItemPress}
           onPressReview={handleReviewPress}
           onToggleBookmark={handleToggleBookmark}
           userLocation={userLocation || undefined}

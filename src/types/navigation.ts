@@ -8,6 +8,7 @@ export type RootStackParamList = {
   GroupDetailScreen: { groupId: string };
   WantToVisitScreen: undefined;
   CollectionDetailScreen: { collectionId: string; collectionName: string };
+  RestaurantDetail: { restaurantId: string; restaurantName: string };
 };
 
 export type TabParamList = {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import RestaurantMarker from '../../map/RestaurantMarker';
+import RestaurantCard from '../RestaurantCard';
 import { resolveRestaurantDisplay } from '../../../utils/displayState';
 import { Restaurant } from '../../../types';
 
@@ -114,5 +115,30 @@ describe('RestaurantMarker UI', () => {
     expect(markerInner.props.style).toEqual(
       expect.objectContaining({ backgroundColor: '#673ab7' }),
     );
+  });
+});
+
+describe('RestaurantCard UI', () => {
+  it('renders the user_ratings_total correctly', () => {
+    const mockRestaurantWithRatings = {
+      id: '2',
+      name: 'Ratings Place',
+      latitude: 0,
+      longitude: 0,
+      cuisine: 'burger',
+      user_ratings_total: 1234,
+      rating: 4.5,
+    } as Restaurant;
+
+    const { getByText } = render(
+      <RestaurantCard
+        item={mockRestaurantWithRatings}
+        onPressReview={jest.fn()}
+        isBookmarked={false}
+        onToggleBookmark={jest.fn()}
+      />,
+    );
+
+    expect(getByText(/1234/)).toBeTruthy();
   });
 });

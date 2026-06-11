@@ -8,6 +8,7 @@ export interface Restaurant {
   google_place_id?: string;
   app_rating?: number;
   app_review_count?: number;
+  user_ratings_total?: number;
 }
 
 export type GroupRole = "owner" | "admin" | "trusted" | "member";

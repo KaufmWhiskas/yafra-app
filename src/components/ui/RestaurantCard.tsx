@@ -7,6 +7,7 @@ import { resolveRestaurantDisplay } from '../../utils/displayState';
 
 interface RestaurantCardProps {
   item: Restaurant;
+  onPress?: () => void;
   /** Triggered when the user initiates the review flow */
   onPressReview?: () => void;
   isBookmarked?: boolean;
@@ -31,6 +32,7 @@ const getIconForCuisine = (
  */
 export default function RestaurantCard({
   item,
+  onPress,
   onPressReview,
   isBookmarked,
   onToggleBookmark,
@@ -39,7 +41,11 @@ export default function RestaurantCard({
   const displayState = resolveRestaurantDisplay(item, isBookmarked);
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <View style={styles.headerRow}>
         <View style={styles.titleContainer}>
           <View
@@ -118,9 +124,7 @@ export default function RestaurantCard({
 
         {item.rating ? (
           <Text style={styles.googleRatingText}>
-            {/* @ts-expect-error: extended google place property not yet strongly typed in interface */}
-            {item.rating.toFixed(1)} ★ ({item.user_ratings_total || 0} Google
-            Reviews)
+            {item.rating.toFixed(1)} ★ {item.user_ratings_total || 0} reviews
           </Text>
         ) : null}
 
@@ -136,7 +140,7 @@ export default function RestaurantCard({
       >
         <Text style={styles.reviewButtonText}>Add Review</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
