@@ -99,7 +99,6 @@ jest.mock('@react-navigation/native', () => {
 
 jest.mock('../../../utils/geo', () => ({
   ...jest.requireActual('../../../utils/geo'),
-  calculateDistance: jest.fn(),
 }));
 
 jest.mock('expo-location', () => ({
@@ -176,6 +175,29 @@ describe('MapScreen Toggle Feature', () => {
 
     expect(getByTestId('mock-map')).toBeTruthy();
     expect(queryByTestId('list-view')).toBeNull();
+  });
+
+  it('sorts restaurants by distance in list view', async () => {
+    (fetchRestaurants as jest.Mock).mockResolvedValue([
+      { id: '1', name: 'Far Restaurant', latitude: 49.5, longitude: 8.5 }, // ~7km away
+      { id: '2', name: 'Close Restaurant', latitude: 49.461, longitude: 8.421 }, // close
+    ] as Restaurant[]);
+
+    // useLocation is mocked to return { latitude: 49.46, longitude: 8.42 }
+
+    const { getByText, findByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    fireEvent.press(getByText('List View'));
+    await flushMicrotasks();
+
+    const listView = await findByTestId('list-view');
+    const restaurantData = listView.props.data;
+
+    expect(restaurantData.length).toBe(2);
+    expect(restaurantData[0].name).toBe('Close Restaurant');
+    expect(restaurantData[1].name).toBe('Far Restaurant');
   });
 
   it('opens the CollectionModal when the bookmark icon is pressed in List View', async () => {

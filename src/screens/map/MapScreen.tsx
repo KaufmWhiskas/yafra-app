@@ -31,6 +31,7 @@ import {
   BoundingBox,
   getRegionBBox,
   filterWithinRadius,
+  calculateDistance,
   getClosestRestaurants,
 } from '../../utils/geo';
 import { filterRestaurants } from '../../utils/restaurantFilters';
@@ -112,8 +113,48 @@ export default function MapScreen() {
       list = list.filter((r) => groupRestaurantIds.has(r.id.toString()));
     }
 
+    // 2. Sort by distance from the current PAN/VIEW center (mapRegion)
+    if (mapRegion) {
+      const center = {
+        latitude: mapRegion.latitude,
+        longitude: mapRegion.longitude,
+      };
+
+      list = list
+        .map((r) => {
+          // Sorting distance is strictly calculated from the map pan center
+          const sortingDistance = calculateDistance(center, {
+            latitude: r.latitude,
+            longitude: r.longitude,
+          });
+
+          // Display distance is calculated from the user's real physical location (falls back to map center if null)
+          const displayDistance = userLocation
+            ? calculateDistance(userLocation, {
+                latitude: r.latitude,
+                longitude: r.longitude,
+              })
+            : sortingDistance;
+
+          return {
+            ...r,
+            distance: displayDistance, // Pass the user-relative distance to the card for rendering
+            sortingDistance: sortingDistance, // Keep a reference to the view-center distance for sorting
+          };
+        })
+        // Sort strictly by the view-center reference
+        .sort((a, b) => (a.sortingDistance ?? 0) - (b.sortingDistance ?? 0));
+    }
+
     return list;
-  }, [restaurants, filters, bookmarkedIds, groupRestaurantIds]);
+  }, [
+    restaurants,
+    filters,
+    bookmarkedIds,
+    groupRestaurantIds,
+    mapRegion,
+    userLocation,
+  ]);
 
   const handleItemPress = (restaurant: Restaurant) => {
     if (restaurant.google_place_id) {
@@ -442,7 +483,6 @@ export default function MapScreen() {
           onPressItem={handleItemPress}
           onPressReview={handleReviewPress}
           onToggleBookmark={handleToggleBookmark}
-          userLocation={userLocation || undefined}
           contentContainerStyle={{ paddingTop: 175 }}
         />
       ) : null}
