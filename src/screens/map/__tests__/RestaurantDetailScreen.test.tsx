@@ -19,7 +19,10 @@ const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
+  const actualNav = jest.requireActual('@react-navigation/native');
+  const ReactActual = jest.requireActual('react');
   return {
+    ...actualNav,
     useRoute: () => ({
       params: { restaurantId: 'place_123', restaurantName: 'Test Restaurant' },
     }),
@@ -27,6 +30,9 @@ jest.mock('@react-navigation/native', () => {
       goBack: mockGoBack,
       navigate: mockNavigate,
     }),
+    useFocusEffect: (cb: React.EffectCallback) => {
+      ReactActual.useEffect(() => cb(), []);
+    },
   };
 });
 

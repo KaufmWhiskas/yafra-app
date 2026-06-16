@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,12 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import {
+  useRoute,
+  RouteProp,
+  useNavigation,
+  useFocusEffect,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,11 +80,13 @@ export default function RestaurantDetailScreen() {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    if (user?.id && details?.id) {
-      fetchPersonalRating(user.id, details.id).then(setPersonalRating);
-    }
-  }, [user?.id, details?.id]); // Re-evaluates instantly when the internal ID updates
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && details?.id) {
+        fetchPersonalRating(user.id, details.id).then(setPersonalRating);
+      }
+    }, [user?.id, details?.id]),
+  );
 
   const handleToggleBookmark = () => {
     if (!user) {
