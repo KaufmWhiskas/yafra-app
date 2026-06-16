@@ -3,15 +3,14 @@ import { supabase } from "./supabase";
 /**
  * Adds reviews to the Supabase database
  * Note: Requires user to be authenticated
- * Authentication is WIP
  */
 export const submitReview = async (review: {
-  restaurantId: string;
+  restaurantId: string | number;
   rating: number;
-  priceScore: number;
-  isEatIn: boolean;
-  tags: string[];
-  description: string;
+  priceScore?: number;
+  isEatIn?: boolean;
+  tags?: string[];
+  description?: string;
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -26,12 +25,14 @@ export const submitReview = async (review: {
     .from("reviews")
     .insert([
       {
-        restaurant_id: review.restaurantId.toString(),
+        restaurant_id: Number(review.restaurantId),
         rating: review.rating,
-        price_score: review.priceScore,
-        is_eat_in: review.isEatIn,
-        tags: review.tags,
-        description: review.description,
+        price_value_rating: review.priceScore || null,
+        review_text: review.description || "",
+        metadata: {
+          is_eat_in: review.isEatIn ?? true,
+          tags: review.tags || [],
+        },
         user_id: user.id,
       },
     ])
