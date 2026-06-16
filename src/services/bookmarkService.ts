@@ -107,7 +107,6 @@ export async function toggleBookmarkInCollection(
   } else {
     let targetCollectionId = collectionId;
 
-    // Fallback protection: If no collection ID is provided, locate the default Wishlist
     if (!targetCollectionId) {
       const collections = await fetchCollections(userId);
       const wishlist = collections.find((c) => c.name === "Wishlist");
@@ -121,7 +120,6 @@ export async function toggleBookmarkInCollection(
       restaurant_id: restaurantId.toString(),
       collection_id: targetCollectionId,
     }]);
-    // Ignore unique constraint violations if accidentally clicked twice
     if (error && error.code !== "23505") throw error;
   }
 }
@@ -183,7 +181,6 @@ export async function toggleBookmark(
   const isCurrentlySaved = savedCollections.size > 0;
 
   if (isCurrentlySaved) {
-    // Remove from all collections
     const { error } = await supabase
       .from("bookmarks")
       .delete()
@@ -191,7 +188,6 @@ export async function toggleBookmark(
       .eq("restaurant_id", restaurantId.toString());
     if (error) throw error;
   } else {
-    // Add to default Wishlist collection fallback
     await toggleBookmarkInCollection(userId, restaurantId, "", false);
   }
 }

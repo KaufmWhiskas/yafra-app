@@ -52,7 +52,6 @@ function RestaurantMarker({
   const [trackChanges, setTrackChanges] = useState(true);
   const isFocused = useIsFocused();
 
-  // Scale value ranges from 0.75 (unselected proportional size) to 1.0 (selected size).
   const scaleAnim = useRef(new Animated.Value(isSelected ? 0.75 : 1)).current;
 
   useEffect(() => {
@@ -68,7 +67,6 @@ function RestaurantMarker({
     }
 
     setTrackChanges(true);
-    // Disable change tracking after animation completes to maximize map rendering performance.
     const timer = setTimeout(() => setTrackChanges(false), 800);
     return () => clearTimeout(timer);
   }, [isSelected, isBookmarked, scaleAnim]);
@@ -101,7 +99,6 @@ function RestaurantMarker({
       <Marker
         key={`visual-${restaurant.id}-${isSelected ? 'active' : 'idle'}-${isBookmarked ? 'saved' : 'unsaved'}`}
         coordinate={{
-          // Offsets latitude minutely when rendering as an overlay to prevent layout clipping.
           latitude: restaurant.latitude + (isOverlay ? 0.0000001 : 0),
           longitude: restaurant.longitude,
         }}

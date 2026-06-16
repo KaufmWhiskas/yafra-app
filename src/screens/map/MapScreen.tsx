@@ -113,7 +113,6 @@ export default function MapScreen() {
       list = list.filter((r) => groupRestaurantIds.has(r.id.toString()));
     }
 
-    // 2. Sort by distance from the current PAN/VIEW center (mapRegion)
     if (mapRegion) {
       const center = {
         latitude: mapRegion.latitude,
@@ -122,13 +121,11 @@ export default function MapScreen() {
 
       list = list
         .map((r) => {
-          // Sorting distance is strictly calculated from the map pan center
           const sortingDistance = calculateDistance(center, {
             latitude: r.latitude,
             longitude: r.longitude,
           });
 
-          // Display distance is calculated from the user's real physical location (falls back to map center if null)
           const displayDistance = userLocation
             ? calculateDistance(userLocation, {
                 latitude: r.latitude,
@@ -138,11 +135,10 @@ export default function MapScreen() {
 
           return {
             ...r,
-            distance: displayDistance, // Pass the user-relative distance to the card for rendering
-            sortingDistance: sortingDistance, // Keep a reference to the view-center distance for sorting
+            distance: displayDistance,
+            sortingDistance: sortingDistance,
           };
         })
-        // Sort strictly by the view-center reference
         .sort((a, b) => (a.sortingDistance ?? 0) - (b.sortingDistance ?? 0));
     }
 
@@ -189,7 +185,6 @@ export default function MapScreen() {
           ? mapRegion.longitudeDelta
           : 0.005;
 
-      // 3. Wait 250ms for the Visual Marker to finish its Pop Animation, THEN pan.
       setTimeout(() => {
         mapRef.current?.animateToRegion(
           {
@@ -270,7 +265,6 @@ export default function MapScreen() {
       scanRegion(region);
     }
 
-    // Query the map camera to find out if the user rotated the map
     if (mapRef.current) {
       const camera = await mapRef.current.getCamera();
       setMapHeading(camera.heading);
@@ -280,7 +274,6 @@ export default function MapScreen() {
   const handleRegionChangeLive = async () => {
     if (mapRef.current) {
       const camera = await mapRef.current.getCamera();
-      // Only update state if the heading actually changed by a noticeable amount to avoid React thrashing
       setMapHeading((prev) => {
         if (Math.abs(prev - camera.heading) > 1) return camera.heading;
         return prev;

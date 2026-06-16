@@ -29,7 +29,6 @@ export async function createGroup(
   userId: string,
   name: string,
 ): Promise<Group> {
-  // Generate a random 6-character alphanumeric code (e.g., "A7X9BQ")
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
   const { data, error } = await supabase
@@ -293,7 +292,6 @@ export async function removeGroupMember(
 export async function fetchGroupReviewedRestaurantIds(
   groupId: string,
 ): Promise<Set<string>> {
-  // 1. Get all user IDs in the group
   const { data: members, error: memberError } = await supabase
     .from("group_members")
     .select("user_id")
@@ -304,7 +302,6 @@ export async function fetchGroupReviewedRestaurantIds(
 
   const userIds = members.map((m) => m.user_id);
 
-  // 2. Fetch all REVIEWS for those users instead of bookmarks
   const { data: reviews, error: reviewError } = await supabase
     .from("reviews")
     .select("restaurant_id")

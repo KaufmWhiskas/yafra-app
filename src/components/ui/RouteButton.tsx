@@ -54,12 +54,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     width: 56,
     height: 56,
-    borderRadius: 16, // Clean structural rounded-square configuration matching main design FABs
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'absolute',
     right: 20,
-    bottom: 110, // Default fallback
+    bottom: 110,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

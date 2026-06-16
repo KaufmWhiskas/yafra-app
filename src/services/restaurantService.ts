@@ -12,8 +12,10 @@ interface BoundingBox {
 }
 
 /**
- * Fetches all restaurants from the database.
- * @returns A promise resolving to an array of restaurant records.
+ * Fetches restaurants within a given geographic bounding box.
+ * Also joins and counts the number of app reviews for each restaurant.
+ * @param bbox The geographic bounding box to search within.
+ * @returns A promise that resolves to an array of restaurant records.
  * @throws Will throw an error if the database query fails.
  */
 export async function fetchRestaurants(
@@ -31,7 +33,7 @@ export async function fetchRestaurants(
     throw error;
   }
 
-  return (data || []).map((r: Record<string, unknown>) => {
+  return (data || []).map((r: Record<string, any>) => {
     const {
       google_rating,
       app_rating,
@@ -40,7 +42,7 @@ export async function fetchRestaurants(
       reviews,
       ...rest
     } = r;
-    const parsedDetails = details as Record<string, unknown> | undefined;
+    const parsedDetails = details as Record<string, any> | undefined;
 
     return {
       ...rest,
@@ -59,19 +61,20 @@ export async function fetchRestaurants(
 }
 
 /**
- * Fetches detailed high-detailed data for a specific restaurant from Google Places.
+ * Fetches detailed data for a specific restaurant.
+ * It first checks a local cache (14-day expiry). On a cache miss, it fetches
+ * fresh data from the Google Places API via an edge function and updates the cache.
+ * It also calculates the live `app_rating` and `app_review_count` to bypass database trigger latency.
  * @param googlePlaceId The Google Place ID of the restaurant.
+ * @returns A promise resolving to a partial restaurant object with detailed data, or null.
  * @throws Will throw an error if the function invocation fails.
  */
 export async function fetchRestaurantDetails(
   googlePlaceId: string,
 ): Promise<Partial<Restaurant> | null> {
-  // 1. Fetch the base row and check the cache
   const { data: localData, error: dbError } = await supabase
     .from("restaurants")
-    .select(
-      "id, app_rating, google_rating, user_ratings_total, details, details_updated_at",
-    )
+    .select("id, app_rating, google_rating, details, details_updated_at")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
 
@@ -83,7 +86,6 @@ export async function fetchRestaurantDetails(
   let appRating = localData?.app_rating;
   let appReviewCount: number | undefined;
 
-  // Always calculate the live average from the reviews table to bypass trigger latency.
   if (localId) {
     const { data: reviews } = await supabase
       .from("reviews")
@@ -101,7 +103,6 @@ export async function fetchRestaurantDetails(
     }
   }
 
-  // 2. Validate Cache (14 days expiry)
   const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
   let isCacheValid = false;
 
@@ -113,15 +114,19 @@ export async function fetchRestaurantDetails(
     }
   }
 
-  // 3. Cache Hit: Return local DB data instantly (Saves Google API $$)
   if (isCacheValid && localData) {
     const cachedDetails = localData.details as Record<string, unknown>;
     return {
       ...cachedDetails,
       id: localId,
-      rating: cachedDetails.rating ? Number(cachedDetails.rating) : undefined,
+      rating: cachedDetails.rating
+        ? Number(cachedDetails.rating)
+        : (localData.google_rating
+          ? parseFloat(localData.google_rating as string)
+          : undefined),
       user_ratings_total: Number(
-        cachedDetails.user_ratings_total || cachedDetails.userRatingCount,
+        cachedDetails.user_ratings_total ||
+          cachedDetails.userRatingCount,
       ) || 0,
       app_rating: appRating != null ? Number(appRating) : undefined,
       app_review_count: appReviewCount,
@@ -129,7 +134,6 @@ export async function fetchRestaurantDetails(
     } as Partial<Restaurant>;
   }
 
-  // 4. Cache Miss: Fetch fresh data from Google
   const { data: freshData, error: fetchError } = await supabase.functions
     .invoke<
       Record<string, unknown>
@@ -143,9 +147,7 @@ export async function fetchRestaurantDetails(
   if (fetchError) throw fetchError;
   if (!freshData) return null;
 
-  // 5. Update Database Cache
   if (!localData) {
-    // Auto-provision base row cleanly with the fresh details
     const { data: newRest, error: insertError } = await supabase
       .from("restaurants")
       .upsert(
@@ -156,7 +158,7 @@ export async function fetchRestaurantDetails(
           location: `POINT(${freshData.longitude ?? 0} ${
             freshData.latitude ?? 0
           })`,
-          details: freshData, // <-- SAVE THE GOOGLE PAYLOAD
+          details: freshData,
           details_updated_at: new Date().toISOString(),
         },
         { onConflict: "google_place_id" },
@@ -170,11 +172,10 @@ export async function fetchRestaurantDetails(
       localId = newRest.id;
     }
   } else {
-    // Row exists, just update the JSONB cache
     await supabase
       .from("restaurants")
       .update({
-        details: freshData, // <-- SAVE THE GOOGLE PAYLOAD
+        details: freshData,
         details_updated_at: new Date().toISOString(),
       })
       .eq("id", localId);
@@ -189,8 +190,12 @@ export async function fetchRestaurantDetails(
         ? Number(localData.google_rating)
         : undefined),
     user_ratings_total: Number(
-      freshData.user_ratings_total || freshData.userRatingCount ||
-        localData?.user_ratings_total,
+      freshData.user_ratings_total ||
+        freshData.userRatingCount ||
+        (localData?.details as Record<string, unknown> | undefined)
+          ?.user_ratings_total ||
+        (localData?.details as Record<string, unknown> | undefined)
+          ?.userRatingCount,
     ) || 0,
     app_rating: appRating != null ? Number(appRating) : undefined,
     app_review_count: appReviewCount,

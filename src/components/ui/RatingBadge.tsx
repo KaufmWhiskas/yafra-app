@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 4,
-    height: 95, // Hard minimum to keep columns strictly aligned
+    height: 95,
     justifyContent: 'space-between',
   },
   valueWrapper: {

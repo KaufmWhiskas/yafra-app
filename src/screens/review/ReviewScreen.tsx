@@ -71,7 +71,7 @@ export default function ReviewScreen() {
       await submitReview({
         restaurantId: restaurant.id.toString(),
         rating,
-        priceScore: isAdvanced ? priceScore : 0, // 0 or null if simple mode
+        priceScore: isAdvanced ? priceScore : 0,
         isEatIn: isAdvanced ? isEatIn : true,
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',

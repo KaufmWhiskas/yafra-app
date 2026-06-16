@@ -74,7 +74,6 @@ export default function RestaurantDetailScreen() {
     }, [restaurantId]),
   );
 
-  // Split these into dedicated single-responsibility tracking blocks
   useEffect(() => {
     if (user?.id) {
       fetchUserBookmarkedRestaurantIds(user.id)
@@ -327,7 +326,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0', // Clean horizontal section separation border
+    borderBottomColor: '#f0f0f0',
   },
   ratingsRow: {
     flexDirection: 'row',

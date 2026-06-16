@@ -5,12 +5,12 @@ import { supabase } from "./supabase";
  * Note: Requires user to be authenticated
  */
 export const submitReview = async (review: {
-  restaurantId: string | number;
+  restaurantId: string;
   rating: number;
-  priceScore?: number;
-  isEatIn?: boolean;
-  tags?: string[];
-  description?: string;
+  priceScore: number;
+  isEatIn: boolean;
+  tags: string[];
+  description: string;
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -25,14 +25,12 @@ export const submitReview = async (review: {
     .from("reviews")
     .insert([
       {
-        restaurant_id: Number(review.restaurantId),
+        restaurant_id: review.restaurantId.toString(),
         rating: review.rating,
-        price_value_rating: review.priceScore || null,
-        review_text: review.description || "",
-        metadata: {
-          is_eat_in: review.isEatIn ?? true,
-          tags: review.tags || [],
-        },
+        price_score: review.priceScore,
+        is_eat_in: review.isEatIn,
+        tags: review.tags,
+        description: review.description,
         user_id: user.id,
       },
     ])
@@ -56,7 +54,7 @@ export const fetchPersonalRating = async (
     .select("rating")
     .eq("user_id", userId)
     .eq("restaurant_id", restaurantId.toString())
-    .order("created_at", { ascending: false }); // Grab newest review first if created_at exists
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching personal rating:", error);
