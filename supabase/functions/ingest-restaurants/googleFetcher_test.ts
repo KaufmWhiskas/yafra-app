@@ -33,7 +33,7 @@ Deno.test("createGoogleFetcher() should call Google Places API with correct head
     assertEquals(headers.get("X-Goog-Api-Key"), "DUMMY_API_KEY");
     assertEquals(
       headers.get("X-Goog-FieldMask"),
-      "places.id,places.location,places.displayName.text,places.rating,places.primaryType",
+      "places.id,places.location,places.displayName.text,places.rating,places.primaryType,places.userRatingCount",
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -51,6 +51,7 @@ Deno.test("createGoogleFetcher() should correctly parse Google API response into
         displayName: { text: "Google Bistro" },
         rating: 4.5,
         primaryType: "fast_food_restaurant",
+        userRatingCount: 120,
       },
     ],
   };
@@ -69,7 +70,11 @@ Deno.test("createGoogleFetcher() should correctly parse Google API response into
     assertEquals(results[0].location, "POINT(8.5417 47.3769)");
     assertEquals(results[0].google_place_id, "place_123");
     assertEquals(results[0].cuisine, "fast_food_restaurant");
-    assertEquals((results[0] as any).google_rating, 4.5);
+    assertEquals(results[0].google_rating, 4.5);
+    assertEquals(
+      (results[0].details as Record<string, number>).user_ratings_total,
+      120,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

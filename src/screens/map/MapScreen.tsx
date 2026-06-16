@@ -18,7 +18,11 @@ import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import { fetchGroupReviewedRestaurantIds } from '../../services/groupService';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import {
+  useNavigation,
+  useFocusEffect,
+  useIsFocused,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import MapView, { Region } from 'react-native-maps';
@@ -36,6 +40,8 @@ import CollectionModal from '../../components/ui/CollectionModal';
 const MAX_ZOOM_OUT = 0.1;
 
 export default function MapScreen() {
+  const isFocused = useIsFocused();
+
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
@@ -45,6 +51,8 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
 
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const mapRegionRef = useRef<Region | null>(null);
+  mapRegionRef.current = mapRegion;
 
   const [quickAddVisible, setQuickAddVisible] = useState(false);
   const [quickAddRestaurants, setQuickAddRestaurants] = useState<Restaurant[]>(
@@ -152,20 +160,6 @@ export default function MapScreen() {
           600,
         );
       }, 250);
-
-      if (restaurant.google_place_id && !restaurant.rating) {
-        try {
-          const details = await fetchRestaurantDetails(
-            restaurant.google_place_id,
-          );
-
-          setSelectedRestaurant((prev) =>
-            prev?.id === restaurant.id ? { ...prev, ...details } : prev,
-          );
-        } catch (error) {
-          console.error(error);
-        }
-      }
     },
     [mapRegion],
   );
@@ -280,6 +274,10 @@ export default function MapScreen() {
           })
           .catch((error) => console.error('Failed to load bookmarks:', error));
       }
+
+      if (mapRegionRef.current) {
+        loadData(getRegionBBox(mapRegionRef.current));
+      }
     }, [user?.id]),
   );
 
@@ -356,7 +354,7 @@ export default function MapScreen() {
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
-      {viewMode === 'map' && mapRegion ? (
+      {viewMode === 'map' && mapRegion && isFocused ? (
         <>
           <RestaurantMap
             mapRef={mapRef}
@@ -437,7 +435,7 @@ export default function MapScreen() {
             <MaterialCommunityIcons name="plus" size={30} color="#fff" />
           </TouchableOpacity>
         </>
-      ) : (
+      ) : viewMode === 'list' && isFocused ? (
         <RestaurantList
           restaurants={filteredRestaurants}
           bookmarkedIds={bookmarkedIds}
@@ -447,7 +445,7 @@ export default function MapScreen() {
           userLocation={userLocation || undefined}
           contentContainerStyle={{ paddingTop: 175 }}
         />
-      )}
+      ) : null}
 
       <QuickAddModal
         visible={quickAddVisible}

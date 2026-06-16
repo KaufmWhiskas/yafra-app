@@ -116,15 +116,17 @@ export default function RestaurantCard({
       </View>
 
       <View style={styles.ratingContainer}>
-        {item.app_rating && item.app_review_count ? (
-          <Text style={styles.ratingText}>
-            {item.app_rating.toFixed(1)} ★ ({item.app_review_count} App Reviews)
+        {item.app_rating ? (
+          <Text style={styles.appRatingText}>
+            {item.app_rating.toFixed(1)} ★ ({item.app_review_count || 0} App
+            Reviews)
           </Text>
         ) : null}
 
         {item.rating ? (
           <Text style={styles.googleRatingText}>
-            {item.rating.toFixed(1)} ★ {item.user_ratings_total || 0} reviews
+            {item.rating.toFixed(1)} ★ ({item.user_ratings_total || 0} Google
+            Reviews)
           </Text>
         ) : null}
 
@@ -206,6 +208,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   ratingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  appRatingText: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,

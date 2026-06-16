@@ -13,6 +13,10 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: jest.fn().mockReturnValue(true),
+}));
+
 jest.mock('react-native-maps', () => {
   const { View } = jest.requireActual('react-native');
   return {

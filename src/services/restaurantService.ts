@@ -21,7 +21,7 @@ export async function fetchRestaurants(
 ): Promise<Restaurant[]> {
   const { data, error } = await supabase
     .from("restaurants")
-    .select("*")
+    .select("*, reviews(id)")
     .gte("latitude", bbox.minLat)
     .lte("latitude", bbox.maxLat)
     .gte("longitude", bbox.minLon)
@@ -32,14 +32,30 @@ export async function fetchRestaurants(
   }
 
   return (data || []).map((r: Record<string, unknown>) => {
-    const { google_rating, app_rating, user_ratings_total, ...rest } = r;
+    const {
+      google_rating,
+      app_rating,
+      user_ratings_total,
+      details,
+      reviews,
+      ...rest
+    } = r;
+    const parsedDetails = details as Record<string, unknown> | undefined;
+
     return {
       ...rest,
-      rating: google_rating ? parseFloat(google_rating as string) : undefined,
+      details,
+      rating: google_rating
+        ? parseFloat(google_rating as string)
+        : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
       app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
-      user_ratings_total: Number(user_ratings_total) || 0,
+      app_review_count: reviews ? (reviews as unknown[]).length : 0,
+      user_ratings_total: Number(
+        user_ratings_total || parsedDetails?.user_ratings_total ||
+          parsedDetails?.userRatingCount,
+      ) || 0,
     };
-  }) as Restaurant[];
+  }) as unknown as Restaurant[];
 }
 
 /**
@@ -50,79 +66,136 @@ export async function fetchRestaurants(
 export async function fetchRestaurantDetails(
   googlePlaceId: string,
 ): Promise<Partial<Restaurant> | null> {
-  const { data, error } = await supabase.functions.invoke<
-    Record<string, unknown>
-  >(
-    "fetch-place-details",
-    {
-      body: { googlePlaceId },
-    },
-  );
+  // 1. Fetch the base row and check the cache
+  const { data: localData, error: dbError } = await supabase
+    .from("restaurants")
+    .select(
+      "id, app_rating, google_rating, user_ratings_total, details, details_updated_at",
+    )
+    .eq("google_place_id", googlePlaceId)
+    .maybeSingle();
 
-  if (error) throw error;
+  if (dbError) {
+    console.error("DB Fetch Error:", dbError);
+  }
 
-  if (data) {
-    const { data: localData } = await supabase
-      .from("restaurants")
-      .select("id, app_rating, group_rating")
-      .eq("google_place_id", googlePlaceId)
-      .maybeSingle();
+  let localId = localData?.id;
+  let appRating = localData?.app_rating;
+  let appReviewCount: number | undefined;
 
-    let localId = localData?.id;
+  // Always calculate the live average from the reviews table to bypass trigger latency.
+  if (localId) {
+    const { data: reviews } = await supabase
+      .from("reviews")
+      .select("rating")
+      .eq("restaurant_id", localId.toString());
 
-    if (!localData) {
-      // Auto-provision base row cleanly now that RLS policy permits it
-      const { data: newRest, error: insertError } = await supabase
-        .from("restaurants")
-        .upsert(
-          {
-            google_place_id: googlePlaceId,
-            name: data.name || "Unknown",
-            cuisine: data.cuisine || "restaurant",
-            location: `POINT(${data.longitude ?? 0} ${data.latitude ?? 0})`,
-          },
-          { onConflict: "google_place_id" },
-        )
-        .select("id")
-        .maybeSingle();
-
-      if (insertError) {
-        console.error(
-          "[fetchRestaurantDetails] Auto-ingest RLS/Schema Error:",
-          insertError,
-        );
-      } else if (newRest) {
-        localId = newRest.id;
-      }
-    }
-
-    // Dynamic standard fallback lookup sequence
-    let appRating = localData?.app_rating;
-    if (localId && appRating == null) {
-      const { data: reviews } = await supabase
-        .from("reviews")
-        .select("rating")
-        .eq("restaurant_id", localId.toString());
-
-      if (reviews && reviews.length > 0) {
+    if (reviews) {
+      appReviewCount = reviews.length;
+      if (reviews.length > 0) {
         appRating = reviews.reduce((sum, r) => sum + r.rating, 0) /
           reviews.length;
+      } else {
+        appRating = undefined;
       }
     }
+  }
 
+  // 2. Validate Cache (14 days expiry)
+  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  let isCacheValid = false;
+
+  if (localData?.details && localData.details_updated_at) {
+    const cacheAgeMs = Date.now() -
+      new Date(localData.details_updated_at).getTime();
+    if (cacheAgeMs < FOURTEEN_DAYS_MS) {
+      isCacheValid = true;
+    }
+  }
+
+  // 3. Cache Hit: Return local DB data instantly (Saves Google API $$)
+  if (isCacheValid && localData) {
+    const cachedDetails = localData.details as Record<string, unknown>;
     return {
-      ...data,
+      ...cachedDetails,
       id: localId,
-      rating: data.rating ? Number(data.rating) : undefined,
-      user_ratings_total: Number(data.user_ratings_total) || 0,
+      rating: cachedDetails.rating ? Number(cachedDetails.rating) : undefined,
+      user_ratings_total: Number(
+        cachedDetails.user_ratings_total || cachedDetails.userRatingCount,
+      ) || 0,
       app_rating: appRating != null ? Number(appRating) : undefined,
-      group_rating: localData?.group_rating != null
-        ? Number(localData.group_rating)
-        : undefined,
-      opening_hours: data.opening_hours || undefined,
+      app_review_count: appReviewCount,
+      opening_hours: cachedDetails.opening_hours || undefined,
     } as Partial<Restaurant>;
   }
-  return null;
+
+  // 4. Cache Miss: Fetch fresh data from Google
+  const { data: freshData, error: fetchError } = await supabase.functions
+    .invoke<
+      Record<string, unknown>
+    >(
+      "fetch-place-details",
+      {
+        body: { googlePlaceId },
+      },
+    );
+
+  if (fetchError) throw fetchError;
+  if (!freshData) return null;
+
+  // 5. Update Database Cache
+  if (!localData) {
+    // Auto-provision base row cleanly with the fresh details
+    const { data: newRest, error: insertError } = await supabase
+      .from("restaurants")
+      .upsert(
+        {
+          google_place_id: googlePlaceId,
+          name: freshData.name || "Unknown",
+          cuisine: freshData.cuisine || "restaurant",
+          location: `POINT(${freshData.longitude ?? 0} ${
+            freshData.latitude ?? 0
+          })`,
+          details: freshData, // <-- SAVE THE GOOGLE PAYLOAD
+          details_updated_at: new Date().toISOString(),
+        },
+        { onConflict: "google_place_id" },
+      )
+      .select("id")
+      .maybeSingle();
+
+    if (insertError) {
+      console.error("[fetchRestaurantDetails] Auto-ingest Error:", insertError);
+    } else if (newRest) {
+      localId = newRest.id;
+    }
+  } else {
+    // Row exists, just update the JSONB cache
+    await supabase
+      .from("restaurants")
+      .update({
+        details: freshData, // <-- SAVE THE GOOGLE PAYLOAD
+        details_updated_at: new Date().toISOString(),
+      })
+      .eq("id", localId);
+  }
+
+  return {
+    ...freshData,
+    id: localId,
+    rating: freshData.rating
+      ? Number(freshData.rating)
+      : (localData?.google_rating
+        ? Number(localData.google_rating)
+        : undefined),
+    user_ratings_total: Number(
+      freshData.user_ratings_total || freshData.userRatingCount ||
+        localData?.user_ratings_total,
+    ) || 0,
+    app_rating: appRating != null ? Number(appRating) : undefined,
+    app_review_count: appReviewCount,
+    opening_hours: freshData.opening_hours || undefined,
+  } as Partial<Restaurant>;
 }
 
 /**

@@ -9,6 +9,10 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: jest.fn().mockReturnValue(true),
+}));
+
 describe('RestaurantMap', () => {
   const createMockRestaurant = (
     overrides: Partial<Restaurant> = {},

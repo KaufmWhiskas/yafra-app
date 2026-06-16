@@ -13,6 +13,7 @@ interface GooglePlace {
   };
   rating?: number;
   primaryType?: string;
+  userRatingCount?: number;
 }
 
 // Haversine formula to calculate distance in meters
@@ -63,7 +64,7 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask":
-            "places.id,places.location,places.displayName.text,places.rating,places.primaryType",
+            "places.id,places.location,places.displayName.text,places.rating,places.primaryType,places.userRatingCount",
         },
         body: JSON.stringify({
           includedTypes: ["restaurant"],
@@ -81,16 +82,17 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
 
       const data = await response.json();
 
-      return (data.places || []).map((
-        place: GooglePlace,
-      ): RestaurantRecord => ({
-        name: place.displayName?.text ?? "Unknown",
-        google_place_id: place.id,
-        location:
-          `POINT(${place.location.longitude} ${place.location.latitude})`,
-        cuisine: place.primaryType,
-        google_rating: place.rating,
-      }));
+      return (data.places || []).map(
+        (place: GooglePlace): RestaurantRecord => ({
+          name: place.displayName?.text ?? "Unknown",
+          google_place_id: place.id,
+          location:
+            `POINT(${place.location.longitude} ${place.location.latitude})`,
+          cuisine: place.primaryType,
+          google_rating: place.rating,
+          details: { user_ratings_total: place.userRatingCount },
+        }),
+      );
     },
   };
 }

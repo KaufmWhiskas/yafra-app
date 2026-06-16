@@ -55,7 +55,11 @@ function createMockSupabase(
 
 Deno.test("Cache Hit (Fresh): returns cached data and skips Google API", async () => {
   const { client, state } = createMockSupabase({
-    details: { rating: 4.8 },
+    details: {
+      rating: 4.8,
+      address: "123 Main St",
+      user_ratings_total: 100,
+    },
     details_updated_at: new Date(Date.now() - TWO_DAYS_MS).toISOString(),
   });
 
@@ -87,7 +91,11 @@ Deno.test("Cache Hit (Fresh): returns cached data and skips Google API", async (
 
 Deno.test("Cache Miss (Stale): fetches new details and updates DB", async () => {
   const { client, state } = createMockSupabase({
-    details: { rating: 4.0 },
+    details: {
+      rating: 4.0,
+      address: "123 Main St",
+      user_ratings_total: 100,
+    },
     details_updated_at: new Date(Date.now() - FIFTEEN_DAYS_MS).toISOString(),
   });
 

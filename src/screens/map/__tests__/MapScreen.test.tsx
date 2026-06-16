@@ -1,10 +1,7 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
-import {
-  fetchRestaurants,
-  fetchRestaurantDetails,
-} from '../../../services/restaurantService';
+import { fetchRestaurants } from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
 import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
@@ -96,6 +93,7 @@ jest.mock('@react-navigation/native', () => {
     useFocusEffect: (cb: React.EffectCallback) => {
       ReactActual.useEffect(() => cb(), []);
     },
+    useIsFocused: jest.fn().mockReturnValue(true),
   };
 });
 
@@ -258,34 +256,6 @@ describe('MapScreen Toggle Feature', () => {
     await flushMicrotasks();
 
     expect(queryByTestId('floating-preview-card')).toBeNull();
-  });
-
-  it('quietly fetches details in the background if a selected restaurant has no rating', async () => {
-    (fetchRestaurants as jest.Mock).mockResolvedValueOnce([
-      {
-        id: '1',
-        name: 'Test Burger',
-        cuisine: 'American',
-        latitude: 49.465,
-        longitude: 8.425,
-        google_place_id: 'place_123',
-      } as Restaurant,
-    ]);
-    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({ rating: 4.8 });
-
-    const { getAllByTestId, getByTestId, getAllByText } = render(<MapScreen />);
-    await flushMicrotasks();
-    await flushMicrotasks();
-
-    const markers = getAllByTestId('restaurant-marker');
-    fireEvent.press(markers[0]);
-    await flushMicrotasks();
-
-    expect(getByTestId('floating-preview-card')).toBeTruthy();
-    expect(fetchRestaurantDetails).toHaveBeenCalledWith('place_123');
-
-    const elements = getAllByText(/4\.8/);
-    expect(elements.length).toBeGreaterThan(0);
   });
 
   it('passes bookmark toggle down to the floating preview card and opens CollectionModal', async () => {

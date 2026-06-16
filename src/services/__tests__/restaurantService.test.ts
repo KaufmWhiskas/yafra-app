@@ -13,6 +13,7 @@ jest.mock("../supabase", () => ({
     lte: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     upsert: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     functions: {
       invoke: jest.fn(),
@@ -90,36 +91,56 @@ describe("triggerIngest", () => {
 });
 
 describe("fetchRestaurantDetails", () => {
-  it("invokes the fetch-place-details edge function and merges local db stats", async () => {
-    const mockDetails = { rating: 4.5, price_level: 2, user_ratings_total: 0 };
+  it("fetches fresh details and merges with live review calculations", async () => {
+    const mockFreshDetails = {
+      name: "Fresh Name",
+      rating: 4.8,
+      user_ratings_total: 150,
+      opening_hours: ["Monday: 9-5"],
+      price_level: 2,
+    };
     (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-      data: mockDetails,
+      data: mockFreshDetails,
       error: null,
     });
 
-    // Mock the subsequent local DB call
-    (supabase.from as jest.Mock).mockReturnValueOnce({
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({
-        data: { id: "1", app_rating: 4.2, group_rating: 4.8 },
-        error: null,
-      }),
+    // Mock the chain for from('restaurants') -> maybeSingle() and from('reviews')
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === "restaurants") {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: {
+              id: "1",
+              app_rating: 4.0,
+              details: null,
+              details_updated_at: null,
+            },
+            error: null,
+          }),
+          update: jest.fn().mockReturnThis(),
+        };
+      }
+      if (table === "reviews") {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockResolvedValue({
+            data: [{ rating: 5.0 }, { rating: 3.4 }], // 2 reviews, avg = 4.2
+            error: null,
+          }),
+        };
+      }
+      return supabase; // Fallback
     });
 
     const result = await fetchRestaurantDetails("place_123");
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith(
-      "fetch-place-details",
-      {
-        body: { googlePlaceId: "place_123" },
-      },
-    );
     expect(result).toEqual({
-      ...mockDetails,
+      ...mockFreshDetails,
       id: "1",
       app_rating: 4.2,
-      group_rating: 4.8,
+      app_review_count: 2,
     });
   });
 });

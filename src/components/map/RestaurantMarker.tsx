@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Restaurant } from '../../types';
 import { COLORS } from '../../constants/theme';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
+import { useIsFocused } from '@react-navigation/native';
 
 /**
  * Base64 string representing a 1x1 transparent PNG pixel.
@@ -49,6 +50,7 @@ function RestaurantMarker({
   onPress,
 }: RestaurantMarkerProps) {
   const [trackChanges, setTrackChanges] = useState(true);
+  const isFocused = useIsFocused();
 
   // Scale value ranges from 0.75 (unselected proportional size) to 1.0 (selected size).
   const scaleAnim = useRef(new Animated.Value(isSelected ? 0.75 : 1)).current;
@@ -70,6 +72,14 @@ function RestaurantMarker({
     const timer = setTimeout(() => setTrackChanges(false), 800);
     return () => clearTimeout(timer);
   }, [isSelected, isBookmarked, scaleAnim]);
+
+  useEffect(() => {
+    if (isFocused) {
+      setTrackChanges(true);
+      const timer = setTimeout(() => setTrackChanges(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused]);
 
   const displayState = resolveRestaurantDisplay(restaurant, isBookmarked);
   const bgColor = displayState.isHollow ? '#ffffff' : displayState.color;

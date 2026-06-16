@@ -55,21 +55,24 @@ export default function RestaurantDetailScreen() {
     ? bookmarkedRestaurantIds.has(details.id.toString())
     : false;
 
-  useEffect(() => {
-    setIsLoading(true);
-    fetchRestaurantDetails(restaurantId)
-      .then(setDetails)
-      .catch((error) => {
-        console.error('Failed to fetch restaurant details:', error);
-        Alert.alert(
-          'Error',
-          'Could not load restaurant details. Please try again later.',
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [restaurantId]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!details) setIsLoading(true);
+      fetchRestaurantDetails(restaurantId)
+        .then(setDetails)
+        .catch((error) => {
+          console.error('Failed to fetch restaurant details:', error);
+          Alert.alert(
+            'Error',
+            'Could not load restaurant details. Please try again later.',
+          );
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [restaurantId]),
+  );
 
   // Split these into dedicated single-responsibility tracking blocks
   useEffect(() => {
