@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   TextInput,
   TouchableOpacity,
@@ -13,10 +13,14 @@ import {
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { COLORS, SIZES } from '../../constants/theme';
-import { submitReview } from '../../services/reviewService';
+import { submitReview, fetchUserTags } from '../../services/reviewService';
 import ScoreSelector from '../../components/review/ScoreSelector';
-import EatInToggle from '../../components/review/EatInToggle';
 import TagSelector from '../../components/review/TagSelector';
+import ExperienceToggle, {
+  ExperienceType,
+} from '../../components/review/ExperienceToggle';
+import { DEFAULT_TAGS } from '../../constants/tags';
+import { useAuth } from '../../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -28,38 +32,35 @@ export default function ReviewScreen() {
   const navigation = useNavigation();
   const { restaurant } = route.params;
 
+  const { session } = useAuth();
+  const user = session?.user;
+
   const [isAdvanced, setIsAdvanced] = useState(false);
   const [rating, setRating] = useState<number>(3.0);
   const [priceScore, setPriceScore] = useState<number>(3.0);
-  const [isEatIn, setIsEatIn] = useState<boolean>(true);
+  const [experienceType, setExperienceType] =
+    useState<ExperienceType>('eat-in');
   const [description, setDescription] = useState('');
   const [visitDate, setVisitDate] = useState<Date | null>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAllTags, setShowAllTags] = useState(false);
-
-  const [availableTags, setAvailableTags] = useState<string[]>([
-    'Great Value',
-    'Overpriced',
-    'Hidden Gem',
-    'Crowded',
-    'Fast Service',
-    'Slow Service',
-    'Vegan Options',
-    'Gluten-Free',
-    'Spicy',
-    'Comfort Food',
-    'Date Night',
-    'Family Friendly',
-    'Loud',
-    'Cozy',
-    'Outdoor Seating',
-    'Pet Friendly',
-  ]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const displayedTags = showAllTags ? availableTags : availableTags.slice(0, 6);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTags(user.id).then((userTags) => {
+        const merged = [...new Set([...userTags, ...DEFAULT_TAGS])];
+        setAvailableTags(merged);
+      });
+    } else {
+      setAvailableTags(DEFAULT_TAGS);
+    }
+  }, [user?.id]);
 
   const handleSubmitReview = async () => {
     if (
@@ -82,7 +83,7 @@ export default function ReviewScreen() {
         restaurantId: restaurant.id.toString(),
         rating,
         priceScore: isAdvanced ? priceScore : 0,
-        isEatIn: isAdvanced ? isEatIn : true,
+        experienceType,
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
@@ -140,6 +141,60 @@ export default function ReviewScreen() {
           label="Overall Score"
         />
 
+        <Text style={styles.sectionTitle}>When did you visit?</Text>
+        <View style={styles.dateSelectorRow}>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowDatePicker(!showDatePicker)}
+          >
+            <MaterialCommunityIcons
+              name="calendar-month-outline"
+              size={20}
+              color={COLORS.primary}
+            />
+            <Text style={styles.dateButtonText}>
+              {visitDate
+                ? visitDate.toISOString().split('T')[0]
+                : 'Unknown Date'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.unknownButton}
+            onPress={() => {
+              setVisitDate(null);
+              setShowDatePicker(false);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="close-circle-outline"
+              size={20}
+              color={COLORS.textLight}
+            />
+            <Text style={styles.unknownButtonText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={visitDate || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            maximumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              if (Platform.OS === 'android') {
+                setShowDatePicker(false);
+              }
+              if (event.type === 'set' && selectedDate) {
+                setVisitDate(selectedDate);
+              }
+            }}
+          />
+        )}
+
+        <Text style={styles.sectionTitle}>Experience Type</Text>
+        <ExperienceToggle value={experienceType} onChange={setExperienceType} />
+
         <TouchableOpacity
           style={styles.advancedToggle}
           onPress={() => setIsAdvanced(!isAdvanced)}
@@ -160,65 +215,11 @@ export default function ReviewScreen() {
           <View style={styles.advancedSection}>
             <View style={styles.divider} />
 
-            <Text style={styles.sectionTitle}>When did you visit?</Text>
-            <View style={styles.dateSelectorRow}>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(!showDatePicker)}
-              >
-                <MaterialCommunityIcons
-                  name="calendar-month-outline"
-                  size={20}
-                  color={COLORS.primary}
-                />
-                <Text style={styles.dateButtonText}>
-                  {visitDate
-                    ? visitDate.toISOString().split('T')[0]
-                    : 'Unknown Date'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.unknownButton}
-                onPress={() => {
-                  setVisitDate(null);
-                  setShowDatePicker(false);
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="close-circle-outline"
-                  size={20}
-                  color={COLORS.textLight}
-                />
-                <Text style={styles.unknownButtonText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={visitDate || new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                maximumDate={new Date()}
-                onChange={(event, selectedDate) => {
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
-                  if (event.type === 'set' && selectedDate) {
-                    setVisitDate(selectedDate);
-                  }
-                }}
-              />
-            )}
-
             <ScoreSelector
               value={priceScore}
               onChange={setPriceScore}
               label="Price / Value"
             />
-
-            <Text style={styles.sectionTitle}>Experience Type</Text>
-            <EatInToggle isEatIn={isEatIn} onChange={setIsEatIn} />
 
             <View style={styles.tagsHeader}>
               <Text style={styles.sectionTitle}>Tags & Highlights</Text>

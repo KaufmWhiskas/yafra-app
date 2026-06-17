@@ -8,7 +8,7 @@ export const submitReview = async (review: {
   restaurantId: string;
   rating: number;
   priceScore: number;
-  isEatIn: boolean;
+  experienceType: "eat-in" | "takeaway" | "order";
   tags: string[];
   description: string;
   visitDate?: string | null;
@@ -32,7 +32,7 @@ export const submitReview = async (review: {
         review_text: review.description || "",
         visit_date: review.visitDate || null,
         metadata: {
-          is_eat_in: review.isEatIn ?? true,
+          experience_type: review.experienceType,
           tags: review.tags || [],
         },
         user_id: user.id,
@@ -122,4 +122,32 @@ export async function deleteReview(reviewId: number): Promise<void> {
     .eq("id", reviewId);
 
   if (error) throw error;
+}
+
+/**
+ * Fetches and sorts all tags previously used by the user, ordered by frequency.
+ */
+export async function fetchUserTags(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("metadata")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error fetching tags:", error);
+    return [];
+  }
+
+  const tagCounts: Record<string, number> = {};
+
+  data.forEach((row) => {
+    const tags = (row.metadata as Record<string, unknown>)?.tags as string[] ||
+      [];
+    tags.forEach((tag: string) => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    });
+  });
+
+  // Sort keys by highest count descending
+  return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
 }

@@ -1,0 +1,16 @@
+export const DEFAULT_TAGS = [
+  "Hidden Gem",
+  "Crowded",
+  "Fast Service",
+  "Slow Service",
+  "Vegan Options",
+  "Vegetarian Options",
+  "Spicy",
+  "Comfort Food",
+  "Date Night",
+  "Family Friendly",
+  "Loud",
+  "Cozy",
+  "Outdoor Seating",
+  "Pet Friendly",
+];

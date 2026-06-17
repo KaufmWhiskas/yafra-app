@@ -6,6 +6,7 @@ import { submitReview } from '../../../services/reviewService';
 
 jest.mock('../../../services/reviewService', () => ({
   submitReview: jest.fn(),
+  fetchUserTags: jest.fn().mockResolvedValue([]),
 }));
 
 const mockGoBack = jest.fn();
@@ -38,6 +39,13 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
+jest.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    session: { user: { id: 'test-user-id' } },
+    isLoading: false,
+  }),
+}));
+
 jest.spyOn(Alert, 'alert');
 
 describe('ReviewScreen', () => {
@@ -61,7 +69,7 @@ describe('ReviewScreen', () => {
         restaurantId: 'rest_123',
         rating: 3.0,
         priceScore: 0,
-        isEatIn: true,
+        experienceType: 'eat-in',
         tags: [],
         description: '',
         visitDate: expect.any(String),
@@ -70,11 +78,10 @@ describe('ReviewScreen', () => {
     });
   });
 
-  it('calls submitReview with advanced payload when expanded', async () => {
+  it('calls submitReview with advanced payload when expanded and a tag is selected', async () => {
     (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
-    const { getByText, getAllByTestId, getByPlaceholderText } = render(
-      <ReviewScreen />,
-    );
+    const { getByText, getAllByTestId, getByPlaceholderText, findByText } =
+      render(<ReviewScreen />);
 
     // Expand Advanced details section
     fireEvent.press(getByText('Add Advanced Details (Optional)'));
@@ -88,6 +95,9 @@ describe('ReviewScreen', () => {
     const notesInput = getByPlaceholderText('What did you love or hate?');
     fireEvent.changeText(notesInput, 'Amazing burgers!');
 
+    // SIMULATE SELECTING A TAG (Using a tag known to be in DEFAULT_TAGS)
+    fireEvent.press(await findByText('Hidden Gem'));
+
     fireEvent.press(getByText('Submit Review'));
 
     await waitFor(() => {
@@ -95,8 +105,8 @@ describe('ReviewScreen', () => {
         restaurantId: 'rest_123',
         rating: 4.5,
         priceScore: 3.5,
-        isEatIn: false,
-        tags: [],
+        experienceType: 'takeaway',
+        tags: ['Hidden Gem'],
         description: 'Amazing burgers!',
         visitDate: expect.any(String),
       });
