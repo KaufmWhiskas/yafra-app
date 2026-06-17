@@ -262,7 +262,7 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('floating ui card appears on press', async () => {
-    const { getAllByTestId, getByTestId, queryByTestId } = render(
+    const { getAllByTestId, getByTestId, queryAllByTestId } = render(
       <MapScreen />,
     );
     await flushMicrotasks();
@@ -272,16 +272,16 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(markers[0]);
     await flushMicrotasks();
 
-    expect(getByTestId('floating-preview-card')).toBeTruthy();
+    expect(getAllByTestId('floating-preview-card').length).toBeGreaterThan(0);
 
     fireEvent.press(getByTestId('mock-map'));
     await flushMicrotasks();
 
-    expect(queryByTestId('floating-preview-card')).toBeNull();
+    expect(queryAllByTestId('floating-preview-card').length).toBe(0);
   });
 
   it('passes bookmark toggle down to the floating preview card and opens CollectionModal', async () => {
-    const { getAllByTestId, getByTestId, findByText } = render(<MapScreen />);
+    const { getAllByTestId, findByText } = render(<MapScreen />);
     await flushMicrotasks();
     await flushMicrotasks();
 
@@ -289,9 +289,9 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(markers[0]);
     await flushMicrotasks();
 
-    expect(getByTestId('floating-preview-card')).toBeTruthy();
+    expect(getAllByTestId('floating-preview-card').length).toBeGreaterThan(0);
 
-    const bookmarkBtn = getByTestId('bookmark-button');
+    const bookmarkBtn = getAllByTestId('bookmark-button')[0];
     fireEvent.press(bookmarkBtn);
     await flushMicrotasks();
 
@@ -299,7 +299,7 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {
-    const { getAllByTestId, getByText } = render(<MapScreen />);
+    const { getAllByTestId, getAllByText } = render(<MapScreen />);
     await flushMicrotasks();
     await flushMicrotasks();
 
@@ -307,7 +307,7 @@ describe('MapScreen Toggle Feature', () => {
     fireEvent.press(markers[0]);
     await flushMicrotasks();
 
-    const reviewButton = getByText('Add Review');
+    const reviewButton = getAllByText('Add Review')[0];
     fireEvent.press(reviewButton);
     await flushMicrotasks();
 

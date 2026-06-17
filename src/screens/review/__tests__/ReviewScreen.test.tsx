@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
 import { submitReview } from '../../../services/reviewService';
@@ -53,9 +53,13 @@ describe('ReviewScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the restaurant name passed via route parameters', () => {
+  it('renders the restaurant name passed via route parameters', async () => {
     const { getByText } = render(<ReviewScreen />);
     expect(getByText(/Test Burger Joint/i)).toBeTruthy();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   it('calls submitReview with simple mode payload by default', async () => {

@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import { Restaurant } from '../../types';
-import RestaurantCard from '../ui/RestaurantCard';
 import RestaurantMarker from './RestaurantMarker';
 import {
   getVisibleRestaurants,
@@ -18,12 +17,7 @@ interface RestaurantMapProps {
   onMapPress: () => void;
   region: Region;
   settledRegion?: Region;
-  showsUserLocation?: boolean;
-  showsMyLocationButton?: boolean;
-  showsCompass?: boolean;
-  toolbarEnabled?: boolean;
   testID?: string;
-  onPressReview?: (restaurant: Restaurant) => void;
   onRegionChangeComplete?: (region: Region) => void;
   onRegionChange?: () => void;
   bookmarkedIds?: Set<string>;
@@ -46,12 +40,7 @@ export default function RestaurantMap({
   onMapPress,
   region,
   settledRegion,
-  showsUserLocation,
-  showsMyLocationButton,
-  showsCompass,
-  toolbarEnabled,
   testID,
-  onPressReview,
   onRegionChangeComplete,
   onRegionChange,
   bookmarkedIds,
@@ -87,10 +76,10 @@ export default function RestaurantMap({
         testID={testID || 'restaurant-map'}
         style={styles.map}
         initialRegion={region}
-        showsUserLocation={showsUserLocation}
-        showsMyLocationButton={showsMyLocationButton}
-        showsCompass={showsCompass}
-        toolbarEnabled={toolbarEnabled}
+        showsUserLocation
+        showsMyLocationButton={false}
+        showsCompass={false}
+        toolbarEnabled={false}
         onPress={onMapPress}
         moveOnMarkerPress={false}
         onRegionChangeComplete={onRegionChangeComplete}
@@ -122,17 +111,6 @@ export default function RestaurantMap({
           />
         )}
       </MapView>
-
-      {selectedRestaurant && (
-        <View testID="floating-preview-card" style={styles.cardContainer}>
-          <RestaurantCard
-            item={selectedRestaurant}
-            onPressReview={() => onPressReview?.(selectedRestaurant)}
-            isBookmarked={bookmarkedIds?.has(selectedRestaurant.id.toString())}
-            onToggleBookmark={() => onToggleBookmark?.(selectedRestaurant.id)}
-          />
-        </View>
-      )}
     </View>
   );
 }
@@ -145,11 +123,5 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
-  },
-  cardContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
   },
 });

@@ -10,6 +10,7 @@ import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
 import SearchBar from '../../components/ui/SearchBar';
+import RestaurantCard from '../../components/ui/RestaurantCard';
 import RestaurantList from '../../components/ui/RestaurantList';
 import QuickAddModal from '../../components/ui/QuickAddModal';
 import FilterModal, { Filters } from '../../components/map/FilterModal';
@@ -48,6 +49,7 @@ export default function MapScreen() {
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
+  const [previewHeight, setPreviewHeight] = useState(0);
 
   const mapRef = useRef<MapView>(null);
 
@@ -401,17 +403,40 @@ export default function MapScreen() {
               });
             }}
             region={mapRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            showsCompass={false}
-            toolbarEnabled={false}
             testID="mock-map"
-            onPressReview={handleReviewPress}
             onRegionChangeComplete={handleRegionChangeComplete}
             onRegionChange={handleRegionChangeLive}
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={handleToggleBookmark}
           />
+
+          {selectedRestaurant && (
+            <View
+              testID="floating-preview-card"
+              style={styles.floatingCardContainer}
+              onLayout={(e) => setPreviewHeight(e.nativeEvent.layout.height)}
+            >
+              <RestaurantCard
+                item={selectedRestaurant}
+                onPress={handleItemPress}
+                onPressReview={() => handleReviewPress(selectedRestaurant)}
+                isBookmarked={bookmarkedIds.has(
+                  selectedRestaurant.id.toString(),
+                )}
+                onToggleBookmark={() =>
+                  handleToggleBookmark(selectedRestaurant.id)
+                }
+                distance={
+                  userLocation
+                    ? calculateDistance(userLocation, {
+                        latitude: selectedRestaurant.latitude,
+                        longitude: selectedRestaurant.longitude,
+                      })
+                    : undefined
+                }
+              />
+            </View>
+          )}
 
           <TouchableOpacity
             style={[styles.fab, styles.compassFab]}
@@ -426,7 +451,7 @@ export default function MapScreen() {
             style={[
               styles.fab,
               styles.invertedFab,
-              selectedRestaurant ? { bottom: 250 } : { bottom: 100 },
+              { bottom: selectedRestaurant ? previewHeight + 100 : 100 },
             ]}
             onPress={handleMyLocationPress}
             testID="my-location-button"
@@ -460,7 +485,7 @@ export default function MapScreen() {
           <TouchableOpacity
             style={[
               styles.fab,
-              selectedRestaurant ? { bottom: 320 } : { bottom: 30 },
+              { bottom: selectedRestaurant ? previewHeight + 30 : 30 },
             ]}
             onPress={handleQuickAddPress}
             testID="quick-add-fab"
@@ -572,5 +597,12 @@ const styles = StyleSheet.create({
   },
   filterFab: {
     top: 184,
+  },
+  floatingCardContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: SIZES.padding,
+    right: SIZES.padding,
+    zIndex: 100,
   },
 });
