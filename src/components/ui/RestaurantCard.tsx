@@ -13,6 +13,8 @@ interface RestaurantCardProps {
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
   distance?: number;
+  hideRatings?: boolean;
+  hideReviewButton?: boolean;
 }
 
 const getIconForCuisine = (
@@ -37,6 +39,8 @@ export default function RestaurantCard({
   isBookmarked,
   onToggleBookmark,
   distance,
+  hideRatings,
+  hideReviewButton,
 }: RestaurantCardProps) {
   const displayState = resolveRestaurantDisplay(item, isBookmarked);
 
@@ -115,33 +119,37 @@ export default function RestaurantCard({
         )}
       </View>
 
-      <View style={styles.ratingContainer}>
-        {item.app_rating ? (
-          <Text style={styles.appRatingText}>
-            {item.app_rating.toFixed(1)} ★ ({item.app_review_count || 0} App
-            Reviews)
-          </Text>
-        ) : null}
+      {!hideRatings && (
+        <View style={styles.ratingContainer}>
+          {item.app_rating ? (
+            <Text style={styles.appRatingText}>
+              {item.app_rating.toFixed(1)} ★ ({item.app_review_count || 0} App
+              Reviews)
+            </Text>
+          ) : null}
 
-        {item.rating ? (
-          <Text style={styles.googleRatingText}>
-            {item.rating.toFixed(1)} ★ ({item.user_ratings_total || 0} Google
-            Reviews)
-          </Text>
-        ) : null}
+          {item.rating ? (
+            <Text style={styles.googleRatingText}>
+              {item.rating.toFixed(1)} ★ ({item.user_ratings_total || 0} Google
+              Reviews)
+            </Text>
+          ) : null}
 
-        {!item.app_rating && !item.rating && (
-          <Text style={styles.ratingText}>Unrated</Text>
-        )}
-      </View>
+          {!item.app_rating && !item.rating && (
+            <Text style={styles.ratingText}>Unrated</Text>
+          )}
+        </View>
+      )}
 
-      <TouchableOpacity
-        style={styles.reviewButton}
-        onPress={onPressReview}
-        testID="add-review-button"
-      >
-        <Text style={styles.reviewButtonText}>Add Review</Text>
-      </TouchableOpacity>
+      {!hideReviewButton && (
+        <TouchableOpacity
+          style={styles.reviewButton}
+          onPress={onPressReview}
+          testID="add-review-button"
+        >
+          <Text style={styles.reviewButtonText}>Add Review</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }

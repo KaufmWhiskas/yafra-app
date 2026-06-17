@@ -8,9 +8,13 @@ import { supabase } from '../../../services/supabase';
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => {
   const actualNav = jest.requireActual('@react-navigation/native');
+  const ReactActual = jest.requireActual('react');
   return {
     ...actualNav,
     useNavigation: () => ({ navigate: mockNavigate }),
+    useFocusEffect: (cb: React.EffectCallback) => {
+      ReactActual.useEffect(() => cb(), []);
+    },
   };
 });
 

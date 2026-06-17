@@ -15,7 +15,12 @@ import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant, Review } from '../../types';
 
 type UserReviewsRouteProp = RouteProp<RootStackParamList, 'UserReviewsScreen'>;
-type JoinedReview = Review & { restaurant?: Restaurant };
+type JoinedReview = Review & {
+  restaurant?: Restaurant;
+  metadata?: { tags: string[] };
+  review_text?: string;
+  price_value_rating?: number;
+};
 
 export default function UserReviewsScreen() {
   const route = useRoute<UserReviewsRouteProp>();
@@ -57,12 +62,38 @@ export default function UserReviewsScreen() {
               longitude: 0,
             } as Restaurant);
           return (
-            <View style={styles.reviewCard}>
-              <RestaurantCard item={restaurant} />
-              <View style={styles.reviewBadge}>
-                <Text style={styles.reviewBadgeText}>
-                  Rated: {item.rating.toFixed(1)} ★
-                </Text>
+            <View style={styles.reviewContainer}>
+              <RestaurantCard
+                item={restaurant}
+                hideRatings={true}
+                hideReviewButton={true}
+              />
+
+              <View style={styles.reviewDetails}>
+                <View style={styles.reviewScores}>
+                  <Text style={styles.scoreText}>
+                    My Rating: {item.rating.toFixed(1)} ★
+                  </Text>
+                  {item.price_value_rating ? (
+                    <Text style={styles.scoreText}>
+                      Value: {item.price_value_rating.toFixed(1)} ★
+                    </Text>
+                  ) : null}
+                </View>
+
+                {item.review_text ? (
+                  <Text style={styles.reviewNotes}>"{item.review_text}"</Text>
+                ) : null}
+
+                {item.metadata?.tags && item.metadata.tags.length > 0 && (
+                  <View style={styles.tagsWrapper}>
+                    {item.metadata.tags.map((tag: string) => (
+                      <View key={tag} style={styles.tagChip}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
           );
@@ -76,17 +107,42 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { padding: SIZES.padding },
-  reviewCard: { marginBottom: 16 },
-  reviewBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: COLORS.primary,
+  reviewContainer: {
+    marginBottom: 24,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  reviewDetails: {
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  reviewScores: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  scoreText: { fontWeight: 'bold', color: COLORS.primary, fontSize: 14 },
+  reviewNotes: {
+    fontStyle: 'italic',
+    color: COLORS.text,
+    marginBottom: 12,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  tagsWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tagChip: {
+    backgroundColor: '#e0e0e0',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    zIndex: 10,
-    elevation: 3,
   },
-  reviewBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  tagText: { fontSize: 12, color: COLORS.text },
 });

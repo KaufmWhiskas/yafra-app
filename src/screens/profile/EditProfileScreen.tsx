@@ -57,6 +57,16 @@ export default function EditProfileScreen() {
           placeholder="Enter new name"
           placeholderTextColor={COLORS.textLight}
         />
+        <Text
+          style={{
+            color: COLORS.textLight,
+            fontSize: 12,
+            marginBottom: 16,
+            marginTop: -12,
+          }}
+        >
+          Note: You can only change your profile name once every 7 days.
+        </Text>
         <TouchableOpacity
           style={[styles.saveButton, isSubmitting && styles.disabledButton]}
           onPress={handleSaveName}

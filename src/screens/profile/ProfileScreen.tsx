@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { COLORS, SIZES } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { fetchUserStats } from '../../services/profileService';
 import { supabase } from '../../services/supabase';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -32,20 +32,22 @@ export default function ProfileScreen() {
     bookmarkCount: 0,
   });
 
-  useEffect(() => {
-    const loadStats = async () => {
-      if (!user?.id) return;
-      try {
-        const data = await fetchUserStats(user.id);
-        setStats(data);
-      } catch (error) {
-        console.error('Failed to load stats', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadStats();
-  }, [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      const loadStats = async () => {
+        if (!user?.id) return;
+        try {
+          const data = await fetchUserStats(user.id);
+          setStats(data);
+        } catch (error) {
+          console.error('Failed to load stats', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadStats();
+    }, [user?.id]),
+  );
 
   const handleLogout = async () => {
     try {
@@ -74,7 +76,13 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity style={styles.identityCard}>
+        <TouchableOpacity
+          style={styles.identityCard}
+          onPress={() => {
+            if (user?.id)
+              navigation.navigate('UserReviewsScreen', { userId: user.id });
+          }}
+        >
           <View style={styles.avatarPlaceholder}>
             <MaterialCommunityIcons
               name="account"
@@ -87,22 +95,12 @@ export default function ProfileScreen() {
               {isLoading ? 'Loading...' : stats.username}
             </Text>
             <View style={styles.statsContainer}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (user?.id) {
-                    navigation.navigate('UserReviewsScreen', {
-                      userId: user.id,
-                    });
-                  }
-                }}
-              >
-                <Text style={styles.statText}>
-                  <Text style={styles.statBold}>
-                    {isLoading ? '-' : stats.reviewCount}
-                  </Text>{' '}
-                  Reviews
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.statText}>
+                <Text style={styles.statBold}>
+                  {isLoading ? '-' : stats.reviewCount}
+                </Text>{' '}
+                Reviews
+              </Text>
               <Text style={styles.statText}>
                 <Text style={styles.statBold}>
                   {isLoading ? '-' : stats.uniqueRestaurantsVisited}
