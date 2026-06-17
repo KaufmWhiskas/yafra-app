@@ -85,6 +85,14 @@ describe('ProfileScreen', () => {
     const logoutButton = getByTestId('logout-button');
     fireEvent.press(logoutButton);
 
+    // Extract the onPress handler from the 'Sign Out' destructive button in the Alert
+    const alertCalls = (Alert.alert as jest.Mock).mock.calls;
+    const lastCall = alertCalls[alertCalls.length - 1];
+    const buttons = lastCall[2];
+    const signOutButton = buttons.find((b: { text: string; style: string }) => b.text === 'Sign Out');
+    
+    await signOutButton.onPress();
+
     await waitFor(() => {
       expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
     });

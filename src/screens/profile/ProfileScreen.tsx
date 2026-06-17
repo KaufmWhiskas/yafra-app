@@ -49,23 +49,43 @@ export default function ProfileScreen() {
     }, [user?.id]),
   );
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error) {
-      Alert.alert(
-        'Logout Failed',
-        error instanceof Error ? error.message : 'An error occurred',
-      );
-    }
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+          } catch (error) {
+            Alert.alert(
+              'Logout Failed',
+              error instanceof Error ? error.message : 'An error occurred',
+            );
+          }
+        },
+      },
+    ]);
+  };
+
+  const handlePlaceholder = (featureName: string) => {
+    Alert.alert(
+      featureName,
+      `This feature is under construction and will be available in a future update.`,
+      [{ text: 'OK', style: 'default' }],
+    );
   };
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity
+          style={[styles.notificationButton, styles.disabledFeature]}
+          onPress={() => handlePlaceholder('Notifications')}
+        >
           <MaterialCommunityIcons
             name="bell-outline"
             size={24}
@@ -117,7 +137,14 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={styles.gridRow}>
-          <TouchableOpacity style={[styles.gridCard, styles.gridCardLeft]}>
+          <TouchableOpacity
+            style={[
+              styles.gridCard,
+              styles.gridCardLeft,
+              styles.disabledFeature,
+            ]}
+            onPress={() => handlePlaceholder('Achievements')}
+          >
             <MaterialCommunityIcons
               name="trophy-outline"
               size={32}
@@ -163,7 +190,10 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity
+            style={[styles.actionItem, styles.disabledFeature]}
+            onPress={() => handlePlaceholder('Settings')}
+          >
             <MaterialCommunityIcons
               name="cog-outline"
               size={24}
@@ -177,7 +207,10 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity
+            style={[styles.actionItem, styles.disabledFeature]}
+            onPress={() => handlePlaceholder('Privacy')}
+          >
             <MaterialCommunityIcons
               name="shield-account-outline"
               size={24}
@@ -191,7 +224,10 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity
+            style={[styles.actionItem, styles.disabledFeature]}
+            onPress={() => handlePlaceholder('About')}
+          >
             <MaterialCommunityIcons
               name="information-outline"
               size={24}
@@ -371,5 +407,8 @@ const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.danger,
     fontWeight: '600',
+  },
+  disabledFeature: {
+    opacity: 0.4,
   },
 });

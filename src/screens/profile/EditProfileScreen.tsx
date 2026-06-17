@@ -78,7 +78,7 @@ export default function EditProfileScreen() {
         <View style={styles.divider} />
 
         <TouchableOpacity
-          style={styles.placeholderButton}
+          style={[styles.placeholderButton, styles.disabledFeature]}
           onPress={handleComingSoon}
         >
           <Text style={styles.placeholderButtonText}>
@@ -86,13 +86,13 @@ export default function EditProfileScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.placeholderButton}
+          style={[styles.placeholderButton, styles.disabledFeature]}
           onPress={handleComingSoon}
         >
           <Text style={styles.placeholderButtonText}>Update Email</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.placeholderButton}
+          style={[styles.placeholderButton, styles.disabledFeature]}
           onPress={handleComingSoon}
         >
           <Text style={styles.placeholderButtonText}>Change Password</Text>
@@ -140,5 +140,8 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontWeight: '600',
     fontSize: 14,
+  },
+  disabledFeature: {
+    opacity: 0.4,
   },
 });
