@@ -8,6 +8,7 @@ import {
   Platform,
   View,
   Text,
+  Alert,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
@@ -68,7 +69,7 @@ export default function ReviewScreen() {
 
     setError('');
     try {
-      await submitReview({
+      const result = await submitReview({
         restaurantId: restaurant.id.toString(),
         rating,
         priceScore: isAdvanced ? priceScore : 0,
@@ -77,9 +78,25 @@ export default function ReviewScreen() {
         description: isAdvanced ? description : '',
       });
 
-      navigation.goBack();
+      if (result.success) {
+        Alert.alert('Success', 'Your review has been submitted!');
+        navigation.goBack();
+      }
     } catch (err) {
-      setError((err as Error).message);
+      const error = err as { code?: string; message?: string };
+
+      if (
+        error.code === '23505' ||
+        error.message?.toLowerCase().includes('unique constraint')
+      ) {
+        setError(
+          'You have already reviewed this restaurant today. You can add another entry tomorrow.',
+        );
+      } else {
+        setError(
+          'Could not save your review right now. Please check your connection and try again.',
+        );
+      }
     }
   };
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
 import { submitReview } from '../../../services/reviewService';
 
@@ -29,6 +30,8 @@ jest.mock('@react-navigation/native', () => {
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
+
+jest.spyOn(Alert, 'alert');
 
 describe('ReviewScreen', () => {
   beforeEach(() => {
@@ -100,7 +103,11 @@ describe('ReviewScreen', () => {
 
     fireEvent.press(getByText('Submit Review'));
 
-    expect(await findByText('Network Error')).toBeTruthy();
+    expect(
+      await findByText(
+        'Could not save your review right now. Please check your connection and try again.',
+      ),
+    ).toBeTruthy();
     expect(mockGoBack).not.toHaveBeenCalled();
   });
 });

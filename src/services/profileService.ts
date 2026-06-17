@@ -48,3 +48,42 @@ export const fetchUserStats = async (
     bookmarkCount: bookmarksResponse.count || 0,
   };
 };
+
+/**
+ * Updates the user's profile name, enforcing a 7-day cooldown between changes.
+ * @param userId The unique identifier of the user.
+ * @param newName The new username to apply.
+ * @throws Will throw an error if the update fails or the cooldown is still active.
+ */
+export async function updateProfileName(
+  userId: string,
+  newName: string,
+): Promise<void> {
+  const { data: profile, error: fetchError } = await supabase
+    .from("profiles")
+    .select("last_name_change")
+    .eq("id", userId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  if (profile?.last_name_change) {
+    const lastChange = new Date(profile.last_name_change).getTime();
+    const daysSinceChange = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceChange < 7) {
+      const daysLeft = Math.ceil(7 - daysSinceChange);
+      throw new Error(`Name changes are locked for ${daysLeft} more day(s).`);
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      username: newName,
+      last_name_change: new Date().toISOString(),
+    })
+    .eq("id", userId);
+
+  if (updateError) throw updateError;
+}

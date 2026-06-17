@@ -25,12 +25,14 @@ export const submitReview = async (review: {
     .from("reviews")
     .insert([
       {
-        restaurant_id: review.restaurantId.toString(),
+        restaurant_id: Number(review.restaurantId),
         rating: review.rating,
-        price_score: review.priceScore,
-        is_eat_in: review.isEatIn,
-        tags: review.tags,
-        description: review.description,
+        price_value_rating: review.priceScore || null,
+        review_text: review.description || "",
+        metadata: {
+          is_eat_in: review.isEatIn ?? true,
+          tags: review.tags || [],
+        },
         user_id: user.id,
       },
     ])
@@ -63,3 +65,44 @@ export const fetchPersonalRating = async (
 
   return data && data.length > 0 ? data[0].rating : undefined;
 };
+
+/**
+ * Fetches all reviews made by a specific user, including the joined restaurant data.
+ */
+export async function fetchUserReviewedRestaurants(userId: string) {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("*, restaurant:restaurants(*)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((review: Record<string, unknown>) => {
+    const mappedReview = { ...review };
+    if (mappedReview.restaurant) {
+      const {
+        google_rating,
+        app_rating,
+        user_ratings_total,
+        details,
+        ...rest
+      } = mappedReview.restaurant as Record<string, unknown>;
+      const parsedDetails = details as Record<string, unknown> | undefined;
+
+      mappedReview.restaurant = {
+        ...rest,
+        details,
+        rating: google_rating
+          ? parseFloat(google_rating as string)
+          : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
+        app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
+        user_ratings_total: Number(
+          user_ratings_total || parsedDetails?.user_ratings_total ||
+            parsedDetails?.userRatingCount,
+        ) || 0,
+      };
+    }
+    return mappedReview;
+  });
+}

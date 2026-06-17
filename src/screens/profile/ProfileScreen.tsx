@@ -87,12 +87,22 @@ export default function ProfileScreen() {
               {isLoading ? 'Loading...' : stats.username}
             </Text>
             <View style={styles.statsContainer}>
-              <Text style={styles.statText}>
-                <Text style={styles.statBold}>
-                  {isLoading ? '-' : stats.reviewCount}
-                </Text>{' '}
-                Reviews
-              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (user?.id) {
+                    navigation.navigate('UserReviewsScreen', {
+                      userId: user.id,
+                    });
+                  }
+                }}
+              >
+                <Text style={styles.statText}>
+                  <Text style={styles.statBold}>
+                    {isLoading ? '-' : stats.reviewCount}
+                  </Text>{' '}
+                  Reviews
+                </Text>
+              </TouchableOpacity>
               <Text style={styles.statText}>
                 <Text style={styles.statBold}>
                   {isLoading ? '-' : stats.uniqueRestaurantsVisited}
@@ -138,7 +148,10 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.actionMenu}>
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => navigation.navigate('EditProfileScreen')}
+          >
             <MaterialCommunityIcons
               name="account-edit-outline"
               size={24}

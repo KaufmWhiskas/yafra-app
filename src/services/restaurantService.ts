@@ -33,7 +33,7 @@ export async function fetchRestaurants(
     throw error;
   }
 
-  return (data || []).map((r: Record<string, any>) => {
+  return (data || []).map((r: Record<string, unknown>) => {
     const {
       google_rating,
       app_rating,
@@ -42,7 +42,7 @@ export async function fetchRestaurants(
       reviews,
       ...rest
     } = r;
-    const parsedDetails = details as Record<string, any> | undefined;
+    const parsedDetails = details as Record<string, unknown> | undefined;
 
     return {
       ...rest,
