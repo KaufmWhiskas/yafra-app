@@ -16,9 +16,9 @@ describe('RatingBadge', () => {
     expect(getByText('-')).toBeTruthy();
   });
 
-  it('renders subValueText when provided', () => {
+  it('renders count when provided', () => {
     const { getByText } = render(
-      <RatingBadge label="Google" color="#000" subValueText="(123)" />,
+      <RatingBadge label="Google" color="#000" count={123} />,
     );
     expect(getByText('(123)')).toBeTruthy();
   });

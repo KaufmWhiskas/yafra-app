@@ -2,7 +2,11 @@ import { Restaurant } from "./index";
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  ReviewScreen: { restaurant: Restaurant };
+  ReviewScreen: {
+    restaurant: Restaurant;
+    editReviewId?: number | string;
+    existingReviewData?: Record<string, unknown>;
+  };
   Login: undefined;
   Register: undefined;
   GroupDetailScreen: { groupId: string };

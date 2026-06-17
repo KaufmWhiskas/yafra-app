@@ -52,20 +52,25 @@ export const submitReview = async (review: {
 export const fetchPersonalRating = async (
   userId: string,
   restaurantId: string | number,
-): Promise<number | undefined> => {
+): Promise<{ rating: number; count: number } | null> => {
   const { data, error } = await supabase
     .from("reviews")
     .select("rating")
     .eq("user_id", userId)
-    .eq("restaurant_id", restaurantId.toString())
-    .order("created_at", { ascending: false });
+    .eq("restaurant_id", restaurantId.toString());
 
   if (error) {
     console.error("Error fetching personal rating:", error);
-    return undefined;
+    return null;
   }
 
-  return data && data.length > 0 ? data[0].rating : undefined;
+  if (!data || data.length === 0) return null;
+
+  // Calculate the true average of all the user's reviews for this place
+  const sum = data.reduce((acc, row) => acc + row.rating, 0);
+  const avg = sum / data.length;
+
+  return { rating: avg, count: data.length };
 };
 
 /**
@@ -151,3 +156,36 @@ export async function fetchUserTags(userId: string): Promise<string[]> {
   // Sort keys by highest count descending
   return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
 }
+
+/**
+ * Updates an existing review in the Supabase database.
+ */
+export const updateReview = async (
+  reviewId: number | string,
+  review: {
+    rating: number;
+    priceScore: number;
+    experienceType: "eat-in" | "takeaway" | "order";
+    tags: string[];
+    description: string;
+    visitDate?: string | null;
+  },
+) => {
+  const { data, error } = await supabase
+    .from("reviews")
+    .update({
+      rating: review.rating,
+      price_value_rating: review.priceScore || null,
+      review_text: review.description || "",
+      visit_date: review.visitDate || null,
+      metadata: {
+        experience_type: review.experienceType,
+        tags: review.tags || [],
+      },
+    })
+    .eq("id", reviewId)
+    .select();
+
+  if (error) throw error;
+  return { success: true, data };
+};

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
 import { submitReview } from '../../../services/reviewService';
@@ -53,13 +53,14 @@ describe('ReviewScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the restaurant name passed via route parameters', async () => {
-    const { getByText } = render(<ReviewScreen />);
+  it('renders the restaurant name and default tags', async () => {
+    const { getByText, findByText } = render(<ReviewScreen />);
     expect(getByText(/Test Burger Joint/i)).toBeTruthy();
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    // Expand the advanced section to reveal the tags
+    fireEvent.press(getByText('Add Advanced Details (Optional)'));
+
+    expect(await findByText('Hidden Gem')).toBeTruthy();
   });
 
   it('calls submitReview with simple mode payload by default', async () => {

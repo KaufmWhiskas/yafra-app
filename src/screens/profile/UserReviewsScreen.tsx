@@ -11,7 +11,8 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../types/navigation';
 import {
@@ -44,9 +45,11 @@ if (
 const ReviewListItem = ({
   item,
   onRemove,
+  navigation,
 }: {
   item: JoinedReview;
   onRemove: (id: number) => void;
+  navigation: NativeStackNavigationProp<RootStackParamList>;
 }) => {
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -135,6 +138,28 @@ const ReviewListItem = ({
 
             <View style={styles.actionColumn}>
               <Text style={styles.dateText}>{displayDate}</Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('ReviewScreen', {
+                    restaurant: item.restaurant as Restaurant,
+                    editReviewId: item.id,
+                    existingReviewData: item as unknown as Record<
+                      string,
+                      unknown
+                    >,
+                  })
+                }
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ marginRight: 16 }}
+              >
+                <MaterialCommunityIcons
+                  name="pencil-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={handleDelete}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -186,6 +211,8 @@ const ReviewListItem = ({
 export default function UserReviewsScreen() {
   const route = useRoute<UserReviewsRouteProp>();
   const insets = useSafeAreaInsets();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userId } = route.params;
 
   const [reviews, setReviews] = useState<JoinedReview[]>([]);
@@ -215,6 +242,7 @@ export default function UserReviewsScreen() {
         renderItem={({ item }) => (
           <ReviewListItem
             item={item}
+            navigation={navigation}
             onRemove={(id) =>
               setReviews((prev) => prev.filter((r) => r.id !== id))
             }

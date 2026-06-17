@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import {
   useRoute,
@@ -28,6 +30,7 @@ import { COLORS } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { fetchPersonalRating } from '../../services/reviewService';
+import { supabase } from '../../services/supabase';
 import CollectionModal from '../../components/ui/CollectionModal';
 
 type RestaurantDetailRouteProp = RouteProp<
@@ -48,8 +51,15 @@ export default function RestaurantDetailScreen() {
   const [bookmarkedRestaurantIds, setBookmarkedRestaurantIds] = useState<
     Set<string>
   >(new Set());
-  const [personalRating, setPersonalRating] = useState<number | undefined>();
+  const [personalRating, setPersonalRating] = useState<{
+    rating: number;
+    count: number;
+  } | null>(null);
   const [isCollectionModalVisible, setCollectionModalVisible] = useState(false);
+  const [isHistoryModalVisible, setHistoryModalVisible] = useState(false);
+  const [userRestaurantHistory, setUserRestaurantHistory] = useState<
+    Record<string, unknown>[]
+  >([]);
 
   const isCurrentlyBookmarked = details?.id
     ? bookmarkedRestaurantIds.has(details.id.toString())
@@ -110,7 +120,7 @@ export default function RestaurantDetailScreen() {
     setCollectionModalVisible(true);
   };
 
-  const handleAddReview = () => {
+  const handleAddReview = async () => {
     if (!details) return;
 
     const restaurantForReview: Restaurant = {
@@ -122,7 +132,56 @@ export default function RestaurantDetailScreen() {
       ...details,
     };
 
+    if (user?.id) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('restaurant_id', (details.id || restaurantId).toString())
+        .eq('visit_date', today)
+        .maybeSingle();
+
+      if (data) {
+        Alert.alert(
+          'Already Reviewed',
+          'You already reviewed this restaurant today. Would you like to edit your existing review?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Edit Review',
+              onPress: () => {
+                navigation.navigate('ReviewScreen', {
+                  restaurant: restaurantForReview,
+                  editReviewId: data.id as number | string,
+                  existingReviewData: data,
+                });
+              },
+            },
+          ],
+        );
+        return;
+      }
+    }
+
     navigation.navigate('ReviewScreen', { restaurant: restaurantForReview });
+  };
+
+  const handleViewHistory = async () => {
+    if (!user?.id || !details?.id) return;
+
+    // Fetch the raw review rows for this specific restaurant
+    const { data } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('restaurant_id', details.id.toString())
+      .order('visit_date', { ascending: false, nullsFirst: false });
+
+    if (data) {
+      setUserRestaurantHistory(data as Record<string, unknown>[]);
+      setHistoryModalVisible(true);
+    }
   };
 
   if (isLoading) {
@@ -192,14 +251,17 @@ export default function RestaurantDetailScreen() {
               <View style={styles.ratingsRow}>
                 <RatingBadge
                   label="Yours"
-                  value={personalRating}
+                  value={personalRating?.rating}
                   color={
-                    personalRating
+                    personalRating?.rating
                       ? resolveRestaurantDisplay({
-                          app_rating: personalRating,
+                          app_rating: personalRating.rating,
                         } as Restaurant).color
                       : COLORS.primary
                   }
+                  count={personalRating?.count}
+                  onPress={handleViewHistory}
+                  disabled={!personalRating?.count}
                 />
                 <RatingBadge
                   label="App"
@@ -211,16 +273,13 @@ export default function RestaurantDetailScreen() {
                         } as Restaurant).color
                       : '#ff9800'
                   }
+                  count={details.app_review_count}
                 />
                 <RatingBadge
                   label="Google"
                   value={details.rating}
                   color="#4285F4"
-                  subValueText={
-                    details.user_ratings_total
-                      ? `(${details.user_ratings_total})`
-                      : undefined
-                  }
+                  count={details.user_ratings_total}
                 />
               </View>
 
@@ -267,6 +326,76 @@ export default function RestaurantDetailScreen() {
           }}
         />
       )}
+
+      <Modal
+        visible={isHistoryModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Your Review History</Text>
+              <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={COLORS.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={userRestaurantHistory}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => {
+                const displayDate = String(
+                  item.visit_date ||
+                    String(item.created_at || '').split('T')[0] ||
+                    'Unknown Date',
+                );
+                return (
+                  <View style={styles.historyCard}>
+                    <View style={styles.historyCardHeader}>
+                      <Text style={styles.historyDate}>{displayDate}</Text>
+                      <Text style={styles.historyRating}>
+                        {Number(item.rating).toFixed(1)} ★
+                      </Text>
+                    </View>
+                    {item.review_text ? (
+                      <Text style={styles.historyText}>
+                        "{String(item.review_text)}"
+                      </Text>
+                    ) : null}
+                    <TouchableOpacity
+                      style={styles.editHistoryButton}
+                      onPress={() => {
+                        setHistoryModalVisible(false);
+                        const restaurantForReview: Restaurant = {
+                          id: details.id || restaurantId,
+                          name: restaurantName,
+                          cuisine: details.cuisine || 'unknown',
+                          latitude: details.latitude || 0,
+                          longitude: details.longitude || 0,
+                          ...details,
+                        };
+                        navigation.navigate('ReviewScreen', {
+                          restaurant: restaurantForReview,
+                          editReviewId: item.id as number | string,
+                          existingReviewData: item,
+                        });
+                      }}
+                    >
+                      <Text style={styles.editHistoryText}>Edit Review</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }}
+              contentContainerStyle={styles.historyListContent}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -362,5 +491,64 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  historyListContent: {
+    paddingBottom: 20,
+  },
+  historyCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  historyDate: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    fontWeight: '600',
+  },
+  historyRating: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  historyText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontStyle: 'italic',
+  },
+  editHistoryButton: {
+    marginTop: 12,
+    alignSelf: 'flex-end',
+  },
+  editHistoryText: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

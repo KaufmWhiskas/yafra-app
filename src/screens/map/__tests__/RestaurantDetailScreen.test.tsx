@@ -12,7 +12,16 @@ jest.mock('../../../services/bookmarkService', () => ({
 }));
 
 jest.mock('../../../services/reviewService', () => ({
-  fetchPersonalRating: jest.fn().mockResolvedValue(4.5),
+  fetchPersonalRating: jest.fn().mockResolvedValue({ rating: 4.5, count: 2 }),
+}));
+
+jest.mock('../../../services/supabase', () => ({
+  supabase: {
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+  },
 }));
 
 const mockGoBack = jest.fn();
@@ -121,14 +130,18 @@ describe('RestaurantDetailScreen', () => {
 
     const { findByText, findAllByText } = render(<RestaurantDetailScreen />);
 
-    // Wait for the details to finish loading
     await findAllByText('Test Restaurant');
 
     const reviewButton = await findByText('Add Review');
     fireEvent.press(reviewButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
-      restaurant: expect.objectContaining({ id: '1', name: 'Test Restaurant' }),
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
+        restaurant: expect.objectContaining({
+          id: '1',
+          name: 'Test Restaurant',
+        }),
+      });
     });
   });
 });

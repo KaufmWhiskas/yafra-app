@@ -1,27 +1,52 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 interface RatingBadgeProps {
   label: string;
   value?: number;
   color: string;
-  subValueText?: string;
+  count?: number;
+  onPress?: () => void;
+  disabled?: boolean;
 }
 
 export default function RatingBadge({
   label,
   value,
   color,
-  subValueText,
+  count,
+  onPress,
+  disabled,
 }: RatingBadgeProps) {
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={[styles.container, { backgroundColor: color }]}
+        onPress={onPress}
+        disabled={disabled}
+        activeOpacity={0.8}
+      >
+        <View style={styles.valueWrapper}>
+          <Text style={styles.value}>
+            {value !== undefined ? value.toFixed(1) : '-'}
+          </Text>
+          {count !== undefined ? (
+            <Text style={styles.subValue}>({count})</Text>
+          ) : null}
+        </View>
+        <Text style={styles.label}>{label}</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: color }]}>
       <View style={styles.valueWrapper}>
         <Text style={styles.value}>
           {value !== undefined ? value.toFixed(1) : '-'}
         </Text>
-        {subValueText ? (
-          <Text style={styles.subValue}>{subValueText}</Text>
+        {count !== undefined ? (
+          <Text style={styles.subValue}>({count})</Text>
         ) : null}
       </View>
       <Text style={styles.label}>{label}</Text>

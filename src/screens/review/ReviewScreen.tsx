@@ -13,7 +13,11 @@ import {
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
 import { COLORS, SIZES } from '../../constants/theme';
-import { submitReview, fetchUserTags } from '../../services/reviewService';
+import {
+  submitReview,
+  updateReview,
+  fetchUserTags,
+} from '../../services/reviewService';
 import ScoreSelector from '../../components/review/ScoreSelector';
 import TagSelector from '../../components/review/TagSelector';
 import ExperienceToggle, {
@@ -30,21 +34,48 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 export default function ReviewScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'ReviewScreen'>>();
   const navigation = useNavigation();
-  const { restaurant } = route.params;
+  const { restaurant, editReviewId, existingReviewData } = route.params;
 
   const { session } = useAuth();
   const user = session?.user;
 
-  const [isAdvanced, setIsAdvanced] = useState(false);
-  const [rating, setRating] = useState<number>(3.0);
-  const [priceScore, setPriceScore] = useState<number>(3.0);
-  const [experienceType, setExperienceType] =
-    useState<ExperienceType>('eat-in');
-  const [description, setDescription] = useState('');
-  const [visitDate, setVisitDate] = useState<Date | null>(new Date());
+  const metadata = existingReviewData?.metadata as
+    | Record<string, unknown>
+    | undefined;
+  const initialTags = (metadata?.tags as string[]) || [];
+
+  const isEditing = !!editReviewId;
+  const initialAdvanced = !!(
+    isEditing &&
+    (existingReviewData?.price_value_rating ||
+      existingReviewData?.review_text ||
+      initialTags.length > 0)
+  );
+
+  const [isAdvanced, setIsAdvanced] = useState(initialAdvanced);
+  const [rating, setRating] = useState<number>(
+    (existingReviewData?.rating as number | undefined) || 3.0,
+  );
+  const [priceScore, setPriceScore] = useState<number>(
+    (existingReviewData?.price_value_rating as number | undefined) || 3.0,
+  );
+  const [experienceType, setExperienceType] = useState<ExperienceType>(
+    (metadata?.experience_type as ExperienceType | undefined) || 'eat-in',
+  );
+  const [description, setDescription] = useState<string>(
+    (existingReviewData?.review_text as string | undefined) || '',
+  );
+  const [visitDate, setVisitDate] = useState<Date | null>(() => {
+    if (isEditing) {
+      return existingReviewData?.visit_date
+        ? new Date(existingReviewData.visit_date as string)
+        : null; // Keep it clear if it was clear before
+    }
+    return new Date(); // Only default to today for brand new reviews
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialTags);
   const [showAllTags, setShowAllTags] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -79,7 +110,7 @@ export default function ReviewScreen() {
       : null;
 
     try {
-      const result = await submitReview({
+      const payload = {
         restaurantId: restaurant.id.toString(),
         rating,
         priceScore: isAdvanced ? priceScore : 0,
@@ -87,10 +118,20 @@ export default function ReviewScreen() {
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
-      });
+      };
+
+      let result;
+      if (isEditing && editReviewId) {
+        result = await updateReview(editReviewId, payload);
+      } else {
+        result = await submitReview(payload);
+      }
 
       if (result.success) {
-        Alert.alert('Success', 'Your review has been submitted!');
+        Alert.alert(
+          'Success',
+          `Your review has been ${isEditing ? 'updated' : 'submitted'}!`,
+        );
         navigation.goBack();
       }
     } catch (err) {
@@ -256,7 +297,9 @@ export default function ReviewScreen() {
           style={styles.submitButton}
           onPress={handleSubmitReview}
         >
-          <Text style={styles.submitButtonText}>Submit Review</Text>
+          <Text style={styles.submitButtonText}>
+            {isEditing ? 'Save Changes' : 'Submit Review'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
