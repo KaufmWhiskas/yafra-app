@@ -27,6 +27,13 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+jest.mock('@react-native-community/datetimepicker', () => {
+  const ReactActual = jest.requireActual('react');
+  const { View } = jest.requireActual('react-native');
+  return (props: Record<string, unknown>) =>
+    ReactActual.createElement(View, { testID: 'mock-date-picker', ...props });
+});
+
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
@@ -57,6 +64,7 @@ describe('ReviewScreen', () => {
         isEatIn: true,
         tags: [],
         description: '',
+        visitDate: expect.any(String),
       });
       expect(mockGoBack).toHaveBeenCalled();
     });
@@ -90,6 +98,7 @@ describe('ReviewScreen', () => {
         isEatIn: false,
         tags: [],
         description: 'Amazing burgers!',
+        visitDate: expect.any(String),
       });
       expect(mockGoBack).toHaveBeenCalled();
     });

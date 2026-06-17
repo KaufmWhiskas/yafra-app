@@ -11,6 +11,7 @@ export const submitReview = async (review: {
   isEatIn: boolean;
   tags: string[];
   description: string;
+  visitDate?: string | null;
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -29,6 +30,7 @@ export const submitReview = async (review: {
         rating: review.rating,
         price_value_rating: review.priceScore || null,
         review_text: review.description || "",
+        visit_date: review.visitDate || null,
         metadata: {
           is_eat_in: review.isEatIn ?? true,
           tags: review.tags || [],
@@ -74,6 +76,7 @@ export async function fetchUserReviewedRestaurants(userId: string) {
     .from("reviews")
     .select("*, restaurant:restaurants(*)")
     .eq("user_id", userId)
+    .order("visit_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -105,4 +108,18 @@ export async function fetchUserReviewedRestaurants(userId: string) {
     }
     return mappedReview;
   });
+}
+
+/**
+ * Deletes a review from the database.
+ * @param reviewId The ID of the review to delete.
+ * @throws Will throw an error if the delete operation fails.
+ */
+export async function deleteReview(reviewId: number): Promise<void> {
+  const { error } = await supabase
+    .from("reviews")
+    .delete()
+    .eq("id", reviewId);
+
+  if (error) throw error;
 }

@@ -849,3 +849,18 @@ export const CATEGORY_MAP: Record<string, RestaurantCategory> = {
     isFallbackOnly: false,
   },
 };
+
+/**
+ * Returns the human-readable display name for a given cuisine key.
+ * If the key doesn't exist in the CATEGORY_MAP, it attempts to format the raw key.
+ * @param cuisineKey The raw string identifier from the database or Google API.
+ */
+export function getCategoryDisplayName(cuisineKey: string): string {
+  if (!cuisineKey) return '';
+  const key = cuisineKey.toLowerCase();
+  const category = CATEGORY_MAP[key];
+  if (category) {
+    return category.displayName;
+  }
+  return key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}

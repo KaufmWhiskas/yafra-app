@@ -18,6 +18,7 @@ import ScoreSelector from '../../components/review/ScoreSelector';
 import EatInToggle from '../../components/review/EatInToggle';
 import TagSelector from '../../components/review/TagSelector';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 /**
  * Screen allowing users to submit a rating and text review for a restaurant.
@@ -32,6 +33,9 @@ export default function ReviewScreen() {
   const [priceScore, setPriceScore] = useState<number>(3.0);
   const [isEatIn, setIsEatIn] = useState<boolean>(true);
   const [description, setDescription] = useState('');
+  const [visitDate, setVisitDate] = useState<Date | null>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAllTags, setShowAllTags] = useState(false);
 
@@ -68,6 +72,11 @@ export default function ReviewScreen() {
     }
 
     setError('');
+
+    const finalVisitDate = visitDate
+      ? visitDate.toISOString().split('T')[0]
+      : null;
+
     try {
       const result = await submitReview({
         restaurantId: restaurant.id.toString(),
@@ -76,6 +85,7 @@ export default function ReviewScreen() {
         isEatIn: isAdvanced ? isEatIn : true,
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',
+        visitDate: finalVisitDate,
       });
 
       if (result.success) {
@@ -149,6 +159,57 @@ export default function ReviewScreen() {
         {isAdvanced && (
           <View style={styles.advancedSection}>
             <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>When did you visit?</Text>
+            <View style={styles.dateSelectorRow}>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(!showDatePicker)}
+              >
+                <MaterialCommunityIcons
+                  name="calendar-month-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.dateButtonText}>
+                  {visitDate
+                    ? visitDate.toISOString().split('T')[0]
+                    : 'Unknown Date'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.unknownButton}
+                onPress={() => {
+                  setVisitDate(null);
+                  setShowDatePicker(false);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="close-circle-outline"
+                  size={20}
+                  color={COLORS.textLight}
+                />
+                <Text style={styles.unknownButtonText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={visitDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                  if (event.type === 'set' && selectedDate) {
+                    setVisitDate(selectedDate);
+                  }
+                }}
+              />
+            )}
 
             <ScoreSelector
               value={priceScore}
@@ -238,6 +299,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.text,
+  },
+  dateSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    gap: 8,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  unknownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: SIZES.radius,
+    gap: 6,
+  },
+  unknownButtonText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    fontWeight: '600',
   },
   tagsHeader: {
     flexDirection: 'row',

@@ -66,8 +66,32 @@ export async function fetchCollectionRestaurants(
   if (error) throw error;
 
   return (data || [])
-    .map((row: { restaurants: unknown }) => row.restaurants as Restaurant)
-    .filter((r) => r != null);
+    .map((row: { restaurants: Record<string, unknown> | null }) => {
+      if (!row.restaurants) return null;
+
+      const {
+        google_rating,
+        app_rating,
+        user_ratings_total,
+        details,
+        ...rest
+      } = row.restaurants;
+      const parsedDetails = details as Record<string, unknown> | undefined;
+
+      return {
+        ...rest,
+        details,
+        rating: google_rating
+          ? parseFloat(google_rating as string)
+          : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
+        app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
+        user_ratings_total: Number(
+          user_ratings_total || parsedDetails?.user_ratings_total ||
+            parsedDetails?.userRatingCount,
+        ) || 0,
+      } as unknown as Restaurant;
+    })
+    .filter((r): r is Restaurant => r != null);
 }
 
 /**

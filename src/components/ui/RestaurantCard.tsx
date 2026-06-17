@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
+import { getCategoryDisplayName } from '../../constants/categories';
 
 interface RestaurantCardProps {
   item: Restaurant;
@@ -113,7 +114,9 @@ export default function RestaurantCard({
           size={16}
           color={COLORS.text}
         />
-        <Text style={styles.cuisineText}>{item.cuisine}</Text>
+        <Text style={styles.cuisineText}>
+          {getCategoryDisplayName(item.cuisine || '')}
+        </Text>
         {distance !== undefined && (
           <Text style={styles.distanceText}> • {distance.toFixed(1)} km</Text>
         )}

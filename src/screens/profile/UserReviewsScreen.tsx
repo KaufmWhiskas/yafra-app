@@ -5,21 +5,182 @@ import {
   StyleSheet,
   ActivityIndicator,
   Text,
+  TouchableOpacity,
+  Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../types/navigation';
-import { fetchUserReviewedRestaurants } from '../../services/reviewService';
+import {
+  fetchUserReviewedRestaurants,
+  deleteReview,
+} from '../../services/reviewService';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant, Review } from '../../types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type UserReviewsRouteProp = RouteProp<RootStackParamList, 'UserReviewsScreen'>;
-type JoinedReview = Review & {
+type JoinedReview = Omit<Review, 'id'> & {
   restaurant?: Restaurant;
   metadata?: { tags: string[] };
   review_text?: string;
   price_value_rating?: number;
+  visit_date?: string | null;
+  created_at?: string;
+  id: number;
+};
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const ReviewListItem = ({
+  item,
+  onRemove,
+}: {
+  item: JoinedReview;
+  onRemove: (id: number) => void;
+}) => {
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const isLongText = item.review_text && item.review_text.length > 120;
+
+  const restaurant =
+    item.restaurant ||
+    ({
+      id: 'unknown',
+      name: 'Unknown Restaurant',
+      cuisine: 'unknown',
+      latitude: 0,
+      longitude: 0,
+    } as Restaurant);
+
+  const displayDate = item.visit_date
+    ? item.visit_date
+    : item.created_at
+      ? new Date(item.created_at).toISOString().split('T')[0]
+      : 'Unknown Date';
+
+  const toggleDetails = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsDetailsExpanded(!isDetailsExpanded);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Review',
+      'Are you sure you want to delete this review?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteReview(item.id);
+              onRemove(item.id);
+            } catch {
+              Alert.alert('Error', 'Failed to delete review.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <View style={styles.reviewContainer}>
+      <RestaurantCard
+        item={restaurant}
+        hideRatings={true}
+        hideReviewButton={true}
+        onPress={toggleDetails}
+      />
+
+      <TouchableOpacity
+        style={styles.expandIndicator}
+        onPress={toggleDetails}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.expandIndicatorText}>
+          {isDetailsExpanded ? 'Hide Review Details' : 'Show Review Details'}
+        </Text>
+        <MaterialCommunityIcons
+          name={isDetailsExpanded ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={COLORS.textLight}
+        />
+      </TouchableOpacity>
+
+      {isDetailsExpanded && (
+        <View style={styles.reviewDetails}>
+          <View style={styles.reviewScoresRow}>
+            <View style={styles.scoreColumn}>
+              <Text style={styles.scoreText}>
+                My Rating: {item.rating.toFixed(1)} ★
+              </Text>
+              {item.price_value_rating ? (
+                <Text style={styles.scoreText}>
+                  Value: {item.price_value_rating.toFixed(1)} ★
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.actionColumn}>
+              <Text style={styles.dateText}>{displayDate}</Text>
+              <TouchableOpacity
+                onPress={handleDelete}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons
+                  name="trash-can-outline"
+                  size={20}
+                  color={COLORS.danger}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {item.review_text ? (
+            <View>
+              <Text
+                style={styles.reviewNotes}
+                numberOfLines={isTextExpanded ? undefined : 3}
+              >
+                "{item.review_text}"
+              </Text>
+              {isLongText && (
+                <TouchableOpacity
+                  onPress={() => setIsTextExpanded(!isTextExpanded)}
+                >
+                  <Text style={styles.showMoreLink}>
+                    {isTextExpanded ? 'Show less' : 'Show more'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
+
+          {item.metadata?.tags && item.metadata.tags.length > 0 && (
+            <View style={styles.tagsWrapper}>
+              {item.metadata.tags.map((tag: string) => (
+                <View key={tag} style={styles.tagChip}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
 };
 
 export default function UserReviewsScreen() {
@@ -51,53 +212,14 @@ export default function UserReviewsScreen() {
         data={reviews}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
-          const restaurant =
-            item.restaurant ||
-            ({
-              id: 'unknown',
-              name: 'Unknown Restaurant',
-              cuisine: 'unknown',
-              latitude: 0,
-              longitude: 0,
-            } as Restaurant);
-          return (
-            <View style={styles.reviewContainer}>
-              <RestaurantCard
-                item={restaurant}
-                hideRatings={true}
-                hideReviewButton={true}
-              />
-
-              <View style={styles.reviewDetails}>
-                <View style={styles.reviewScores}>
-                  <Text style={styles.scoreText}>
-                    My Rating: {item.rating.toFixed(1)} ★
-                  </Text>
-                  {item.price_value_rating ? (
-                    <Text style={styles.scoreText}>
-                      Value: {item.price_value_rating.toFixed(1)} ★
-                    </Text>
-                  ) : null}
-                </View>
-
-                {item.review_text ? (
-                  <Text style={styles.reviewNotes}>"{item.review_text}"</Text>
-                ) : null}
-
-                {item.metadata?.tags && item.metadata.tags.length > 0 && (
-                  <View style={styles.tagsWrapper}>
-                    {item.metadata.tags.map((tag: string) => (
-                      <View key={tag} style={styles.tagChip}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            </View>
-          );
-        }}
+        renderItem={({ item }) => (
+          <ReviewListItem
+            item={item}
+            onRemove={(id) =>
+              setReviews((prev) => prev.filter((r) => r.id !== id))
+            }
+          />
+        )}
       />
     </View>
   );
@@ -118,16 +240,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  reviewScoresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  scoreColumn: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  actionColumn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: 'bold',
+    marginRight: 12,
+  },
+  showMoreLink: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginBottom: 12,
+    marginTop: -6,
+  },
   reviewDetails: {
     padding: 16,
     backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
     borderTopColor: '#eee',
-  },
-  reviewScores: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
   },
   scoreText: { fontWeight: 'bold', color: COLORS.primary, fontSize: 14 },
   reviewNotes: {
@@ -145,4 +288,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagText: { fontSize: 12, color: COLORS.text },
+  expandIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginTop: -8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: COLORS.surface,
+  },
+  expandIndicatorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    marginRight: 4,
+  },
 });

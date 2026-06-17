@@ -113,7 +113,14 @@ describe("bookmarkService", () => {
       expect(supabase.select).toHaveBeenCalledWith("*, restaurants(*)");
       // @ts-expect-error: custom mock property not on root client
       expect(supabase.eq).toHaveBeenCalledWith("collection_id", "coll_1");
-      expect(result).toEqual([{ id: "r1", name: "Test Pizza" }]);
+      expect(result).toEqual([{
+        id: "r1",
+        name: "Test Pizza",
+        details: undefined,
+        rating: undefined,
+        app_rating: undefined,
+        user_ratings_total: 0,
+      }]);
     });
   });
 
