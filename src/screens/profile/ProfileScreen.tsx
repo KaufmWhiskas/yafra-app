@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import FeedbackModal from '../../components/ui/FeedbackModal';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -31,6 +32,7 @@ export default function ProfileScreen() {
     uniqueRestaurantsVisited: 0,
     bookmarkCount: 0,
   });
+  const [isFeedbackModalVisible, setFeedbackModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -241,6 +243,25 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={styles.actionItem}
+            onPress={() => setFeedbackModalVisible(true)}
+          >
+            <MaterialCommunityIcons
+              name="bug-outline"
+              size={24}
+              color={COLORS.primary}
+            />
+            <Text style={[styles.actionText, { color: COLORS.primary, fontWeight: '600' }]}>
+              Send Beta Feedback
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.actionItem, styles.logoutItem]}
             onPress={handleLogout}
@@ -255,6 +276,12 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <FeedbackModal 
+        visible={isFeedbackModalVisible} 
+        userId={user?.id} 
+        onClose={() => setFeedbackModalVisible(false)} 
+      />
     </View>
   );
 }

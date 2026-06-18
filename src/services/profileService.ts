@@ -87,3 +87,17 @@ export async function updateProfileName(
 
   if (updateError) throw updateError;
 }
+
+/**
+ * Submits beta feedback from the user.
+ */
+export async function submitBetaFeedback(
+  userId: string,
+  message: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("beta_feedback")
+    .insert([{ user_id: userId, message }]);
+
+  if (error) throw error;
+}
