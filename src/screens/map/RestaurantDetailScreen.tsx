@@ -259,7 +259,7 @@ export default function RestaurantDetailScreen() {
                         } as Restaurant).color
                       : COLORS.primary
                   }
-                  count={personalRating?.count}
+                  count={personalRating?.count ?? 0}
                   onPress={handleViewHistory}
                   disabled={!personalRating?.count}
                 />
