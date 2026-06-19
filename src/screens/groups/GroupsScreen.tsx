@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   fetchMyGroups,
   createGroup,
@@ -31,6 +33,10 @@ export default function GroupsScreen() {
   const [joinModalVisible, setJoinModalVisible] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isScannerVisible, setScannerVisible] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
   const createInputRef = useRef<TextInput>(null);
   const joinInputRef = useRef<TextInput>(null);
@@ -71,10 +77,11 @@ export default function GroupsScreen() {
     }
   };
 
-  const handleJoinGroup = async () => {
-    if (!user?.id || !inviteCode.trim()) return;
+  const handleJoinGroup = async (scannedCode?: string) => {
+    const code = typeof scannedCode === 'string' ? scannedCode : inviteCode;
+    if (!user?.id || !code.trim()) return;
     try {
-      await joinGroupWithCode(user.id, inviteCode.trim());
+      await joinGroupWithCode(user.id, code.trim());
       setJoinModalVisible(false);
       setInviteCode('');
       loadGroups();
@@ -96,6 +103,31 @@ export default function GroupsScreen() {
   const handleCancelJoin = () => {
     setJoinModalVisible(false);
     setInviteCode('');
+  };
+
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (isScanning) return;
+    setIsScanning(true);
+    setScannerVisible(false);
+
+    setInviteCode(data);
+    handleJoinGroup(data);
+
+    setTimeout(() => setIsScanning(false), 2000);
+  };
+
+  const openScanner = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission();
+      if (!granted) {
+        Alert.alert(
+          'Permission Denied',
+          'We need camera access to scan QR codes.',
+        );
+        return;
+      }
+    }
+    setScannerVisible(true);
   };
 
   useFocusEffect(
@@ -196,25 +228,61 @@ export default function GroupsScreen() {
         >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Join Group</Text>
-            <TextInput
-              ref={joinInputRef}
-              placeholder="Invite Code"
-              style={styles.input}
-              value={inviteCode}
-              onChangeText={setInviteCode}
-              returnKeyType="done"
-              onSubmitEditing={handleJoinGroup}
-            />
+            <View style={styles.joinRow}>
+              <TextInput
+                ref={joinInputRef}
+                placeholder="Invite Code"
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                value={inviteCode}
+                onChangeText={setInviteCode}
+                returnKeyType="done"
+                onSubmitEditing={() => handleJoinGroup()}
+              />
+              <TouchableOpacity style={styles.scanButton} onPress={openScanner}>
+                <MaterialCommunityIcons
+                  name="qrcode-scan"
+                  size={24}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            </View>
             <View style={styles.modalActionRow}>
               <TouchableOpacity onPress={handleCancelJoin}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleJoinGroup}>
+              <TouchableOpacity onPress={() => handleJoinGroup()}>
                 <Text style={styles.submitText}>Join</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={isScannerVisible}
+        animationType="slide"
+        transparent={false}
+      >
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            onBarcodeScanned={isScanning ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          />
+          <View style={styles.scannerOverlay}>
+            <Text style={styles.scannerText}>
+              Point your camera at a Group QR Code
+            </Text>
+            <View style={styles.scannerTarget} />
+          </View>
+          <TouchableOpacity
+            style={styles.scannerCloseBtn}
+            onPress={() => setScannerVisible(false)}
+          >
+            <Text style={styles.scannerCloseText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
@@ -307,4 +375,49 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  joinRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: SIZES.padding,
+  },
+  scanButton: {
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: SIZES.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scannerContainer: { flex: 1, backgroundColor: '#000' },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  scannerText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  scannerTarget: {
+    width: 250,
+    height: 250,
+    borderWidth: 4,
+    borderColor: COLORS.primary,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+  },
+  scannerCloseBtn: {
+    position: 'absolute',
+    bottom: 50,
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+  },
+  scannerCloseText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
 });

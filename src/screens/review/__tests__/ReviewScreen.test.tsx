@@ -77,6 +77,7 @@ describe('ReviewScreen', () => {
         experienceType: 'eat-in',
         tags: [],
         description: '',
+        isPrivate: false,
         visitDate: expect.any(String),
       });
       expect(mockGoBack).toHaveBeenCalled();
@@ -113,6 +114,7 @@ describe('ReviewScreen', () => {
         experienceType: 'takeaway',
         tags: ['Hidden Gem'],
         description: 'Amazing burgers!',
+        isPrivate: false,
         visitDate: expect.any(String),
       });
       expect(mockGoBack).toHaveBeenCalled();

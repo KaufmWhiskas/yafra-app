@@ -12,6 +12,7 @@ export const submitReview = async (review: {
   tags: string[];
   description: string;
   visitDate?: string | null;
+  isPrivate?: boolean;
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -35,6 +36,7 @@ export const submitReview = async (review: {
           experience_type: review.experienceType,
           tags: review.tags || [],
         },
+        is_private: review.isPrivate || false,
         user_id: user.id,
       },
     ])
@@ -169,6 +171,7 @@ export const updateReview = async (
     tags: string[];
     description: string;
     visitDate?: string | null;
+    isPrivate?: boolean;
   },
 ) => {
   const { data, error } = await supabase
@@ -182,6 +185,7 @@ export const updateReview = async (
         experience_type: review.experienceType,
         tags: review.tags || [],
       },
+      is_private: review.isPrivate || false,
     })
     .eq("id", reviewId)
     .select();

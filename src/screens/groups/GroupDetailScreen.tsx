@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Share,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -31,6 +33,8 @@ import RestaurantCard from '../../components/ui/RestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import QRCode from 'react-native-qrcode-svg';
 
 type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -56,6 +60,18 @@ export default function GroupDetailScreen() {
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
 
   const insets = useSafeAreaInsets();
+  const [isQrModalVisible, setQrModalVisible] = useState(false);
+
+  const handleShare = async () => {
+    if (!group?.permanent_invite_code) return;
+    try {
+      await Share.share({
+        message: `Join my food review group "${group.name}" on YAFRA! Enter invitation code: ${group.permanent_invite_code}`,
+      });
+    } catch (error) {
+      console.error('Failed to trigger native share sheet:', error);
+    }
+  };
 
   const loadGroupDetails = useCallback(async () => {
     try {
@@ -298,6 +314,27 @@ export default function GroupDetailScreen() {
             )}
           </View>
         </View>
+
+        {group.permanent_invite_code ? (
+          <View style={styles.inviteActionRow}>
+            <TouchableOpacity style={styles.inviteButton} onPress={handleShare}>
+              <MaterialCommunityIcons
+                name="export-variant"
+                size={20}
+                color="#fff"
+              />
+              <Text style={styles.inviteButtonText}>Share Code</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.inviteButton}
+              onPress={() => setQrModalVisible(true)}
+            >
+              <MaterialCommunityIcons name="qrcode" size={20} color="#fff" />
+              <Text style={styles.inviteButtonText}>Show QR</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {groupRestaurants.length > 0 && (
@@ -389,6 +426,38 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <Modal
+        visible={isQrModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setQrModalVisible(false)}
+      >
+        <View style={styles.qrOverlay}>
+          <View style={styles.qrContainer}>
+            <Text style={styles.qrTitle}>Scan to Join</Text>
+            {group?.permanent_invite_code ? (
+              <View style={styles.qrWrapper}>
+                <QRCode
+                  value={group.permanent_invite_code}
+                  size={200}
+                  backgroundColor="#fff"
+                  color="#000"
+                />
+              </View>
+            ) : null}
+            <Text style={styles.qrCodeText}>
+              {group?.permanent_invite_code}
+            </Text>
+            <TouchableOpacity
+              style={styles.qrCloseButton}
+              onPress={() => setQrModalVisible(false)}
+            >
+              <Text style={styles.qrCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -495,4 +564,72 @@ const styles = StyleSheet.create({
     marginTop: SIZES.padding,
   },
   deleteButtonText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 16 },
+  inviteActionRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  inviteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  qrOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qrContainer: {
+    backgroundColor: '#fff',
+    padding: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    width: '85%',
+  },
+  qrTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: COLORS.text,
+  },
+  qrWrapper: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  qrCodeText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    letterSpacing: 6,
+    marginTop: 20,
+    color: COLORS.primary,
+  },
+  qrCloseButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 36,
+    backgroundColor: '#f2f2f2',
+    borderRadius: 20,
+  },
+  qrCloseText: {
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
 });

@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kaufmirwhiskas.yafra"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,13 +32,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow YAFRA to access your camera so you can quickly scan group invite QR codes."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "a46eda2f-9fa6-45f3-af16-3f28afe1939d"
       }
-    },
-    "plugins": [
-      "@react-native-community/datetimepicker"
-    ]
+    }
   }
 }

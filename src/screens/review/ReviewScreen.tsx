@@ -9,6 +9,7 @@ import {
   View,
   Text,
   Alert,
+  Switch,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../types/navigation';
@@ -74,6 +75,9 @@ export default function ReviewScreen() {
     return new Date(); // Only default to today for brand new reviews
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isPrivate, setIsPrivate] = useState<boolean>(
+    (existingReviewData?.is_private as boolean | undefined) || false
+  );
 
   const [selectedTags, setSelectedTags] = useState<string[]>(initialTags);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -118,6 +122,7 @@ export default function ReviewScreen() {
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
+        isPrivate: isAdvanced ? isPrivate : false,
       };
 
       let result;
@@ -278,6 +283,21 @@ export default function ReviewScreen() {
               onAddCustom={handleAddCustomTag}
             />
 
+      <View style={styles.privacyRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>Group Only (Private)</Text>
+          <Text style={styles.privacyDescription}>
+            Hide this review from the public. Only people in your groups will see it.
+          </Text>
+        </View>
+        <Switch
+          value={isPrivate}
+          onValueChange={setIsPrivate}
+          trackColor={{ false: '#ccc', true: COLORS.primary }}
+          thumbColor={'#fff'}
+        />
+      </View>
+
             <Text style={styles.sectionTitle}>Detailed Notes</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -386,6 +406,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     marginTop: SIZES.padding,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    marginBottom: SIZES.padding,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  privacyDescription: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 4,
+    paddingRight: 16,
   },
   showMoreText: {
     color: COLORS.primary,
