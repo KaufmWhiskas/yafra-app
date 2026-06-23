@@ -8,6 +8,7 @@ import ReviewScreen from '../screens/review/ReviewScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
+import GroupFeedScreen from '../screens/groups/GroupFeedScreen';
 import WantToVisitScreen from '../screens/profile/WantToVisitScreen';
 import CollectionDetailScreen from '../screens/profile/CollectionDetailScreen';
 import RestaurantDetailScreen from '../screens/map/RestaurantDetailScreen';
@@ -41,6 +42,11 @@ export default function MainNavigator() {
               options={{ title: 'Group Details' }}
             />
             <Stack.Screen
+              name="GroupFeedScreen"
+              component={GroupFeedScreen}
+              options={{ headerShown: true }}
+            />
+            <Stack.Screen
               name="WantToVisitScreen"
               component={WantToVisitScreen}
               options={{ title: 'Want to Visit' }}
@@ -55,15 +61,15 @@ export default function MainNavigator() {
               component={RestaurantDetailScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="EditProfileScreen" 
-              component={EditProfileScreen} 
-              options={{ title: 'Edit Profile' }} 
+            <Stack.Screen
+              name="EditProfileScreen"
+              component={EditProfileScreen}
+              options={{ title: 'Edit Profile' }}
             />
-            <Stack.Screen 
-              name="UserReviewsScreen" 
-              component={UserReviewsScreen} 
-              options={{ title: 'My Reviews' }} 
+            <Stack.Screen
+              name="UserReviewsScreen"
+              component={UserReviewsScreen}
+              options={{ title: 'My Reviews' }}
             />
           </>
         ) : (

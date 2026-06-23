@@ -11,6 +11,7 @@ import {
   removeGroupMember,
   fetchGroupRestaurants,
 } from '../../../services/groupService';
+import { useGroupFeed } from '../../../hooks/useGroupFeed';
 import { useAuth } from '../../../context/AuthContext';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -26,11 +27,6 @@ jest.mock('../../../services/groupService', () => ({
   updateMemberRole: jest.fn(),
   removeGroupMember: jest.fn(),
   fetchGroupRestaurants: jest.fn(),
-}));
-
-jest.mock('../../../components/groups/GroupFeedList', () => ({
-  __esModule: true,
-  default: () => null,
 }));
 
 const mockNavigate = jest.fn();
@@ -52,6 +48,8 @@ jest.mock('../../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useGroupFeed');
+
 const flushMicrotasks = async (): Promise<void> => {
   await act(async () => {
     await Promise.resolve();
@@ -65,6 +63,11 @@ describe('GroupDetailScreen', () => {
     jest.clearAllMocks();
     (fetchActiveInvites as jest.Mock).mockResolvedValue([]);
     (fetchGroupRestaurants as jest.Mock).mockResolvedValue([]);
+    (useGroupFeed as jest.Mock).mockReturnValue({
+      reviews: [],
+      isLoading: false,
+      error: null,
+    });
   });
 
   it('fetches and displays group name, invite code, and members on mount', async () => {
@@ -77,8 +80,18 @@ describe('GroupDetailScreen', () => {
       created_by: 'user_1',
       permanent_invite_code: 'ELITE123',
       members: [
-        { user_id: 'user_1', role: 'owner', weight: 1 },
-        { user_id: 'user_2', role: 'member', weight: 0.5 },
+        {
+          user_id: 'user_1',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'user_1' },
+        },
+        {
+          user_id: 'user_2',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'user_2' },
+        },
       ],
     });
 
@@ -161,32 +174,32 @@ describe('GroupDetailScreen', () => {
     expect(queryByText('Generate Temporary Invite')).toBeNull();
   });
 
-  it('fetches and displays active invite codes for the owner', async () => {
+  it('toggles visibility of active temporary invites for the owner', async () => {
     (useAuth as jest.Mock).mockReturnValue({
       session: { user: { id: 'owner_user' } },
     });
     (fetchGroupDetails as jest.Mock).mockResolvedValue({
       id: 'group_1',
-      name: 'The Elite Squad',
       created_by: 'owner_user',
-      permanent_invite_code: 'ELITE123',
       members: [],
     });
     (fetchActiveInvites as jest.Mock).mockResolvedValue([
       {
         id: 'inv_1',
         code: 'TEMP99',
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
+        expires_at: new Date().toISOString(),
         profiles: { username: 'owner_user' },
       },
     ]);
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { queryByText, getByText } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    expect(fetchActiveInvites).toHaveBeenCalledWith('group_1');
+    expect(queryByText('TEMP99')).toBeNull();
+    fireEvent.press(getByText('Show Active Invites (1)'));
     expect(getByText('TEMP99')).toBeTruthy();
-    expect(getByText('Created by: owner_user')).toBeTruthy();
+    fireEvent.press(getByText('Hide Active Invites'));
+    expect(queryByText('TEMP99')).toBeNull();
   });
 
   it('Owner can delete the group', async () => {
@@ -254,8 +267,18 @@ describe('GroupDetailScreen', () => {
       id: 'group_1',
       created_by: 'owner_user',
       members: [
-        { user_id: 'owner_user', role: 'owner', weight: 1 },
-        { user_id: 'target_user', role: 'member', weight: 0.5 },
+        {
+          user_id: 'owner_user',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'owner_user' },
+        },
+        {
+          user_id: 'target_user',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'target_user' },
+        },
       ],
     });
 
@@ -290,8 +313,18 @@ describe('GroupDetailScreen', () => {
       id: 'group_1',
       created_by: 'owner_user',
       members: [
-        { user_id: 'owner_user', role: 'owner', weight: 1 },
-        { user_id: 'target_admin', role: 'admin', weight: 1 },
+        {
+          user_id: 'owner_user',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'owner_user' },
+        },
+        {
+          user_id: 'target_admin',
+          role: 'admin',
+          weight: 1,
+          profiles: { username: 'target_admin' },
+        },
       ],
     });
 
@@ -328,9 +361,24 @@ describe('GroupDetailScreen', () => {
       id: 'group_1',
       created_by: 'owner_user',
       members: [
-        { user_id: 'owner_user', role: 'owner', weight: 1 },
-        { user_id: 'regular_user', role: 'member', weight: 0.5 },
-        { user_id: 'target_user', role: 'member', weight: 0.5 },
+        {
+          user_id: 'owner_user',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'owner_user' },
+        },
+        {
+          user_id: 'regular_user',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'regular_user' },
+        },
+        {
+          user_id: 'target_user',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'target_user' },
+        },
       ],
     });
 
@@ -351,8 +399,18 @@ describe('GroupDetailScreen', () => {
       id: 'group_1',
       created_by: 'owner_user',
       members: [
-        { user_id: 'owner_user', role: 'owner', weight: 1 },
-        { user_id: 'target_user', role: 'member', weight: 0.5 },
+        {
+          user_id: 'owner_user',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'owner_user' },
+        },
+        {
+          user_id: 'target_user',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'target_user' },
+        },
       ],
     });
 
@@ -403,8 +461,18 @@ describe('GroupDetailScreen', () => {
       id: 'group_1',
       created_by: 'owner_user',
       members: [
-        { user_id: 'owner_user', role: 'owner', weight: 1 },
-        { user_id: 'target_user', role: 'member', weight: 0.5 },
+        {
+          user_id: 'owner_user',
+          role: 'owner',
+          weight: 1,
+          profiles: { username: 'owner_user' },
+        },
+        {
+          user_id: 'target_user',
+          role: 'member',
+          weight: 0.5,
+          profiles: { username: 'target_user' },
+        },
       ],
     });
 
@@ -459,5 +527,72 @@ describe('GroupDetailScreen', () => {
     expect(fetchGroupRestaurants).toHaveBeenCalledWith('group_1');
     expect(getByText("Group's Rated Restaurants")).toBeTruthy();
     expect(getByText('Elite Pizza')).toBeTruthy();
+  });
+
+  it('shows a preview of the group feed (max 3 items) and a "View All" button', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'Feed Group',
+      created_by: 'user_1',
+      members: [{ user_id: 'user_1', role: 'owner' }],
+    });
+    // Mock more than 3 reviews
+    (useGroupFeed as jest.Mock).mockReturnValue({
+      reviews: [
+        { id: '1', review_text: 'Review 1', rating: 5 },
+        { id: '2', review_text: 'Review 2', rating: 4 },
+        { id: '3', review_text: 'Review 3', rating: 3 },
+        { id: '4', review_text: 'Review 4', rating: 2 },
+      ],
+      isLoading: false,
+      error: null,
+    });
+
+    const { queryByText, getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    // Check that only 3 are rendered
+    expect(getByText('Review 1')).toBeTruthy();
+    expect(getByText('Review 2')).toBeTruthy();
+    expect(getByText('Review 3')).toBeTruthy();
+    expect(queryByText('Review 4')).toBeNull();
+
+    // Check that the "View All" button is present
+    expect(getByText('View All Activity')).toBeTruthy();
+  });
+
+  it('navigates to GroupFeedScreen when "View All Activity" is pressed', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'Feed Group',
+      created_by: 'user_1',
+      members: [{ user_id: 'user_1', role: 'owner' }],
+    });
+    (useGroupFeed as jest.Mock).mockReturnValue({
+      reviews: [
+        { id: '1', rating: 1 },
+        { id: '2', rating: 2 },
+        { id: '3', rating: 3 },
+        { id: '4', rating: 4 },
+      ], // more than 3
+      isLoading: false,
+      error: null,
+    });
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    fireEvent.press(getByText('View All Activity'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('GroupFeedScreen', {
+      groupId: 'group_1',
+      groupName: 'Feed Group',
+    });
   });
 });

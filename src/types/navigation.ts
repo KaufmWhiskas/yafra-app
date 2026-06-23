@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   GroupDetailScreen: { groupId: string };
+  GroupFeedScreen: { groupId: string; groupName: string };
   WantToVisitScreen: undefined;
   CollectionDetailScreen: { collectionId: string; collectionName: string };
   RestaurantDetail: { restaurantId: string; restaurantName: string };

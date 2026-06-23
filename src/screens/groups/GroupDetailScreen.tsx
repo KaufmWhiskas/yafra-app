@@ -58,6 +58,7 @@ type ListItem =
   | { type: 'loader'; key: string }
   | { type: 'error'; message: string; key: string }
   | { type: 'empty'; message: string; key: string }
+  | { type: 'feed_action_button'; key: string }
   | { type: 'feed_item'; review: GroupFeedReview }
   | {
       type: 'member_item';
@@ -77,6 +78,7 @@ export default function GroupDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [tempCode, setTempCode] = useState<string | null>(null);
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
+  const [showInvites, setShowInvites] = useState(false);
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
 
   const {
@@ -314,19 +316,27 @@ export default function GroupDetailScreen() {
         ]
       : [];
 
-  const feedItems: ListItem[] = isFeedLoading
-    ? [{ type: 'loader', key: 'feed-loader' }]
-    : feedError
-      ? [{ type: 'error', message: feedError, key: 'feed-error' }]
-      : feedReviews.length === 0
-        ? [
-            {
-              type: 'empty',
-              message: 'No feed activity yet.',
-              key: 'feed-empty',
-            },
-          ]
-        : feedReviews.map((review) => ({ type: 'feed_item', review }));
+  const feedItems: ListItem[] = [];
+  if (isFeedLoading) {
+    feedItems.push({ type: 'loader', key: 'feed-loader' });
+  } else if (feedError) {
+    feedItems.push({ type: 'error', message: feedError, key: 'feed-error' });
+  } else if (feedReviews.length === 0) {
+    feedItems.push({
+      type: 'empty',
+      message: 'No feed activity yet.',
+      key: 'feed-empty',
+    });
+  } else {
+    feedItems.push(
+      ...feedReviews
+        .slice(0, 3)
+        .map((review) => ({ type: 'feed_item', review }) as const),
+    );
+    if (feedReviews.length > 3) {
+      feedItems.push({ type: 'feed_action_button', key: 'feed-action' });
+    }
+  }
 
   const memberItems: ListItem[] =
     group.members.length > 0
@@ -389,6 +399,22 @@ export default function GroupDetailScreen() {
         return (
           <View style={styles.centered}>
             <Text style={styles.emptyText}>{item.message}</Text>
+          </View>
+        );
+      case 'feed_action_button':
+        return (
+          <View style={styles.centered}>
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={() =>
+                navigation.navigate('GroupFeedScreen', {
+                  groupId,
+                  groupName: group.name,
+                })
+              }
+            >
+              <Text style={styles.viewAllButtonText}>View All Activity</Text>
+            </TouchableOpacity>
           </View>
         );
       case 'feed_item':
@@ -491,27 +517,40 @@ export default function GroupDetailScreen() {
                 <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
               )}
 
-              {activeInvites.length > 0 && (
+              {activeInvites.length > 0 ? (
                 <View style={styles.invitesContainer}>
-                  <Text style={styles.invitesTitle}>
-                    Active Temporary Invites
-                  </Text>
-                  {activeInvites.map((inv) => (
-                    <View key={inv.id} style={styles.inviteCard}>
-                      <Text style={styles.inviteCode}>{inv.code}</Text>
-                      <View>
-                        <Text style={styles.inviteMeta}>
-                          Created by: {inv.profiles?.username || 'Unknown'}
-                        </Text>
-                        <Text style={styles.inviteMeta}>
-                          Expires:{' '}
-                          {new Date(inv.expires_at).toLocaleDateString()}
-                        </Text>
+                  <TouchableOpacity
+                    style={styles.invitesHeader}
+                    onPress={() => setShowInvites(!showInvites)}
+                  >
+                    <Text style={styles.invitesTitle}>
+                      {showInvites
+                        ? 'Hide Active Invites'
+                        : `Show Active Invites (${activeInvites.length})`}
+                    </Text>
+                    <MaterialCommunityIcons
+                      name={showInvites ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={COLORS.text}
+                    />
+                  </TouchableOpacity>
+                  {showInvites &&
+                    activeInvites.map((inv) => (
+                      <View key={inv.id} style={styles.inviteCard}>
+                        <Text style={styles.inviteCode}>{inv.code}</Text>
+                        <View>
+                          <Text style={styles.inviteMeta}>
+                            Created by: {inv.profiles?.username || 'Unknown'}
+                          </Text>
+                          <Text style={styles.inviteMeta}>
+                            Expires:{' '}
+                            {new Date(inv.expires_at).toLocaleDateString()}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    ))}
                 </View>
-              )}
+              ) : null}
 
               <TouchableOpacity
                 style={styles.deleteButton}
@@ -624,6 +663,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  viewAllButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SIZES.base,
+  },
+  viewAllButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
   ownerControls: {
     marginTop: SIZES.padding,
     flexShrink: 1,
@@ -650,6 +703,12 @@ const styles = StyleSheet.create({
   invitesContainer: {
     marginTop: SIZES.padding,
     flexShrink: 1,
+  },
+  invitesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
   },
   invitesTitle: {
     fontSize: 16,
