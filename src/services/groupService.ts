@@ -384,3 +384,41 @@ export async function fetchGroupFeed(
 
   return data as GroupFeedReview[];
 }
+
+export async function fetchSharedGroupMemberIds(
+  currentUserId: string,
+): Promise<Set<string>> {
+  // 1. Find all groups the current user is in
+  const { data: groupMemberships, error: membershipError } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", currentUserId);
+
+  if (membershipError) {
+    console.error(
+      "Supabase Error fetching group memberships:",
+      membershipError,
+    );
+    throw new Error(membershipError.message);
+  }
+  if (!groupMemberships || groupMemberships.length === 0) {
+    return new Set();
+  }
+
+  const groupIds = groupMemberships.map((gm) => gm.group_id);
+
+  // 2. Find all members of those groups
+  const { data: allMembers, error: membersError } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .in("group_id", groupIds);
+
+  if (membersError) {
+    console.error("Supabase Error fetching shared members:", membersError);
+    throw new Error(membersError.message);
+  }
+
+  const sharedUserIds = new Set(allMembers?.map((m) => m.user_id) || []);
+  sharedUserIds.delete(currentUserId);
+  return sharedUserIds;
+}

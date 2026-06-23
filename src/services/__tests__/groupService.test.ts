@@ -6,6 +6,7 @@ import {
   fetchGroupRestaurants,
   fetchGroupReviewedRestaurantIds,
   fetchMyGroups,
+  fetchSharedGroupMemberIds,
   joinGroupWithCode,
   leaveGroup,
   removeGroupMember,
@@ -344,5 +345,50 @@ describe("Group Service", () => {
     // @ts-expect-error: custom mock
     expect(supabase.in).toHaveBeenNthCalledWith(2, "id", ["r1"]);
     expect(result).toEqual([{ id: "r1", name: "Saved Pizza" }]);
+  });
+});
+
+describe("fetchSharedGroupMemberIds", () => {
+  it("returns a unique set of user IDs from all shared groups, excluding the current user", async () => {
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === "group_members") {
+        return {
+          select: jest.fn().mockImplementation((select: string) => {
+            if (select === "group_id") {
+              return {
+                eq: jest.fn().mockResolvedValue({
+                  data: [{ group_id: "group_A" }, { group_id: "group_B" }],
+                  error: null,
+                }),
+              };
+            }
+            if (select === "user_id") {
+              return {
+                in: jest.fn().mockResolvedValue({
+                  data: [
+                    { user_id: "user_me" },
+                    { user_id: "user_friend_A" },
+                    { user_id: "user_friend_B" },
+                    { user_id: "user_friend_both" },
+                  ],
+                  error: null,
+                }),
+              };
+            }
+            return { eq: jest.fn(), in: jest.fn() };
+          }),
+        };
+      }
+      return { select: jest.fn() };
+    });
+
+    const result = await fetchSharedGroupMemberIds("user_me");
+
+    expect(result).toBeInstanceOf(Set);
+    expect(result.size).toBe(3);
+    expect(result.has("user_friend_A")).toBe(true);
+    expect(result.has("user_friend_B")).toBe(true);
+    expect(result.has("user_friend_both")).toBe(true);
+    expect(result.has("user_me")).toBe(false);
   });
 });

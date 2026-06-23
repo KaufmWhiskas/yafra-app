@@ -16,6 +16,7 @@ export type RootStackParamList = {
   RestaurantDetail: { restaurantId: string; restaurantName: string };
   EditProfileScreen: undefined;
   UserReviewsScreen: { userId: string };
+  RestaurantReviews: { restaurantId: number; restaurantName: string };
 };
 
 export type TabParamList = {

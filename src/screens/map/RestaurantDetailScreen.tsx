@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { useRestaurantReviews } from '../../hooks/useRestaurantReviews';
 import {
   useRoute,
   RouteProp,
@@ -27,11 +28,12 @@ import OpeningHours from '../../components/ui/OpeningHours';
 import RouteButton from '../../components/ui/RouteButton';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
 import { COLORS } from '../../constants/theme';
-import { Restaurant } from '../../types';
+import { Restaurant, GroupFeedReview } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { fetchPersonalRating } from '../../services/reviewService';
 import { supabase } from '../../services/supabase';
-import CollectionModal from '../../components/ui/CollectionModal';
+import CollectionModal from '../../components/ui/CollectionModal'; // This import is correct
+import FeedCard from '../../components/groups/FeedCard';
 
 type RestaurantDetailRouteProp = RouteProp<
   { RestaurantDetail: { restaurantId: string; restaurantName: string } },
@@ -60,6 +62,12 @@ export default function RestaurantDetailScreen() {
   const [userRestaurantHistory, setUserRestaurantHistory] = useState<
     Record<string, unknown>[]
   >([]);
+
+  const {
+    reviews: relevantReviews,
+    isLoading: reviewsLoading,
+    error: reviewsError,
+  } = useRestaurantReviews(details?.id);
 
   const isCurrentlyBookmarked = details?.id
     ? bookmarkedRestaurantIds.has(details.id.toString())
@@ -287,6 +295,44 @@ export default function RestaurantDetailScreen() {
                 <Text style={styles.sectionTitle}>Opening Hours</Text>
                 <OpeningHours hours={details.opening_hours} />
               </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Relevant Reviews</Text>
+                {reviewsLoading ? (
+                  <ActivityIndicator color={COLORS.primary} />
+                ) : reviewsError ? (
+                  <Text style={styles.errorText}>{reviewsError}</Text>
+                ) : relevantReviews.length > 0 ? ( // Explicitly type 'review'
+                  <>
+                    {relevantReviews
+                      .slice(0, 3)
+                      .map((review: GroupFeedReview) => (
+                        <FeedCard key={review.id} review={review} />
+                      ))}
+                    {relevantReviews.length > 3 && (
+                      <TouchableOpacity
+                        style={styles.viewAllButton}
+                        onPress={() => {
+                          if (details?.id && typeof details.id === 'number') {
+                            navigation.navigate('RestaurantReviews', {
+                              restaurantId: details.id,
+                              restaurantName,
+                            });
+                          }
+                        }}
+                      >
+                        <Text style={styles.viewAllButtonText}>
+                          View All ({relevantReviews.length}) Reviews
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <Text style={styles.emptyText}>
+                    No reviews for this restaurant yet. Be the first!
+                  </Text>
+                )}
+              </View>
             </View>
           )}
         </View>
@@ -471,6 +517,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingTop: 12,
   },
+  errorText: {
+    color: COLORS.danger,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  emptyText: {
+    color: COLORS.textLight,
+    textAlign: 'center',
+    marginTop: 16,
+  },
   footer: {
     position: 'absolute',
     left: 16,
@@ -550,5 +606,21 @@ const styles = StyleSheet.create({
   editHistoryText: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  viewAllButton: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  viewAllButtonText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

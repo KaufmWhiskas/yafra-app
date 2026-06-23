@@ -14,6 +14,7 @@ import CollectionDetailScreen from '../screens/profile/CollectionDetailScreen';
 import RestaurantDetailScreen from '../screens/map/RestaurantDetailScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import UserReviewsScreen from '../screens/profile/UserReviewsScreen';
+import RestaurantReviewsScreen from '../screens/restaurant/RestaurantReviewsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -70,6 +71,11 @@ export default function MainNavigator() {
               name="UserReviewsScreen"
               component={UserReviewsScreen}
               options={{ title: 'My Reviews' }}
+            />
+            <Stack.Screen
+              name="RestaurantReviews"
+              component={RestaurantReviewsScreen}
+              options={{ headerShown: true }}
             />
           </>
         ) : (

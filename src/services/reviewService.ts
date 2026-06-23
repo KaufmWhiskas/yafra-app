@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { GroupFeedReview } from "../types";
 
 /**
  * Adds reviews to the Supabase database
@@ -157,6 +158,39 @@ export async function fetchUserTags(userId: string): Promise<string[]> {
 
   // Sort keys by highest count descending
   return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
+}
+
+/**
+ * Fetches all relevant reviews for a restaurant.
+ * This includes all public reviews, plus all of the current user's own reviews (even private ones).
+ */
+export async function fetchReviewsForRestaurant(
+  restaurantId: string | number,
+  currentUserId: string | null,
+): Promise<GroupFeedReview[]> {
+  let query = supabase
+    .from("reviews")
+    .select(
+      `*, profiles(username, avatar_url), restaurant:restaurants(id, name, cuisine)`,
+    )
+    .eq("restaurant_id", restaurantId);
+
+  if (currentUserId) {
+    query = query.or(
+      `is_private.eq.false,is_private.is.null,user_id.eq.${currentUserId}`,
+    );
+  } else {
+    query = query.or(`is_private.eq.false,is_private.is.null`);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Supabase Error fetching restaurant reviews:", error);
+    // Force a standard Error object so the hook can read the message
+    throw new Error(error.message);
+  }
+  return data as GroupFeedReview[];
 }
 
 /**
