@@ -39,8 +39,7 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    // TODO: Navigate to ForgotPassword screen when implemented
-    navigation.navigate('ForgotPassword' as never);
+    navigation.navigate('ForgotPassword');
   };
 
   return (
@@ -84,7 +83,9 @@ export default function LoginScreen() {
         <Text style={styles.linkText}>Forgot Password</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => login('philippdiener4@gmail.com', 'Testpassword123')}>
+      <TouchableOpacity
+        onPress={() => login('philippdiener4@gmail.com', 'Testpassword123')}
+      >
         <Text style={styles.linkText}>Quick Dev Login</Text>
       </TouchableOpacity>
     </View>

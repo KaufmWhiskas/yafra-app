@@ -32,7 +32,7 @@ import { Restaurant, GroupFeedReview } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { fetchPersonalRating } from '../../services/reviewService';
 import { supabase } from '../../services/supabase';
-import CollectionModal from '../../components/ui/CollectionModal'; // This import is correct
+import CollectionModal from '../../components/ui/CollectionModal';
 import FeedCard from '../../components/groups/FeedCard';
 
 type RestaurantDetailRouteProp = RouteProp<
@@ -302,7 +302,7 @@ export default function RestaurantDetailScreen() {
                   <ActivityIndicator color={COLORS.primary} />
                 ) : reviewsError ? (
                   <Text style={styles.errorText}>{reviewsError}</Text>
-                ) : relevantReviews.length > 0 ? ( // Explicitly type 'review'
+                ) : relevantReviews.length > 0 ? (
                   <>
                     {relevantReviews
                       .slice(0, 3)

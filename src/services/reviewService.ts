@@ -156,7 +156,6 @@ export async function fetchUserTags(userId: string): Promise<string[]> {
     });
   });
 
-  // Sort keys by highest count descending
   return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
 }
 

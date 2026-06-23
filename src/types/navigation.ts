@@ -9,6 +9,7 @@ export type RootStackParamList = {
   };
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
   GroupDetailScreen: { groupId: string };
   GroupFeedScreen: { groupId: string; groupName: string };
   WantToVisitScreen: undefined;
@@ -16,6 +17,8 @@ export type RootStackParamList = {
   RestaurantDetail: { restaurantId: string; restaurantName: string };
   EditProfileScreen: undefined;
   UserReviewsScreen: { userId: string };
+  ProfileOtpScreen: { email: string };
+  UpdatePasswordScreen: undefined;
   RestaurantReviews: { restaurantId: number; restaurantName: string };
 };
 

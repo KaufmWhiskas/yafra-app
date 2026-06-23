@@ -4,7 +4,7 @@ export const COLORS = {
   background: "#f8f9fa", //Default Background Color
   surface: "#ffffff", //For Cards, Sheets, Inputs
   text: "#1c1e21", //For most text
-  textLight: "#8a8d91", //For tex on dark backgrounds
+  textLight: "#8a8d91", //For text on dark backgrounds
   success: "#28a745",
   warning: "#ffc107",
   danger: "#dc3545",
@@ -16,4 +16,14 @@ export const SIZES = {
   padding: 16,
   radius: 12,
   largeRadius: 24,
+
+  // font sizes
+  h1: 30,
+  h2: 22,
+  h3: 16,
+  h4: 14,
+  body1: 30,
+  body2: 22,
+  body3: 16,
+  body4: 14,
 };

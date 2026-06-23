@@ -20,11 +20,11 @@ export function sortReviewsByRelevance(
     const scoreB = getScore(b);
 
     if (scoreA !== scoreB) {
-      return scoreB - scoreA; // Sort by score descending
+      return scoreB - scoreA;
     }
 
     const dateA = new Date(a.created_at || 0).getTime();
     const dateB = new Date(b.created_at || 0).getTime();
-    return dateB - dateA; // If scores are same, sort by date descending
+    return dateB - dateA;
   });
 }

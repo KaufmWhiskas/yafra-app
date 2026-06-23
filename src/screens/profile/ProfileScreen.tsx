@@ -243,7 +243,7 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionItem}
             onPress={() => setFeedbackModalVisible(true)}
           >
@@ -252,7 +252,12 @@ export default function ProfileScreen() {
               size={24}
               color={COLORS.primary}
             />
-            <Text style={[styles.actionText, { color: COLORS.primary, fontWeight: '600' }]}>
+            <Text
+              style={[
+                styles.actionText,
+                { color: COLORS.primary, fontWeight: '600' },
+              ]}
+            >
               Send Beta Feedback
             </Text>
             <MaterialCommunityIcons
@@ -277,10 +282,10 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      <FeedbackModal 
-        visible={isFeedbackModalVisible} 
-        userId={user?.id} 
-        onClose={() => setFeedbackModalVisible(false)} 
+      <FeedbackModal
+        visible={isFeedbackModalVisible}
+        userId={user?.id}
+        onClose={() => setFeedbackModalVisible(false)}
       />
     </View>
   );

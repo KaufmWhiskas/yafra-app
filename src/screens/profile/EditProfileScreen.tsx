@@ -8,13 +8,17 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { updateProfileName } from '../../services/profileService';
+import { sendPasswordResetOtp } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
+import { RootStackParamList } from '../../types/navigation';
 
 export default function EditProfileScreen() {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const user = session?.user;
@@ -44,6 +48,51 @@ export default function EditProfileScreen() {
 
   const handleComingSoon = () => {
     Alert.alert('Coming Soon', 'This feature is under construction.');
+  };
+
+  const handleChangePassword = async () => {
+    if (!user?.email) {
+      Alert.alert('Error', 'Your email is not available for password reset.');
+      return;
+    }
+
+    const userEmail = user.email;
+
+    Alert.alert(
+      'Confirm Password Reset',
+      `A password reset code will be sent to ${userEmail}. Are you sure you want to continue?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Send Code',
+          onPress: async () => {
+            try {
+              await sendPasswordResetOtp(userEmail);
+              Alert.alert(
+                'Password Reset',
+                `A password reset code has been sent to ${userEmail}. Please enter it on the next screen.`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: () =>
+                      navigation.navigate('ProfileOtpScreen', {
+                        email: userEmail,
+                      }),
+                  },
+                ],
+              );
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : 'Unknown error';
+              Alert.alert('Error', `Failed to send reset code: ${message}`);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -92,8 +141,8 @@ export default function EditProfileScreen() {
           <Text style={styles.placeholderButtonText}>Update Email</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.placeholderButton, styles.disabledFeature]}
-          onPress={handleComingSoon}
+          style={styles.placeholderButton}
+          onPress={handleChangePassword}
         >
           <Text style={styles.placeholderButtonText}>Change Password</Text>
         </TouchableOpacity>

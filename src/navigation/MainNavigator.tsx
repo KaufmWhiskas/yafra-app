@@ -1,5 +1,9 @@
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useEffect } from 'react';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,11 +19,39 @@ import RestaurantDetailScreen from '../screens/map/RestaurantDetailScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import UserReviewsScreen from '../screens/profile/UserReviewsScreen';
 import RestaurantReviewsScreen from '../screens/restaurant/RestaurantReviewsScreen';
+import UpdatePasswordScreen from '../screens/profile/UpdatePasswordScreen';
+import ProfileOtpScreen from '../screens/profile/ProfileOtpScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function MainNavigator() {
-  const { session, isLoading } = useAuth();
+  const {
+    session,
+    isLoading,
+    requiresPasswordChange,
+    setRequiresPasswordChange,
+  } = useAuth();
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      session &&
+      requiresPasswordChange &&
+      navigationRef.isReady()
+    ) {
+      navigationRef.navigate('UpdatePasswordScreen');
+      // Reset the flag after navigation is triggered
+      setRequiresPasswordChange(false);
+    }
+  }, [
+    isLoading,
+    session,
+    requiresPasswordChange,
+    navigationRef,
+    setRequiresPasswordChange,
+  ]);
 
   //Prevents flickering while Supabase checks session
   if (isLoading) {
@@ -27,7 +59,7 @@ export default function MainNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
           <>
@@ -77,11 +109,26 @@ export default function MainNavigator() {
               component={RestaurantReviewsScreen}
               options={{ headerShown: true }}
             />
+            <Stack.Screen
+              name="UpdatePasswordScreen"
+              component={UpdatePasswordScreen}
+              options={{ headerShown: true, title: 'Update Your Password' }}
+            />
+            <Stack.Screen
+              name="ProfileOtpScreen"
+              component={ProfileOtpScreen}
+              options={{ headerShown: true, title: 'Verify Code' }}
+            />
           </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ headerShown: true, title: 'Reset Password' }}
+            />
           </>
         )}
       </Stack.Navigator>
