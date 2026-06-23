@@ -53,10 +53,26 @@ export interface GroupInvite {
 }
 
 export interface Review {
-  id: string;
+  id: string | number;
   restaurant_id: string;
   user_id: string;
   rating: number;
   price_value_rating?: number;
   review_text?: string;
+  visit_date?: string | null;
+  metadata?: { tags: string[] };
+  is_private?: boolean;
+  created_at?: string;
+}
+
+export interface GroupFeedReview extends Review {
+  profiles?: {
+    username?: string;
+    avatar_url?: string;
+  };
+  restaurant?: {
+    id?: string | number;
+    name?: string;
+    cuisine?: string;
+  };
 }

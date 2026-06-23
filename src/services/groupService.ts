@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import {
   Group,
+  GroupFeedReview,
   GroupInvite,
   GroupMember,
   GroupRole,
@@ -332,4 +333,54 @@ export async function fetchGroupRestaurants(
 
   if (error) throw error;
   return data as Restaurant[];
+}
+
+export async function fetchGroupFeed(
+  groupId: string,
+  currentUserId: string | null,
+): Promise<GroupFeedReview[]> {
+  // 1. Get member IDs
+  const { data: members, error: membersError } = await supabase
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", groupId);
+
+  if (membersError) {
+    console.error("fetchGroupFeed - Members Error:", membersError);
+    throw new Error(membersError.message);
+  }
+
+  const memberRows = (members || []) as { user_id: string }[];
+  const userIds = memberRows.map((member) => member.user_id);
+  if (userIds.length === 0) return [];
+
+  // 2. Fetch reviews and related data
+  let query = supabase
+    .from("reviews")
+    .select(`
+      *, 
+      profiles(username, avatar_url), 
+      restaurant:restaurants(id, name, cuisine)
+    `)
+    .in("user_id", userIds)
+    .order("created_at", { ascending: false });
+
+  // 3. Privacy Filter: Include if NOT private, OR if the current user wrote it
+  if (currentUserId) {
+    query = query.or(
+      `is_private.eq.false,is_private.is.null,user_id.eq.${currentUserId}`,
+    );
+  } else {
+    query = query.or(`is_private.eq.false,is_private.is.null`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("fetchGroupFeed - Reviews Error:", error);
+    // Throwing a standard JS Error ensures our hook's catch block reads the message
+    throw new Error(error.message);
+  }
+
+  return data as GroupFeedReview[];
 }

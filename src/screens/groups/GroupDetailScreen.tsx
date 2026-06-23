@@ -6,9 +6,9 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  ScrollView,
   Share,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -28,13 +28,21 @@ import {
   removeGroupMember,
   fetchGroupRestaurants,
 } from '../../services/groupService';
-import { Group, GroupMember, GroupInvite, Restaurant } from '../../types';
+import {
+  Group,
+  GroupMember,
+  GroupInvite,
+  Restaurant,
+  GroupFeedReview,
+} from '../../types';
+import { useGroupFeed } from '../../hooks/useGroupFeed';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import FeedCard from '../../components/groups/FeedCard';
 
 type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -43,6 +51,18 @@ type GroupDetailScreenRouteProp = RouteProp<
 type GroupWithMembers = Group & {
   members: (GroupMember & { profiles: { username: string } })[];
 };
+
+type ListItem =
+  | { type: 'section_title'; title: string }
+  | { type: 'restaurants'; data: Restaurant[] }
+  | { type: 'loader'; key: string }
+  | { type: 'error'; message: string; key: string }
+  | { type: 'empty'; message: string; key: string }
+  | { type: 'feed_item'; review: GroupFeedReview }
+  | {
+      type: 'member_item';
+      member: GroupMember & { profiles: { username: string } };
+    };
 
 export default function GroupDetailScreen() {
   const route = useRoute<GroupDetailScreenRouteProp>();
@@ -58,6 +78,12 @@ export default function GroupDetailScreen() {
   const [tempCode, setTempCode] = useState<string | null>(null);
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
+
+  const {
+    reviews: feedReviews,
+    isLoading: isFeedLoading,
+    error: feedError,
+  } = useGroupFeed(groupId);
 
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
@@ -280,152 +306,228 @@ export default function GroupDetailScreen() {
 
   const isOwner = user?.id === group.created_by;
 
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: Math.max(insets.top, 16),
-          paddingBottom: Math.max(insets.bottom, 16) + 24,
-        },
-      ]}
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>{group.name}</Text>
-        <View style={styles.codeRow}>
-          <Text style={styles.codeText}>
-            Code: {group.permanent_invite_code || 'Disabled'}
-          </Text>
-          <View style={{ flexDirection: 'row' }}>
-            {group.permanent_invite_code && (
-              <TouchableOpacity style={styles.copyButton}>
-                <Text style={styles.copyButtonText}>Copy</Text>
-              </TouchableOpacity>
-            )}
-            {isOwner && (
-              <TouchableOpacity
-                style={[styles.copyButton, { marginLeft: 8 }]}
-                onPress={handleTogglePermanentCode}
-              >
-                <Text style={styles.copyButtonText}>
-                  {group.permanent_invite_code ? 'Disable' : 'Enable'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+  const restaurantItems: ListItem[] =
+    groupRestaurants.length > 0
+      ? [
+          { type: 'section_title', title: "Group's Rated Restaurants" },
+          { type: 'restaurants', data: groupRestaurants },
+        ]
+      : [];
 
-        {group.permanent_invite_code ? (
-          <View style={styles.inviteActionRow}>
-            <TouchableOpacity style={styles.inviteButton} onPress={handleShare}>
-              <MaterialCommunityIcons
-                name="export-variant"
-                size={20}
-                color="#fff"
-              />
-              <Text style={styles.inviteButtonText}>Share Code</Text>
-            </TouchableOpacity>
+  const feedItems: ListItem[] = isFeedLoading
+    ? [{ type: 'loader', key: 'feed-loader' }]
+    : feedError
+      ? [{ type: 'error', message: feedError, key: 'feed-error' }]
+      : feedReviews.length === 0
+        ? [
+            {
+              type: 'empty',
+              message: 'No feed activity yet.',
+              key: 'feed-empty',
+            },
+          ]
+        : feedReviews.map((review) => ({ type: 'feed_item', review }));
 
-            <TouchableOpacity
-              style={styles.inviteButton}
-              onPress={() => setQrModalVisible(true)}
-            >
-              <MaterialCommunityIcons name="qrcode" size={20} color="#fff" />
-              <Text style={styles.inviteButtonText}>Show QR</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-      </View>
+  const memberItems: ListItem[] =
+    group.members.length > 0
+      ? group.members.map((member) => ({ type: 'member_item', member }))
+      : [
+          {
+            type: 'empty',
+            message: 'This group has no other members.',
+            key: 'members-empty',
+          },
+        ];
 
-      {groupRestaurants.length > 0 && (
-        <View style={{ marginBottom: SIZES.padding }}>
-          <Text style={styles.sectionTitle}>Group's Rated Restaurants</Text>
+  const listData: ListItem[] = [
+    ...restaurantItems,
+    { type: 'section_title', title: 'Group Feed' },
+    ...feedItems,
+    { type: 'section_title', title: 'Members' },
+    ...memberItems,
+  ];
+
+  const renderListItem = ({ item }: { item: ListItem }) => {
+    switch (item.type) {
+      case 'section_title':
+        return <Text style={styles.sectionTitle}>{item.title}</Text>;
+      case 'restaurants':
+        return (
           <FlatList
-            data={groupRestaurants}
+            data={item.data}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
+            keyExtractor={(r) => r.id.toString()}
+            renderItem={({ item: restaurant }) => (
               <View style={{ width: 280, marginRight: SIZES.padding }}>
                 <RestaurantCard
-                  item={item}
+                  item={restaurant}
                   onPressReview={() =>
-                    navigation.navigate('ReviewScreen', { restaurant: item })
+                    navigation.navigate('ReviewScreen', { restaurant })
                   }
                   isBookmarked={false}
                   onToggleBookmark={() => {}}
                 />
               </View>
             )}
+            contentContainerStyle={{ paddingBottom: SIZES.padding }}
           />
-        </View>
-      )}
-
-      <Text style={styles.sectionTitle}>Members</Text>
-      <FlatList
-        data={group.members}
-        keyExtractor={(item) => item.user_id}
-        renderItem={({ item }) => (
+        );
+      case 'loader':
+        return (
+          <View style={styles.centered}>
+            <ActivityIndicator color={COLORS.primary} />
+          </View>
+        );
+      case 'error':
+        return (
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>{item.message}</Text>
+          </View>
+        );
+      case 'empty':
+        return (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>{item.message}</Text>
+          </View>
+        );
+      case 'feed_item':
+        return <FeedCard review={item.review} />;
+      case 'member_item':
+        return (
           <TouchableOpacity
             style={styles.memberCard}
-            onPress={() => handleMemberPress(item)}
+            onPress={() => handleMemberPress(item.member)}
           >
             <Text style={styles.memberText}>
-              {/* Safely render the nested username, falling back to ID if missing */}
-              {item.profiles?.username || item.user_id} - {item.role} (
-              {item.weight})
+              {item.member.profiles?.username || item.member.user_id} -{' '}
+              {item.member.role} ({item.member.weight})
             </Text>
           </TouchableOpacity>
-        )}
-        contentContainerStyle={styles.listContent}
-      />
+        );
+      default:
+        return null;
+    }
+  };
 
-      {isOwner && (
-        <View style={styles.ownerControls}>
-          <TouchableOpacity
-            style={styles.generateButton}
-            onPress={handleGenerateTempInvite}
-          >
-            <Text style={styles.generateButtonText}>
-              Generate Temporary Invite
-            </Text>
-          </TouchableOpacity>
-          {tempCode && (
-            <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
-          )}
-
-          {activeInvites.length > 0 && (
-            <View style={styles.invitesContainer}>
-              <Text style={styles.invitesTitle}>Active Temporary Invites</Text>
-              <ScrollView
-                style={styles.invitesScrollArea}
-                nestedScrollEnabled={true}
-              >
-                {activeInvites.map((inv) => (
-                  <View key={inv.id} style={styles.inviteCard}>
-                    <Text style={styles.inviteCode}>{inv.code}</Text>
-                    <View>
-                      <Text style={styles.inviteMeta}>
-                        Created by: {inv.profiles?.username || 'Unknown'}
-                      </Text>
-                      <Text style={styles.inviteMeta}>
-                        Expires: {new Date(inv.expires_at).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={listData}
+        renderItem={renderListItem}
+        keyExtractor={(item: ListItem, index: number): string => {
+          if ('review' in item) return item.review.id.toString();
+          if ('member' in item) return item.member.user_id;
+          if ('key' in item) return item.key;
+          return `${item.type}-${index.toString()}`;
+        }}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.title}>{group.name}</Text>
+            <View style={styles.codeRow}>
+              <Text style={styles.codeText}>
+                Code: {group.permanent_invite_code || 'Disabled'}
+              </Text>
+              <View style={{ flexDirection: 'row' }}>
+                {group.permanent_invite_code && (
+                  <TouchableOpacity style={styles.copyButton}>
+                    <Text style={styles.copyButtonText}>Copy</Text>
+                  </TouchableOpacity>
+                )}
+                {isOwner && (
+                  <TouchableOpacity
+                    style={[styles.copyButton, { marginLeft: 8 }]}
+                    onPress={handleTogglePermanentCode}
+                  >
+                    <Text style={styles.copyButtonText}>
+                      {group.permanent_invite_code ? 'Disable' : 'Enable'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          )}
 
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDeleteGroup}
-          >
-            <Text style={styles.deleteButtonText}>Delete Group</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            {group.permanent_invite_code ? (
+              <View style={styles.inviteActionRow}>
+                <TouchableOpacity
+                  style={styles.inviteButton}
+                  onPress={handleShare}
+                >
+                  <MaterialCommunityIcons
+                    name="export-variant"
+                    size={20}
+                    color="#fff"
+                  />
+                  <Text style={styles.inviteButtonText}>Share Code</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.inviteButton}
+                  onPress={() => setQrModalVisible(true)}
+                >
+                  <MaterialCommunityIcons
+                    name="qrcode"
+                    size={20}
+                    color="#fff"
+                  />
+                  <Text style={styles.inviteButtonText}>Show QR</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        }
+        ListFooterComponent={
+          isOwner ? (
+            <View style={styles.ownerControls}>
+              <TouchableOpacity
+                style={styles.generateButton}
+                onPress={handleGenerateTempInvite}
+              >
+                <Text style={styles.generateButtonText}>
+                  Generate Temporary Invite
+                </Text>
+              </TouchableOpacity>
+              {tempCode && (
+                <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
+              )}
+
+              {activeInvites.length > 0 && (
+                <View style={styles.invitesContainer}>
+                  <Text style={styles.invitesTitle}>
+                    Active Temporary Invites
+                  </Text>
+                  {activeInvites.map((inv) => (
+                    <View key={inv.id} style={styles.inviteCard}>
+                      <Text style={styles.inviteCode}>{inv.code}</Text>
+                      <View>
+                        <Text style={styles.inviteMeta}>
+                          Created by: {inv.profiles?.username || 'Unknown'}
+                        </Text>
+                        <Text style={styles.inviteMeta}>
+                          Expires:{' '}
+                          {new Date(inv.expires_at).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteGroup}
+              >
+                <Text style={styles.deleteButtonText}>Delete Group</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+        contentContainerStyle={{
+          paddingHorizontal: SIZES.padding,
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 16) + 24,
+        }}
+      />
 
       <Modal
         visible={isQrModalVisible}
@@ -466,9 +568,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: SIZES.padding,
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: {
+    paddingVertical: SIZES.padding,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     marginBottom: SIZES.largeRadius,
     padding: SIZES.padding,
@@ -497,7 +603,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: SIZES.radius,
+    marginTop: SIZES.padding,
+    marginBottom: SIZES.base,
   },
   listContent: { paddingBottom: SIZES.largeRadius },
   memberCard: {
@@ -507,6 +614,16 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   memberText: { fontSize: 16 },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: COLORS.textLight,
+    fontSize: 14,
+    textAlign: 'center',
+  },
   ownerControls: {
     marginTop: SIZES.padding,
     flexShrink: 1,
@@ -539,9 +656,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: SIZES.base,
-  },
-  invitesScrollArea: {
-    maxHeight: 180,
   },
   inviteCard: {
     flexDirection: 'row',

@@ -28,6 +28,11 @@ jest.mock('../../../services/groupService', () => ({
   fetchGroupRestaurants: jest.fn(),
 }));
 
+jest.mock('../../../components/groups/GroupFeedList', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
