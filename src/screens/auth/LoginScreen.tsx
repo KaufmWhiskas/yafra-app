@@ -82,12 +82,6 @@ export default function LoginScreen() {
       <TouchableOpacity onPress={handleForgotPassword}>
         <Text style={styles.linkText}>Forgot Password</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => login('philippdiener4@gmail.com', 'Testpassword123')}
-      >
-        <Text style={styles.linkText}>Quick Dev Login</Text>
-      </TouchableOpacity>
     </View>
   );
 }

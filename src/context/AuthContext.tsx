@@ -5,15 +5,15 @@ import { supabase } from '../services/supabase';
 type AuthContextType = {
   session: Session | null;
   isLoading: boolean;
-  requiresPasswordChange: boolean;
-  setRequiresPasswordChange: React.Dispatch<React.SetStateAction<boolean>>;
+  requiresPasswordReset: boolean;
+  setRequiresPasswordReset: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
-  requiresPasswordChange: false,
-  setRequiresPasswordChange: () => {},
+  requiresPasswordReset: false,
+  setRequiresPasswordReset: () => {},
 });
 
 /**
@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
+  const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
 
       if (event === 'PASSWORD_RECOVERY') {
-        setRequiresPasswordChange(true);
+        setRequiresPasswordReset(true);
       }
     });
 
@@ -50,8 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         session,
         isLoading,
-        requiresPasswordChange,
-        setRequiresPasswordChange,
+        requiresPasswordReset,
+        setRequiresPasswordReset,
       }}
     >
       {children}

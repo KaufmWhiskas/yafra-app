@@ -88,19 +88,4 @@ describe('LoginScreen Submission Logic', () => {
       expect(Alert.alert).toHaveBeenCalledWith('Login Failed', errorMessage);
     });
   });
-
-  it('allows quick login for developers', async () => {
-    (login as jest.Mock).mockResolvedValueOnce({ error: null });
-    
-    const { getByText } = render(<LoginScreen />);
-    
-    // Find and press the dev button
-    const quickLoginButton = getByText('Quick Dev Login');
-    fireEvent.press(quickLoginButton);
-
-    // Assert it called the service with your exact credentials
-    await waitFor(() => {
-      expect(login).toHaveBeenCalledWith('philippdiener4@gmail.com', 'Testpassword123');
-    });
-  });
 });

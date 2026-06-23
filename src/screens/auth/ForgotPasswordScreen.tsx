@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -13,18 +12,15 @@ import { useNavigation } from '@react-navigation/native';
 import {
   sendPasswordResetOtp,
   verifyResetOtp,
-  updateUserPassword,
 } from '../../services/authService';
 import { COLORS, SIZES } from '../../constants/theme';
 import OtpInput from '../../components/ui/OtpInput';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation();
-  const [step, setStep] = useState<'email' | 'otp' | 'password'>('email');
+  const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,33 +44,9 @@ export default function ForgotPasswordScreen() {
     setError(null);
     try {
       await verifyResetOtp(email, otp);
-      setStep('password');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Invalid or expired code.';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      await updateUserPassword(password);
-      Alert.alert(
-        'Success',
-        'Your password has been updated successfully. Please log in.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to update password.';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -131,41 +103,6 @@ export default function ForgotPasswordScreen() {
     </>
   );
 
-  const renderPasswordStep = () => (
-    <>
-      <Text style={styles.title}>Set New Password</Text>
-      <Text style={styles.subtitle}>Enter your new password below.</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="New Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        testID="password-input"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm New Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-        testID="confirm-password-input"
-      />
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleUpdatePassword}
-        disabled={isLoading}
-        testID="update-password-button"
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Update Password</Text>
-        )}
-      </TouchableOpacity>
-    </>
-  );
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -174,7 +111,6 @@ export default function ForgotPasswordScreen() {
       {error && <Text style={styles.errorText}>{error}</Text>}
       {step === 'email' && renderEmailStep()}
       {step === 'otp' && renderOtpStep()}
-      {step === 'password' && renderPasswordStep()}
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={styles.backButton}

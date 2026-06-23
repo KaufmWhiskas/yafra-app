@@ -54,10 +54,17 @@ export async function fetchUserProfile(userId: string) {
 }
 
 export async function updateUsername(userId: string, username: string) {
+  // 1. Ask Supabase for the verified session user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Authentication required");
+
   const { data, error } = await supabase
     .from("profiles")
     .update({ username })
-    .eq("id", userId)
+    .eq("id", user.id)
     .select()
     .single();
 

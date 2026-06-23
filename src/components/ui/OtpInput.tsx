@@ -29,9 +29,9 @@ export default function OtpInput({
       return;
     }
 
-    const newValue = value.split('');
-    newValue[index] = text;
-    onChangeText(newValue.join(''));
+    const newValue = value.padEnd(length, ' ').split('');
+    newValue[index] = text || ' ';
+    onChangeText(newValue.join('').trimEnd());
 
     if (text && index < length - 1) {
       inputs.current[index + 1]?.focus();
@@ -42,30 +42,37 @@ export default function OtpInput({
     e: { nativeEvent: { key: string } },
     index: number,
   ) => {
-    if (e.nativeEvent.key === 'Backspace' && !value[index] && index > 0) {
+    const isEmpty = !value[index] || value[index] === ' ';
+
+    if (e.nativeEvent.key === 'Backspace' && isEmpty && index > 0) {
       inputs.current[index - 1]?.focus();
     }
   };
 
   return (
     <View style={styles.container}>
-      {Array.from({ length }).map((_, index) => (
-        <TextInput
-          key={index}
-          testID={`otp-input-${index}`}
-          ref={(ref) => {
-            inputs.current[index] = ref;
-          }}
-          style={[styles.cell, value[index] ? styles.cellFilled : null]}
-          value={value[index] || ''}
-          onChangeText={(text) => handleTextChange(text, index)}
-          onKeyPress={(e) => handleKeyPress(e, index)}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          maxLength={length} // Allow pasting
-          selectTextOnFocus
-        />
-      ))}
+      {Array.from({ length }).map((_, index) => {
+        // 1. Check if the char exists AND is not our space placeholder
+        const char = value[index] && value[index] !== ' ' ? value[index] : '';
+
+        return (
+          <TextInput
+            key={index}
+            testID={`otp-input-${index}`}
+            ref={(ref) => {
+              inputs.current[index] = ref;
+            }}
+            style={[styles.cell, char ? styles.cellFilled : null]}
+            value={char}
+            onChangeText={(text) => handleTextChange(text, index)}
+            onKeyPress={(e) => handleKeyPress(e, index)}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            maxLength={length}
+            selectTextOnFocus
+          />
+        );
+      })}
     </View>
   );
 }

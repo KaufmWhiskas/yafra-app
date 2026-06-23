@@ -4,9 +4,8 @@
  * orchestrates the fetching and storing of restaurant data from OpenStreetMap.
  */
 
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-// Use the npm: specifier to prevent deployment module resolution issues
-import { createClient } from "npm:@supabase/supabase-js@2";
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "@supabase/supabase-js";
 import {
   fetchAndStoreRestaurants,
   OrchestratorDatabaseClient,
@@ -29,8 +28,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const bbox: BoundingBox = body.bbox;
+    let body;
+    try {
+      body = await req.json();
+    } catch (_e) {
+      return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const bbox: BoundingBox | undefined = body.bbox;
 
     if (
       !bbox ||
@@ -39,24 +46,36 @@ Deno.serve(async (req) => {
       typeof bbox.maxLat !== "number" ||
       typeof bbox.maxLon !== "number"
     ) {
+      return new Response(JSON.stringify({ error: "Invalid bbox payload" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Bounding Box Size Limit - Max ~15km area
+    if (
+      Math.abs(bbox.maxLat - bbox.minLat) > 0.15 ||
+      Math.abs(bbox.maxLon - bbox.minLon) > 0.15
+    ) {
+      return new Response(JSON.stringify({ error: "Bounding box too large" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const googleApiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+
+    if (!supabaseUrl || !supabaseKey || !googleApiKey) {
+      console.error("Server misconfiguration: Missing environment variables.");
       return new Response(
-        JSON.stringify({
-          error:
-            "Invalid bbox payload. Expected minLat, minLon, maxLat, maxLon as numbers.",
-        }),
+        JSON.stringify({ error: "Server misconfiguration" }),
         {
-          status: 400,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const googleApiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
-
-    if (!googleApiKey) {
-      throw new Error("Missing GOOGLE_PLACES_API_KEY environment variable");
     }
 
     const supabaseClient = createClient(supabaseUrl, supabaseKey);

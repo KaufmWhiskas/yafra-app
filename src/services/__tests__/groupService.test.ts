@@ -15,6 +15,13 @@ import {
 } from "../groupService";
 import { supabase } from "../supabase";
 
+jest.mock("expo-crypto", () => ({
+  getRandomBytes: jest.fn().mockImplementation((length: number) => {
+    // Return a dummy array of bytes for testing
+    return new Uint8Array(length).fill(10);
+  }),
+}));
+
 jest.mock("../supabase", () => ({
   supabase: {
     from: jest.fn().mockReturnThis(),

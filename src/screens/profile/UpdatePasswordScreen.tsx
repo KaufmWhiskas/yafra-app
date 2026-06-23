@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { updateUserPassword } from '../../services/authService';
 import { COLORS, SIZES } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UpdatePasswordScreen() {
   const navigation = useNavigation();
@@ -19,6 +20,7 @@ export default function UpdatePasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { requiresPasswordReset, setRequiresPasswordReset } = useAuth();
 
   const handleUpdatePassword = async () => {
     if (password !== confirmPassword) {
@@ -35,7 +37,16 @@ export default function UpdatePasswordScreen() {
     try {
       await updateUserPassword(password);
       Alert.alert('Success', 'Your password has been updated successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        {
+          text: 'OK',
+          onPress: () => {
+            if (requiresPasswordReset) {
+              setRequiresPasswordReset(false);
+            } else {
+              navigation.goBack();
+            }
+          },
+        },
       ]);
     } catch (err) {
       const message =

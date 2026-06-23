@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import * as Crypto from "expo-crypto";
 import {
   Group,
   GroupFeedReview,
@@ -7,6 +8,27 @@ import {
   GroupRole,
   Restaurant,
 } from "../types";
+
+/**
+ * Generates a cryptographically secure 6-character alphanumeric code.
+ */
+function generateSecureInviteCode(length = 6): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
+
+  while (result.length < length) {
+    // Get a single cryptographically secure random byte (0-255)
+    const randomByte = Crypto.getRandomBytes(1)[0];
+
+    // 252 is the highest multiple of 36 under 256.
+    // Discard values >= 252 to ensure perfectly even distribution.
+    if (randomByte < 252) {
+      result += chars[randomByte % chars.length];
+    }
+  }
+
+  return result;
+}
 
 /**
  * Retrieves all groups the authenticated user is a member of.
@@ -30,7 +52,7 @@ export async function createGroup(
   userId: string,
   name: string,
 ): Promise<Group> {
-  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const inviteCode = generateSecureInviteCode();
 
   const { data, error } = await supabase
     .from("groups")
@@ -207,7 +229,7 @@ export async function createOneTimeInvite(
     throw new Error("Maximum of 10 active invites reached.");
   }
 
-  const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const inviteCode = generateSecureInviteCode();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     .toISOString();
 

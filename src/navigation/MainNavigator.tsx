@@ -3,7 +3,7 @@ import {
   useNavigationContainerRef,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,32 +26,8 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function MainNavigator() {
-  const {
-    session,
-    isLoading,
-    requiresPasswordChange,
-    setRequiresPasswordChange,
-  } = useAuth();
+  const { session, isLoading, requiresPasswordReset } = useAuth();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
-
-  useEffect(() => {
-    if (
-      !isLoading &&
-      session &&
-      requiresPasswordChange &&
-      navigationRef.isReady()
-    ) {
-      navigationRef.navigate('UpdatePasswordScreen');
-      // Reset the flag after navigation is triggered
-      setRequiresPasswordChange(false);
-    }
-  }, [
-    isLoading,
-    session,
-    requiresPasswordChange,
-    navigationRef,
-    setRequiresPasswordChange,
-  ]);
 
   //Prevents flickering while Supabase checks session
   if (isLoading) {
@@ -62,64 +38,74 @@ export default function MainNavigator() {
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
-          <>
-            <Stack.Screen name="MainTabs" component={TabNavigator} />
-            <Stack.Screen
-              name="ReviewScreen"
-              component={ReviewScreen}
-              options={{ headerShown: true, title: 'Add Review' }}
-            />
-            <Stack.Screen
-              name="GroupDetailScreen"
-              component={GroupDetailScreen}
-              options={{ title: 'Group Details' }}
-            />
-            <Stack.Screen
-              name="GroupFeedScreen"
-              component={GroupFeedScreen}
-              options={{ headerShown: true }}
-            />
-            <Stack.Screen
-              name="WantToVisitScreen"
-              component={WantToVisitScreen}
-              options={{ title: 'Want to Visit' }}
-            />
-            <Stack.Screen
-              name="CollectionDetailScreen"
-              component={CollectionDetailScreen}
-              options={({ route }) => ({ title: route.params.collectionName })}
-            />
-            <Stack.Screen
-              name="RestaurantDetail"
-              component={RestaurantDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="EditProfileScreen"
-              component={EditProfileScreen}
-              options={{ title: 'Edit Profile' }}
-            />
-            <Stack.Screen
-              name="UserReviewsScreen"
-              component={UserReviewsScreen}
-              options={{ title: 'My Reviews' }}
-            />
-            <Stack.Screen
-              name="RestaurantReviews"
-              component={RestaurantReviewsScreen}
-              options={{ headerShown: true }}
-            />
+          requiresPasswordReset ? (
             <Stack.Screen
               name="UpdatePasswordScreen"
               component={UpdatePasswordScreen}
               options={{ headerShown: true, title: 'Update Your Password' }}
             />
-            <Stack.Screen
-              name="ProfileOtpScreen"
-              component={ProfileOtpScreen}
-              options={{ headerShown: true, title: 'Verify Code' }}
-            />
-          </>
+          ) : (
+            <Stack.Group>
+              <Stack.Screen name="MainTabs" component={TabNavigator} />
+              <Stack.Screen
+                name="ReviewScreen"
+                component={ReviewScreen}
+                options={{ headerShown: true, title: 'Add Review' }}
+              />
+              <Stack.Screen
+                name="GroupDetailScreen"
+                component={GroupDetailScreen}
+                options={{ title: 'Group Details' }}
+              />
+              <Stack.Screen
+                name="GroupFeedScreen"
+                component={GroupFeedScreen}
+                options={{ headerShown: true }}
+              />
+              <Stack.Screen
+                name="WantToVisitScreen"
+                component={WantToVisitScreen}
+                options={{ title: 'Want to Visit' }}
+              />
+              <Stack.Screen
+                name="CollectionDetailScreen"
+                component={CollectionDetailScreen}
+                options={({ route }) => ({
+                  title: route.params.collectionName,
+                })}
+              />
+              <Stack.Screen
+                name="RestaurantDetail"
+                component={RestaurantDetailScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="EditProfileScreen"
+                component={EditProfileScreen}
+                options={{ title: 'Edit Profile' }}
+              />
+              <Stack.Screen
+                name="UserReviewsScreen"
+                component={UserReviewsScreen}
+                options={{ title: 'My Reviews' }}
+              />
+              <Stack.Screen
+                name="RestaurantReviews"
+                component={RestaurantReviewsScreen}
+                options={{ headerShown: true }}
+              />
+              <Stack.Screen
+                name="UpdatePasswordScreen"
+                component={UpdatePasswordScreen}
+                options={{ headerShown: true, title: 'Update Your Password' }}
+              />
+              <Stack.Screen
+                name="ProfileOtpScreen"
+                component={ProfileOtpScreen}
+                options={{ headerShown: true, title: 'Verify Code' }}
+              />
+            </Stack.Group>
+          )
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />

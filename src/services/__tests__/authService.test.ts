@@ -18,6 +18,10 @@ jest.mock("../supabase", () => ({
       resetPasswordForEmail: jest.fn(),
       verifyOtp: jest.fn(),
       updateUser: jest.fn(),
+      getUser: jest.fn().mockResolvedValue({
+        data: { user: { id: "123" } },
+        error: null,
+      }),
     },
   },
 }));
