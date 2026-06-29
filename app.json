@@ -38,7 +38,8 @@
         {
           "cameraPermission": "Allow YAFRA to access your camera so you can quickly scan group invite QR codes."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

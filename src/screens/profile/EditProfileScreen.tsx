@@ -6,12 +6,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+
 import { updateProfileName } from '../../services/profileService';
-import { sendPasswordResetOtp } from '../../services/authService';
+import {
+  sendPasswordResetOtp,
+  uploadAvatar,
+  updateProfileAvatar,
+} from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
@@ -25,6 +33,7 @@ export default function EditProfileScreen() {
 
   const [newName, setNewName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleSaveName = async () => {
     if (!user) return;
@@ -43,6 +52,57 @@ export default function EditProfileScreen() {
       Alert.alert('Error', error.message || 'Failed to update profile name.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleChangeProfilePicture = async () => {
+    // 1. Request media library permissions
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert(
+        'Permission Denied',
+        'Permission to access gallery is required to change your avatar.',
+      );
+      return;
+    }
+
+    try {
+      // 2. Launch Image Picker with square aspect constraints
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (pickerResult.canceled || !pickerResult.assets?.[0]?.uri) return;
+
+      setIsUploadingImage(true);
+      const selectedUri = pickerResult.assets[0].uri;
+
+      // 3. Aggressive Downsizing & Quality Compression (Protects Free Storage Bucket Capacity)
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        selectedUri,
+        [{ resize: { width: 300 } }], // Shrinks dimensions to standard avatar size
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }, // Compress to ~40KB
+      );
+
+      // 4. Fire the stream upload using verified session parameters
+      const publicUrl = await uploadAvatar(manipulatedImage.uri);
+
+      // 5. Update the profiles data table row relation
+      await updateProfileAvatar(publicUrl);
+
+      Alert.alert('Success', 'Profile picture updated successfully.');
+    } catch (err) {
+      const error = err as Error;
+      Alert.alert(
+        'Upload Failed',
+        error.message || 'An error occurred during upload.',
+      );
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -127,13 +187,22 @@ export default function EditProfileScreen() {
         <View style={styles.divider} />
 
         <TouchableOpacity
-          style={[styles.placeholderButton, styles.disabledFeature]}
-          onPress={handleComingSoon}
+          style={[
+            styles.placeholderButton,
+            isUploadingImage && styles.disabledButton,
+          ]}
+          onPress={handleChangeProfilePicture}
+          disabled={isUploadingImage}
         >
-          <Text style={styles.placeholderButtonText}>
-            Change Profile Picture (1h Cooldown)
-          </Text>
+          {isUploadingImage ? (
+            <ActivityIndicator size="small" color={COLORS.textLight} />
+          ) : (
+            <Text style={styles.placeholderButtonText}>
+              Change Profile Picture
+            </Text>
+          )}
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.placeholderButton, styles.disabledFeature]}
           onPress={handleComingSoon}
@@ -186,7 +255,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   placeholderButtonText: {
-    color: COLORS.textLight,
+    color: COLORS.text,
     fontWeight: '600',
     fontSize: 14,
   },
