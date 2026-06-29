@@ -54,7 +54,6 @@ export async function fetchUserProfile(userId: string) {
 }
 
 export async function updateUsername(userId: string, username: string) {
-  // 1. Ask Supabase for the verified session user
   const {
     data: { user },
     error: authError,

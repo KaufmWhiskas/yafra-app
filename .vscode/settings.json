@@ -1,28 +1,5 @@
 {
-  "editor.formatOnSave": true,
-  "json.schemaDownload.enable": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "explorer.fileNesting.enabled": true,
-  "explorer.fileNesting.expand": false,
-  "explorer.fileNesting.patterns": {
-    "package.json": "package-lock.json, .yarnrc, yarn.lock",
-    "app.json": "babel.config.js, metro.config.js, index.js, eslint.config.js",
-    ".gitignore": ".prettierrc.json, .env"
-  },
   "deno.enable": true,
   "deno.enablePaths": ["supabase/functions"],
-  "deno.config": "supabase/functions/deno.json",
-  "deno.lint": true,
-  "deno.unstable": true,
-  "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  },
-  "cSpell.words": ["Bbox", "kaufmirwhiskas", "Piccola", "Postg"],
-  "cSpell.ignoreWords": [
-    "Khuax",
-    "Sxse",
-    "apikey",
-    "datetimepicker",
-    "testuser"
-  ]
+  "deno.importMap": "supabase/functions/deno.json"
 }
