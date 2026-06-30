@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { GroupFeedReview } from '../../types';
+import { Avatar } from '../Avatar'; // Import our optimized Avatar component
 
 interface FeedCardProps {
   review: GroupFeedReview;
@@ -21,17 +22,8 @@ export default function FeedCard({ review }: FeedCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        {avatarUrl ? (
-          <Image style={styles.avatar} source={{ uri: avatarUrl }} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <MaterialCommunityIcons
-              name="account"
-              size={20}
-              color={COLORS.textLight}
-            />
-          </View>
-        )}
+        {/* Swapped raw Image element for custom Avatar component to enforce cache-busting */}
+        <Avatar url={avatarUrl} name={author} size={42} />
 
         <View style={styles.headingText}>
           <Text style={styles.authorText}>{author}</Text>
@@ -80,23 +72,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SIZES.base,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    marginRight: SIZES.base,
-  },
-  avatarPlaceholder: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SIZES.base,
-  },
   headingText: {
     flex: 1,
+    marginLeft: SIZES.base, // Added to account for space after Avatar component removal of margin
   },
   authorText: {
     fontSize: 16,
