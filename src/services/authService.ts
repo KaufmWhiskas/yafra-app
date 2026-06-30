@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy'; // Use the LEGACY import as requested
 import { decode } from 'base64-arraybuffer';
 
 export async function register(
@@ -91,37 +91,42 @@ export async function sendPasswordResetOtp(email: string) {
  * @returns The public URL of the uploaded avatar.
  */
 export async function uploadAvatar(fileUri: string): Promise<string> {
-  // Securely retrieve the authenticated user
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('Authentication required');
 
-  const base64 = await FileSystem.readAsStringAsync(fileUri, {
-    encoding: 'base64',
-  });
-  const arrayBuffer = decode(base64);
-  const filePath = `${user.id}/avatar.jpg`; // Securely locked directory path
-
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(filePath, arrayBuffer, {
-      contentType: 'image/jpeg',
-      upsert: true,
+  try {
+    // 1. Read as Base64 using the legacy API
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: 'base64', // Keep as string literal to avoid type issues
     });
 
-  if (uploadError) {
-    throw uploadError;
+    // 2. Decode
+    const arrayBuffer = decode(base64);
+
+    // 3. Upload
+    const filePath = `${user.id}/avatar.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // 4. Get Public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    if (!data.publicUrl)
+      throw new Error('Could not get public URL for avatar.');
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Upload failed:', error);
+    throw error;
   }
-
-  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-  if (!data.publicUrl) {
-    throw new Error('Could not get public URL for avatar.');
-  }
-
-  return data.publicUrl;
 }
 
 /**

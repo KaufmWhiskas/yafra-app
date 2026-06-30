@@ -43,13 +43,16 @@ import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import FeedCard from '../../components/groups/FeedCard';
+import { Avatar } from '../../components/Avatar';
 
 type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
   'GroupDetailScreen'
 >;
 type GroupWithMembers = Group & {
-  members: (GroupMember & { profiles: { username: string } })[];
+  members: (GroupMember & {
+    profiles: { username: string; avatar_url?: string | null };
+  })[];
 };
 
 type ListItem =
@@ -62,7 +65,9 @@ type ListItem =
   | { type: 'feed_item'; review: GroupFeedReview }
   | {
       type: 'member_item';
-      member: GroupMember & { profiles: { username: string } };
+      member: GroupMember & {
+        profiles: { username: string; avatar_url?: string | null };
+      };
     };
 
 export default function GroupDetailScreen() {
@@ -182,7 +187,9 @@ export default function GroupDetailScreen() {
   )?.role;
 
   const handleMemberPress = (
-    member: GroupMember & { profiles: { username: string } },
+    member: GroupMember & {
+      profiles: { username: string; avatar_url?: string | null };
+    },
   ) => {
     if (!user?.id) return;
     if (currentUserRole !== 'owner' && currentUserRole !== 'admin') return;
@@ -425,10 +432,15 @@ export default function GroupDetailScreen() {
             style={styles.memberCard}
             onPress={() => handleMemberPress(item.member)}
           >
-            <Text style={styles.memberText}>
-              {item.member.profiles?.username || item.member.user_id} -{' '}
-              {item.member.role} ({item.member.weight})
-            </Text>
+            <Avatar url={item.member.profiles?.avatar_url} size={40} />
+            <View style={styles.memberInfo}>
+              <Text style={styles.memberText}>
+                {item.member.profiles?.username || item.member.user_id}
+              </Text>
+              <Text style={styles.memberRole}>
+                Role: {item.member.role} (Weight: {item.member.weight})
+              </Text>
+            </View>
           </TouchableOpacity>
         );
       default:
@@ -648,11 +660,17 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: SIZES.largeRadius },
   memberCard: {
     padding: SIZES.padding,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.base,
     marginBottom: SIZES.base,
   },
-  memberText: { fontSize: 16 },
+  memberInfo: {
+    marginLeft: SIZES.padding,
+  },
+  memberText: { fontSize: 16, fontWeight: 'bold' },
+  memberRole: { fontSize: 14, color: COLORS.textLight },
   errorText: {
     color: COLORS.danger,
     fontSize: 14,

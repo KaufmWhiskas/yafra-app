@@ -101,8 +101,10 @@ describe('GroupDetailScreen', () => {
     expect(fetchGroupDetails).toHaveBeenCalledWith('group_1');
     expect(getByText('The Elite Squad')).toBeTruthy();
     expect(getByText('Code: ELITE123')).toBeTruthy();
-    expect(getByText('user_1 - owner (1)')).toBeTruthy();
-    expect(getByText('user_2 - member (0.5)')).toBeTruthy();
+    expect(getByText('user_1')).toBeTruthy();
+    expect(getByText('Role: owner (Weight: 1)')).toBeTruthy();
+    expect(getByText('user_2')).toBeTruthy();
+    expect(getByText('Role: member (Weight: 0.5)')).toBeTruthy();
   });
 
   it("renders the 'Delete Group' button only if the current user is the owner", async () => {

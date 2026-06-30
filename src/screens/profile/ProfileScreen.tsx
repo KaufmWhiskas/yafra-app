@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Avatar } from '../../components/Avatar';
 import FeedbackModal from '../../components/ui/FeedbackModal';
 
 export default function ProfileScreen() {
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     username: '',
+    avatar_url: null as string | null,
     reviewCount: 0,
     uniqueRestaurantsVisited: 0,
     bookmarkCount: 0,
@@ -105,13 +107,11 @@ export default function ProfileScreen() {
               navigation.navigate('UserReviewsScreen', { userId: user.id });
           }}
         >
-          <View style={styles.avatarPlaceholder}>
-            <MaterialCommunityIcons
-              name="account"
-              size={40}
-              color={COLORS.textLight}
-            />
-          </View>
+          <Avatar
+            url={stats.avatar_url || undefined}
+            size={60}
+            style={styles.avatar}
+          />
           <View style={styles.identityInfo}>
             <Text style={styles.username}>
               {isLoading ? 'Loading...' : stats.username}
@@ -344,13 +344,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
+  avatar: {
     marginRight: SIZES.padding,
   },
   identityInfo: {

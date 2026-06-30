@@ -46,11 +46,19 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.spyOn(Alert, 'alert');
 
+jest.mock('../../../components/Avatar', () => {
+  const ReactNative = jest.requireActual('react-native');
+  return {
+    Avatar: (props: Record<string, unknown>) => <ReactNative.View {...props} />,
+  };
+});
+
 describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (fetchUserStats as jest.Mock).mockResolvedValue({
       username: 'cooltester',
+      avatar_url: null,
       reviewCount: 5,
       uniqueRestaurantsVisited: 3,
       bookmarkCount: 12,
@@ -89,8 +97,10 @@ describe('ProfileScreen', () => {
     const alertCalls = (Alert.alert as jest.Mock).mock.calls;
     const lastCall = alertCalls[alertCalls.length - 1];
     const buttons = lastCall[2];
-    const signOutButton = buttons.find((b: { text: string; style: string }) => b.text === 'Sign Out');
-    
+    const signOutButton = buttons.find(
+      (b: { text: string; style: string }) => b.text === 'Sign Out',
+    );
+
     await signOutButton.onPress();
 
     await waitFor(() => {

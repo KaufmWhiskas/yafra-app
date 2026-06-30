@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-import { updateProfileName } from '../../services/profileService';
+import {
+  updateProfileName,
+  fetchUserStats,
+} from '../../services/profileService';
 import {
   sendPasswordResetOtp,
   uploadAvatar,
@@ -23,6 +26,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
+import { Avatar } from '../../components/Avatar';
+
+interface ProfileState {
+  username: string;
+  avatar_url: string | null;
+}
 
 export default function EditProfileScreen() {
   const navigation =
@@ -34,6 +43,18 @@ export default function EditProfileScreen() {
   const [newName, setNewName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [profile, setProfile] = useState<ProfileState | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    if (user?.id) {
+      const stats = await fetchUserStats(user.id);
+      setProfile(stats);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleSaveName = async () => {
     if (!user) return;
@@ -93,6 +114,12 @@ export default function EditProfileScreen() {
 
       // 5. Update the profiles data table row relation
       await updateProfileAvatar(publicUrl);
+
+      // Apply cache-busting to the URL and update local state for immediate feedback
+      const cacheBustedUrl = `${publicUrl}?t=${new Date().getTime()}`;
+      setProfile((prevProfile) =>
+        prevProfile ? { ...prevProfile, avatar_url: cacheBustedUrl } : null,
+      );
 
       Alert.alert('Success', 'Profile picture updated successfully.');
     } catch (err) {
@@ -158,6 +185,9 @@ export default function EditProfileScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
+        <View style={styles.avatarContainer}>
+          <Avatar url={profile?.avatar_url} size={120} />
+        </View>
         <Text style={styles.label}>New Profile Name</Text>
         <TextInput
           style={styles.input}
@@ -223,6 +253,10 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SIZES.padding },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: SIZES.largeRadius,
+  },
   label: {
     fontSize: 16,
     fontWeight: 'bold',

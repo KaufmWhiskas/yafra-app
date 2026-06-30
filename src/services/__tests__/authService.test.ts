@@ -8,9 +8,9 @@ import {
   verifyResetOtp,
 } from '../authService';
 import { supabase } from '../supabase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn(),
 }));
 
@@ -82,6 +82,7 @@ describe('Auth Service - User Profile', () => {
       (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue(
         'base64string',
       );
+
       // @ts-expect-error: custom mock property not on root client
       (supabase.storage.upload as jest.Mock).mockResolvedValue({ error: null });
       // @ts-expect-error: custom mock property not on root client
@@ -99,7 +100,10 @@ describe('Auth Service - User Profile', () => {
       expect(supabase.storage.upload).toHaveBeenCalledWith(
         `${userId}/avatar.jpg`,
         expect.any(ArrayBuffer),
-        { contentType: 'image/jpeg', upsert: true },
+        {
+          contentType: 'image/jpeg',
+          upsert: true,
+        },
       );
       // @ts-expect-error: custom mock property not on root client
       expect(supabase.storage.getPublicUrl).toHaveBeenCalledWith(

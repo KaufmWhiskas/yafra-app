@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 export interface UserProfile {
   email: string;
@@ -6,43 +6,50 @@ export interface UserProfile {
 }
 
 export const fetchUserProfile = async (): Promise<UserProfile> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) throw new Error("User not logged in");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !user.email) throw new Error('User not logged in');
 
   const { count } = await supabase
-    .from("reviews")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .from('reviews')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id);
 
   return { email: user.email, reviewCount: count || 0 };
 };
 
 export const fetchUserStats = async (
   userId: string,
-): Promise<
-  {
-    username: string;
-    reviewCount: number;
-    uniqueRestaurantsVisited: number;
-    bookmarkCount: number;
-  }
-> => {
-  const [profileResponse, reviewsResponse, bookmarksResponse] = await Promise
-    .all([
-      supabase.from("profiles").select("username").eq("id", userId).single(),
-      supabase.from("reviews").select("restaurant_id").eq("user_id", userId),
-      supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq(
-        "user_id",
-        userId,
-      ),
+): Promise<{
+  username: string;
+  avatar_url: string | null;
+  reviewCount: number;
+  uniqueRestaurantsVisited: number;
+  bookmarkCount: number;
+}> => {
+  const [profileResponse, reviewsResponse, bookmarksResponse] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', userId)
+        .single(),
+      supabase.from('reviews').select('restaurant_id').eq('user_id', userId),
+      supabase
+        .from('bookmarks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId),
     ]);
 
   const rawReviews = reviewsResponse.data || [];
-  const uniqueVisited =
-    new Set(rawReviews.map((r) => r.restaurant_id?.toString())).size;
+  const uniqueVisited = new Set(
+    rawReviews.map((r) => r.restaurant_id?.toString()),
+  ).size;
 
   return {
-    username: profileResponse.data?.username || "Unknown User",
+    username: profileResponse.data?.username || 'Unknown User',
+    avatar_url: profileResponse.data?.avatar_url || null,
     reviewCount: rawReviews.length,
     uniqueRestaurantsVisited: uniqueVisited,
     bookmarkCount: bookmarksResponse.count || 0,
@@ -60,9 +67,9 @@ export async function updateProfileName(
   newName: string,
 ): Promise<void> {
   const { data: profile, error: fetchError } = await supabase
-    .from("profiles")
-    .select("last_name_change")
-    .eq("id", userId)
+    .from('profiles')
+    .select('last_name_change')
+    .eq('id', userId)
     .single();
 
   if (fetchError) throw fetchError;
@@ -78,12 +85,12 @@ export async function updateProfileName(
   }
 
   const { error: updateError } = await supabase
-    .from("profiles")
+    .from('profiles')
     .update({
       username: newName,
       last_name_change: new Date().toISOString(),
     })
-    .eq("id", userId);
+    .eq('id', userId);
 
   if (updateError) throw updateError;
 }
@@ -96,7 +103,7 @@ export async function submitBetaFeedback(
   message: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from("beta_feedback")
+    .from('beta_feedback')
     .insert([{ user_id: userId, message }]);
 
   if (error) throw error;
