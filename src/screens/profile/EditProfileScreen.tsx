@@ -77,7 +77,6 @@ export default function EditProfileScreen() {
   };
 
   const handleChangeProfilePicture = async () => {
-    // 1. Request media library permissions
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
@@ -89,7 +88,6 @@ export default function EditProfileScreen() {
     }
 
     try {
-      // 2. Launch Image Picker with square aspect constraints
       const pickerResult = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -109,14 +107,12 @@ export default function EditProfileScreen() {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }, // Compress to ~40KB
       );
 
-      // 4. Fire the stream upload using verified session parameters
       const publicUrl = await uploadAvatar(manipulatedImage.uri);
 
-      // 5. Update the profiles data table row relation
-      await updateProfileAvatar(publicUrl);
-
-      // Apply cache-busting to the URL and update local state for immediate feedback
       const cacheBustedUrl = `${publicUrl}?t=${new Date().getTime()}`;
+
+      await updateProfileAvatar(cacheBustedUrl);
+
       setProfile((prevProfile) =>
         prevProfile ? { ...prevProfile, avatar_url: cacheBustedUrl } : null,
       );

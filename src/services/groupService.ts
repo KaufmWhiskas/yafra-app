@@ -17,7 +17,6 @@ function generateSecureInviteCode(length = 6): string {
   let result = '';
 
   while (result.length < length) {
-    // Get a single cryptographically secure random byte (0-255)
     const randomByte = Crypto.getRandomBytes(1)[0];
 
     // 252 is the highest multiple of 36 under 256.
@@ -392,7 +391,6 @@ export async function fetchGroupFeed(
   const userIds = memberRows.map((member) => member.user_id);
   if (userIds.length === 0) return [];
 
-  // 2. Fetch reviews and related data
   let query = supabase
     .from('reviews')
     .select(
@@ -428,7 +426,6 @@ export async function fetchGroupFeed(
 export async function fetchSharedGroupMemberIds(
   currentUserId: string,
 ): Promise<Set<string>> {
-  // 1. Find all groups the current user is in
   const { data: groupMemberships, error: membershipError } = await supabase
     .from('group_members')
     .select('group_id')
@@ -447,7 +444,6 @@ export async function fetchSharedGroupMemberIds(
 
   const groupIds = groupMemberships.map((gm) => gm.group_id);
 
-  // 2. Find all members of those groups
   const { data: allMembers, error: membersError } = await supabase
     .from('group_members')
     .select('user_id')
@@ -473,7 +469,6 @@ export async function fetchActiveGroupsReviewsForRestaurant(
 ): Promise<GroupFeedReview[]> {
   if (!activeGroupIds || activeGroupIds.length === 0) return [];
 
-  // 1. Get all member IDs for the active groups
   const { data: members, error: membersError } = await supabase
     .from('group_members')
     .select('user_id')
@@ -483,7 +478,6 @@ export async function fetchActiveGroupsReviewsForRestaurant(
   const userIds = Array.from(new Set((members || []).map((m) => m.user_id)));
   if (userIds.length === 0) return [];
 
-  // 2. Fetch the corresponding reviews
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*, profiles(username, avatar_url)')

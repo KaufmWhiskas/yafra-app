@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { GroupFeedReview } from '../../types';
-import { Avatar } from '../Avatar'; // Import our optimized Avatar component
+import { Avatar } from '../Avatar';
 
 interface FeedCardProps {
   review: GroupFeedReview;

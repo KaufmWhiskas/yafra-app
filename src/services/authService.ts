@@ -98,15 +98,12 @@ export async function uploadAvatar(fileUri: string): Promise<string> {
   if (authError || !user) throw new Error('Authentication required');
 
   try {
-    // 1. Read as Base64 using the legacy API
     const base64 = await FileSystem.readAsStringAsync(fileUri, {
       encoding: 'base64', // Keep as string literal to avoid type issues
     });
 
-    // 2. Decode
     const arrayBuffer = decode(base64);
 
-    // 3. Upload
     const filePath = `${user.id}/avatar.jpg`;
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -117,7 +114,6 @@ export async function uploadAvatar(fileUri: string): Promise<string> {
 
     if (uploadError) throw uploadError;
 
-    // 4. Get Public URL
     const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
     if (!data.publicUrl)
       throw new Error('Could not get public URL for avatar.');

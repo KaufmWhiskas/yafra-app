@@ -13,10 +13,14 @@ export default function App() {
       <SafeAreaProvider>
         <AuthProvider>
           <GroupFilterProvider>
-            <View style={styles.container}>
-              <MainNavigator />
-              <StatusBar style="auto" />
-            </View>
+            {
+              /* Keep your existing AuthProvider, Navigators, etc. inside here */ <View
+                style={styles.container}
+              >
+                <MainNavigator />
+                <StatusBar style="auto" />
+              </View>
+            }
           </GroupFilterProvider>
         </AuthProvider>
       </SafeAreaProvider>

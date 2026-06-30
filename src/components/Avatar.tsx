@@ -16,9 +16,12 @@ export function Avatar({
   const cleanSeed = encodeURIComponent(name.trim() || 'U');
   const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${cleanSeed}`;
 
-  // Force a low-impact cache invalidation stamp if a web URL is supplied
+  // If the incoming URL already contains a cache-buster query string (?t= or ?cacheBuster=),
+  // use it directly. Otherwise, attach a stable fallback.
   const clearUri = url
-    ? `${url.split('?')[0]}?cacheBuster=${encodeURIComponent(name.length)}`
+    ? url.includes('?')
+      ? url
+      : `${url}?t=${encodeURIComponent(name.length)}`
     : defaultAvatar;
 
   return (
