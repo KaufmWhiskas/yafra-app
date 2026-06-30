@@ -5,16 +5,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { GroupFilterProvider } from './src/context/GroupFilterContext';
 
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <View style={styles.container}>
-            <MainNavigator />
-            <StatusBar style="auto" />
-          </View>
+          <GroupFilterProvider>
+            <View style={styles.container}>
+              <MainNavigator />
+              <StatusBar style="auto" />
+            </View>
+          </GroupFilterProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

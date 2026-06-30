@@ -1,35 +1,15 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const STORAGE_KEY = '@yafra_active_map_groups';
+import { useGroupFilterContext } from '../context/GroupFilterContext';
 
 export function useActiveGroupFilters() {
-  const [activeGroupIds, setActiveGroupIds] = useState<string[]>([]);
-  const [isFilterLoading, setIsFilterLoading] = useState(true);
+  const { activeGroupIds, setActiveGroupIds } = useGroupFilterContext();
+  const isFilterLoading = false; // Synchronous context state, no loader needed
 
-  useEffect(() => {
-    async function loadFilters() {
-      try {
-        const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
-        if (jsonValue != null) {
-          setActiveGroupIds(JSON.parse(jsonValue));
-        }
-      } catch (e) {
-        console.error('Failed to parse active group filters:', e);
-      } finally {
-        setIsFilterLoading(false);
-      }
-    }
-    loadFilters();
-  }, []);
-
-  const toggleGroupFilter = async (groupId: string) => {
-    const updated = activeGroupIds.includes(groupId)
-      ? activeGroupIds.filter((id) => id !== groupId)
-      : [...activeGroupIds, groupId];
-
-    setActiveGroupIds(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const toggleGroupFilter = (groupId: string) => {
+    setActiveGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId],
+    );
   };
 
   return { activeGroupIds, toggleGroupFilter, isFilterLoading };

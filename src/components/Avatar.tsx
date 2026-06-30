@@ -16,16 +16,21 @@ export function Avatar({
   const cleanSeed = encodeURIComponent(name.trim() || 'U');
   const defaultAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${cleanSeed}`;
 
+  // Force a low-impact cache invalidation stamp if a web URL is supplied
+  const clearUri = url
+    ? `${url.split('?')[0]}?cacheBuster=${encodeURIComponent(name.length)}`
+    : defaultAvatar;
+
   return (
     <Image
-      source={{ uri: url || defaultAvatar }}
+      source={{ uri: clearUri }}
       style={[
         styles.avatar,
         { width: size, height: size, borderRadius: size / 2 },
         style,
       ]}
       contentFit="cover"
-      transition={200}
+      transition={150}
     />
   );
 }
