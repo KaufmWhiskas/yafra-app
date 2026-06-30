@@ -109,6 +109,7 @@ export default function ProfileScreen() {
         >
           <Avatar
             url={stats.avatar_url || undefined}
+            name={stats.username}
             size={60}
             style={styles.avatar}
           />

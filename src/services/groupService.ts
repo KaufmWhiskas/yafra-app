@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import * as Crypto from "expo-crypto";
+import { supabase } from './supabase';
+import * as Crypto from 'expo-crypto';
 import {
   Group,
   GroupFeedReview,
@@ -7,14 +7,14 @@ import {
   GroupMember,
   GroupRole,
   Restaurant,
-} from "../types";
+} from '../types';
 
 /**
  * Generates a cryptographically secure 6-character alphanumeric code.
  */
 function generateSecureInviteCode(length = 6): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
 
   while (result.length < length) {
     // Get a single cryptographically secure random byte (0-255)
@@ -36,9 +36,9 @@ function generateSecureInviteCode(length = 6): string {
  */
 export async function fetchMyGroups(userId: string): Promise<Group[]> {
   const { data, error } = await supabase
-    .from("groups")
-    .select("*, group_members!inner(user_id)")
-    .eq("group_members.user_id", userId);
+    .from('groups')
+    .select('*, group_members!inner(user_id)')
+    .eq('group_members.user_id', userId);
 
   if (error) throw error;
   return data as Group[];
@@ -55,7 +55,7 @@ export async function createGroup(
   const inviteCode = generateSecureInviteCode();
 
   const { data, error } = await supabase
-    .from("groups")
+    .from('groups')
     .insert({
       name,
       created_by: userId,
@@ -81,30 +81,30 @@ export async function joinGroupWithCode(
   let currentUsedCount: number = 0;
 
   const { data: group } = await supabase
-    .from("groups")
-    .select("id")
-    .eq("permanent_invite_code", inviteCode)
+    .from('groups')
+    .select('id')
+    .eq('permanent_invite_code', inviteCode)
     .maybeSingle();
 
   if (group) {
     targetGroupId = group.id;
   } else {
     const { data: invite, error: inviteError } = await supabase
-      .from("group_invites")
-      .select("id, group_id, max_uses, used_count, expires_at")
-      .eq("code", inviteCode)
+      .from('group_invites')
+      .select('id, group_id, max_uses, used_count, expires_at')
+      .eq('code', inviteCode)
       .maybeSingle();
 
     if (inviteError || !invite) {
-      throw new Error("Invalid or missing invite code");
+      throw new Error('Invalid or missing invite code');
     }
 
     if (invite.used_count >= invite.max_uses) {
-      throw new Error("Invite code has reached its maximum uses");
+      throw new Error('Invite code has reached its maximum uses');
     }
 
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-      throw new Error("Invite code has expired");
+      throw new Error('Invite code has expired');
     }
 
     targetGroupId = invite.group_id;
@@ -112,19 +112,19 @@ export async function joinGroupWithCode(
     currentUsedCount = invite.used_count;
   }
 
-  if (!targetGroupId) throw new Error("Invalid or missing invite code");
+  if (!targetGroupId) throw new Error('Invalid or missing invite code');
 
   const { error: insertError } = await supabase
-    .from("group_members")
-    .insert([{ group_id: targetGroupId, user_id: userId, role: "member" }]);
+    .from('group_members')
+    .insert([{ group_id: targetGroupId, user_id: userId, role: 'member' }]);
 
   if (insertError) throw insertError;
 
   if (inviteIdToUpdate) {
     const { error: updateError } = await supabase
-      .from("group_invites")
+      .from('group_invites')
       .update({ used_count: currentUsedCount + 1 })
-      .eq("id", inviteIdToUpdate);
+      .eq('id', inviteIdToUpdate);
 
     if (updateError) throw updateError;
   }
@@ -138,10 +138,10 @@ export async function leaveGroup(
   groupId: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from("group_members")
+    .from('group_members')
     .delete()
-    .eq("user_id", userId)
-    .eq("group_id", groupId);
+    .eq('user_id', userId)
+    .eq('group_id', groupId);
 
   if (error) throw error;
 }
@@ -151,10 +151,7 @@ export async function leaveGroup(
  * Relies on ON DELETE CASCADE in the database to wipe associated members/invites.
  */
 export async function deleteGroup(groupId: string): Promise<void> {
-  const { error } = await supabase
-    .from("groups")
-    .delete()
-    .eq("id", groupId);
+  const { error } = await supabase.from('groups').delete().eq('id', groupId);
 
   if (error) throw error;
 }
@@ -167,9 +164,9 @@ export async function updatePermanentInvite(
   code: string | null,
 ): Promise<void> {
   const { error } = await supabase
-    .from("groups")
+    .from('groups')
     .update({ permanent_invite_code: code })
-    .eq("id", groupId);
+    .eq('id', groupId);
 
   if (error) throw error;
 }
@@ -178,26 +175,46 @@ export async function updatePermanentInvite(
  * Retrieves a group and all its active members in a single query.
  * Utilizes Supabase's foreign key projection to append the relational array.
  */
-export async function fetchGroupDetails(
-  groupId: string,
-): Promise<
-  Group & { members: (GroupMember & { profiles: { username: string } })[] }
+export async function fetchGroupDetails(groupId: string): Promise<
+  Group & {
+    members: (GroupMember & {
+      profiles: {
+        username: string;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+      };
+    })[];
+  }
 > {
   const { data, error } = await supabase
-    .from("groups")
-    .select(`
+    .from('groups')
+    .select(
+      `
       *, 
       members:group_members(
         *,
-        profiles(username)
+        profiles(username, avatar_url)
       )
-    `)
-    .eq("id", groupId)
+    `,
+    )
+    .eq('id', groupId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error(`Error fetching group details for ${groupId}:`, error);
+    throw error;
+  }
+
+  // The type from Supabase is generic for nested selects, so we cast it to our specific, known shape.
+  // This is safer than casting to `any` and aligns with the consumer component's expectations.
   return data as unknown as Group & {
-    members: (GroupMember & { profiles: { username: string } })[];
+    members: (GroupMember & {
+      profiles: {
+        username: string;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+      };
+    })[];
   };
 }
 
@@ -213,9 +230,9 @@ export async function createOneTimeInvite(
   createdBy: string,
 ): Promise<string> {
   const { data: activeInvites, error: countError } = await supabase
-    .from("group_invites")
-    .select("id, used_count, max_uses, expires_at")
-    .eq("group_id", groupId);
+    .from('group_invites')
+    .select('id, used_count, max_uses, expires_at')
+    .eq('group_id', groupId);
 
   if (countError) throw countError;
 
@@ -226,22 +243,21 @@ export async function createOneTimeInvite(
   ).length;
 
   if (currentCount >= 10) {
-    throw new Error("Maximum of 10 active invites reached.");
+    throw new Error('Maximum of 10 active invites reached.');
   }
 
   const inviteCode = generateSecureInviteCode();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    .toISOString();
+  const expiresAt = new Date(
+    Date.now() + 30 * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
-  const { error } = await supabase
-    .from("group_invites")
-    .insert({
-      group_id: groupId,
-      created_by: createdBy,
-      code: inviteCode,
-      max_uses: 1,
-      expires_at: expiresAt,
-    });
+  const { error } = await supabase.from('group_invites').insert({
+    group_id: groupId,
+    created_by: createdBy,
+    code: inviteCode,
+    max_uses: 1,
+    expires_at: expiresAt,
+  });
 
   if (error) throw error;
   return inviteCode;
@@ -254,9 +270,9 @@ export async function fetchActiveInvites(
   groupId: string,
 ): Promise<GroupInvite[]> {
   const { data, error } = await supabase
-    .from("group_invites")
+    .from('group_invites')
     .select(`*, profiles(username)`)
-    .eq("group_id", groupId);
+    .eq('group_id', groupId);
 
   if (error) throw error;
 
@@ -281,10 +297,10 @@ export async function updateMemberRole(
   role: GroupRole,
 ): Promise<void> {
   const { error } = await supabase
-    .from("group_members")
+    .from('group_members')
     .update({ role })
-    .eq("group_id", groupId)
-    .eq("user_id", targetUserId);
+    .eq('group_id', groupId)
+    .eq('user_id', targetUserId);
 
   if (error) throw error;
 }
@@ -300,10 +316,10 @@ export async function removeGroupMember(
   targetUserId: string,
 ): Promise<void> {
   const { error } = await supabase
-    .from("group_members")
+    .from('group_members')
     .delete()
-    .eq("group_id", groupId)
-    .eq("user_id", targetUserId);
+    .eq('group_id', groupId)
+    .eq('user_id', targetUserId);
 
   if (error) throw error;
 }
@@ -316,9 +332,9 @@ export async function fetchGroupReviewedRestaurantIds(
   groupId: string,
 ): Promise<Set<string>> {
   const { data: members, error: memberError } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", groupId);
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', groupId);
 
   if (memberError) throw memberError;
   if (!members || members.length === 0) return new Set();
@@ -326,14 +342,14 @@ export async function fetchGroupReviewedRestaurantIds(
   const userIds = members.map((m) => m.user_id);
 
   const { data: reviews, error: reviewError } = await supabase
-    .from("reviews")
-    .select("restaurant_id")
-    .in("user_id", userIds);
+    .from('reviews')
+    .select('restaurant_id')
+    .in('user_id', userIds);
 
   if (reviewError) throw reviewError;
 
   const restaurantIds = new Set<string>();
-  for (const r of (reviews || [])) {
+  for (const r of reviews || []) {
     if (r.restaurant_id) restaurantIds.add(r.restaurant_id.toString());
   }
 
@@ -349,9 +365,9 @@ export async function fetchGroupRestaurants(
   const idsArray = Array.from(idsSet);
 
   const { data, error } = await supabase
-    .from("restaurants")
-    .select("*")
-    .in("id", idsArray);
+    .from('restaurants')
+    .select('*')
+    .in('id', idsArray);
 
   if (error) throw error;
   return data as Restaurant[];
@@ -363,12 +379,12 @@ export async function fetchGroupFeed(
 ): Promise<GroupFeedReview[]> {
   // 1. Get member IDs
   const { data: members, error: membersError } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .eq("group_id", groupId);
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', groupId);
 
   if (membersError) {
-    console.error("fetchGroupFeed - Members Error:", membersError);
+    console.error('fetchGroupFeed - Members Error:', membersError);
     throw new Error(membersError.message);
   }
 
@@ -378,14 +394,16 @@ export async function fetchGroupFeed(
 
   // 2. Fetch reviews and related data
   let query = supabase
-    .from("reviews")
-    .select(`
+    .from('reviews')
+    .select(
+      `
       *, 
       profiles(username, avatar_url), 
       restaurant:restaurants(id, name, cuisine)
-    `)
-    .in("user_id", userIds)
-    .order("created_at", { ascending: false });
+    `,
+    )
+    .in('user_id', userIds)
+    .order('created_at', { ascending: false });
 
   // 3. Privacy Filter: Include if NOT private, OR if the current user wrote it
   if (currentUserId) {
@@ -399,7 +417,7 @@ export async function fetchGroupFeed(
   const { data, error } = await query;
 
   if (error) {
-    console.error("fetchGroupFeed - Reviews Error:", error);
+    console.error('fetchGroupFeed - Reviews Error:', error);
     // Throwing a standard JS Error ensures our hook's catch block reads the message
     throw new Error(error.message);
   }
@@ -412,13 +430,13 @@ export async function fetchSharedGroupMemberIds(
 ): Promise<Set<string>> {
   // 1. Find all groups the current user is in
   const { data: groupMemberships, error: membershipError } = await supabase
-    .from("group_members")
-    .select("group_id")
-    .eq("user_id", currentUserId);
+    .from('group_members')
+    .select('group_id')
+    .eq('user_id', currentUserId);
 
   if (membershipError) {
     console.error(
-      "Supabase Error fetching group memberships:",
+      'Supabase Error fetching group memberships:',
       membershipError,
     );
     throw new Error(membershipError.message);
@@ -431,12 +449,12 @@ export async function fetchSharedGroupMemberIds(
 
   // 2. Find all members of those groups
   const { data: allMembers, error: membersError } = await supabase
-    .from("group_members")
-    .select("user_id")
-    .in("group_id", groupIds);
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', groupIds);
 
   if (membersError) {
-    console.error("Supabase Error fetching shared members:", membersError);
+    console.error('Supabase Error fetching shared members:', membersError);
     throw new Error(membersError.message);
   }
 

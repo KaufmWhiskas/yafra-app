@@ -51,7 +51,11 @@ type GroupDetailScreenRouteProp = RouteProp<
 >;
 type GroupWithMembers = Group & {
   members: (GroupMember & {
-    profiles: { username: string; avatar_url?: string | null };
+    profiles: {
+      username: string;
+      avatar_url?: string | null;
+      avatarUrl?: string | null;
+    };
   })[];
 };
 
@@ -66,7 +70,11 @@ type ListItem =
   | {
       type: 'member_item';
       member: GroupMember & {
-        profiles: { username: string; avatar_url?: string | null };
+        profiles: {
+          username: string;
+          avatar_url?: string | null;
+          avatarUrl?: string | null;
+        };
       };
     };
 
@@ -188,7 +196,11 @@ export default function GroupDetailScreen() {
 
   const handleMemberPress = (
     member: GroupMember & {
-      profiles: { username: string; avatar_url?: string | null };
+      profiles: {
+        username: string;
+        avatar_url?: string | null;
+        avatarUrl?: string | null;
+      };
     },
   ) => {
     if (!user?.id) return;
@@ -426,23 +438,39 @@ export default function GroupDetailScreen() {
         );
       case 'feed_item':
         return <FeedCard review={item.review} />;
-      case 'member_item':
+      case 'member_item': {
+        // Safely handle both single object and array-wrapped profile data from joins
+        const profileData = Array.isArray(item.member.profiles)
+          ? item.member.profiles[0]
+          : item.member.profiles;
+        const displayName = profileData?.username || 'Unknown Member';
+
+        // TEMP DIAGNOSTIC LOG — Check your terminal output
+        console.log(
+          `[Group Members Debug] Data layout for ${displayName}:`,
+          profileData,
+        );
+
         return (
           <TouchableOpacity
             style={styles.memberCard}
             onPress={() => handleMemberPress(item.member)}
           >
-            <Avatar url={item.member.profiles?.avatar_url} size={40} />
+            <Avatar
+              // Handle both snake_case and potential camelCase from different query paths
+              url={profileData?.avatar_url || profileData?.avatarUrl}
+              name={displayName}
+              size={40}
+            />
             <View style={styles.memberInfo}>
-              <Text style={styles.memberText}>
-                {item.member.profiles?.username || item.member.user_id}
-              </Text>
+              <Text style={styles.memberText}>{displayName}</Text>
               <Text style={styles.memberRole}>
                 Role: {item.member.role} (Weight: {item.member.weight})
               </Text>
             </View>
           </TouchableOpacity>
         );
+      }
       default:
         return null;
     }

@@ -186,7 +186,11 @@ export default function EditProfileScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         <View style={styles.avatarContainer}>
-          <Avatar url={profile?.avatar_url} size={120} />
+          <Avatar
+            url={profile?.avatar_url}
+            name={profile?.username}
+            size={120}
+          />
         </View>
         <Text style={styles.label}>New Profile Name</Text>
         <TextInput
