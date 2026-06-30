@@ -3,6 +3,8 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   // This tells Jest: "Whenever you see these imports, use these mocks instead."
   moduleNameMapper: {
+    '@react-native-async-storage/async-storage':
+      '@react-native-async-storage/async-storage/jest/async-storage-mock',
     '^expo-asset$': '<rootDir>/__mocks__/expo-asset.js',
     '^expo-font$': '<rootDir>/__mocks__/expo-font.js',
     '^@expo/vector-icons$': '<rootDir>/__mocks__/@expo/vector-icons.js',

@@ -6,10 +6,6 @@ import { requestForegroundPermissionsAsync } from 'expo-location';
 import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
 import MapView from 'react-native-maps';
-import mockAsyncStorage from '@react-native-async-storage/async-storage/jest/async-storage-mock';
-
-// Mock AsyncStorage to prevent native module errors in Jest
-jest.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage);
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
