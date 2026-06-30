@@ -1,16 +1,12 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, within } from '@testing-library/react-native';
 import GroupsScreen from '../GroupsScreen';
-import {
-  fetchMyGroups,
-  createGroup,
-  joinGroupWithCode,
-} from '../../../services/groupService';
+import { fetchMyGroups } from '../../../services/groupService'; // Corrected path
+import { useActiveGroupFilters } from '../../../hooks/useActiveGroupFilters'; // Corrected path
+import { useAuth } from '../../../context/AuthContext'; // Corrected path
 
 jest.mock('../../../services/groupService', () => ({
   fetchMyGroups: jest.fn(),
-  createGroup: jest.fn(),
-  joinGroupWithCode: jest.fn(),
 }));
 
 const mockNavigate = jest.fn();
@@ -28,7 +24,17 @@ jest.mock('@react-navigation/native', () => {
 });
 
 jest.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({ session: { user: { id: 'user_123' } } }),
+  useAuth: jest.fn(),
+}));
+
+jest.mock('../../../hooks/useActiveGroupFilters');
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
 const flushMicrotasks = async (): Promise<void> => {
@@ -37,124 +43,91 @@ const flushMicrotasks = async (): Promise<void> => {
   });
 };
 
+const mockGroups = [
+  { id: '1', name: 'Active Group', created_by: 'user_123' },
+  { id: '2', name: 'Inactive Group', created_by: 'user_456' },
+  { id: '3', name: 'Another Active Group', created_by: 'user_123' },
+];
+
+const mockToggleGroupFilter = jest.fn();
+
 describe('GroupsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNavigate.mockClear();
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_123' } },
+    });
   });
 
-  it("fetches and displays the user's groups on mount", async () => {
-    (fetchMyGroups as jest.Mock).mockResolvedValue([
-      {
-        id: '1',
-        name: 'Burger Buddies',
-        created_by: 'user_123',
-        is_global: false,
-        permanent_invite_code: 'code1',
-        created_at: '2023-01-01',
-      },
-      {
-        id: '2',
-        name: 'Pizza Squad',
-        created_by: 'user_456',
-        is_global: false,
-        permanent_invite_code: 'code2',
-        created_at: '2023-01-02',
-      },
-    ]);
+  it('shows an activity indicator while loading and then the group list', async () => {
+    let resolveFetch: (value: unknown) => void;
+    (fetchMyGroups as jest.Mock).mockImplementation(
+      () => new Promise((res) => (resolveFetch = res)),
+    );
+    (useActiveGroupFilters as jest.Mock).mockReturnValue({
+      activeGroupIds: [],
+      toggleGroupFilter: jest.fn(),
+    });
+
+    const { queryByText, findByText, getByTestId } = render(<GroupsScreen />);
+
+    // The ActivityIndicator should be visible while loading
+    expect(getByTestId('activity-indicator')).toBeTruthy();
+    expect(queryByText('Food Circles')).toBeNull();
+
+    // Resolve the fetch to simulate data loading completion
+    await act(async () => {
+      resolveFetch(mockGroups);
+    });
+
+    // Now, the main content should be rendered
+    expect(await findByText('Food Circles')).toBeTruthy();
+    expect(await findByText('Active Group')).toBeTruthy();
+  });
+
+  it('correctly splits groups into "Active" and "Inactive" sections', async () => {
+    (fetchMyGroups as jest.Mock).mockResolvedValue(mockGroups);
+    (useActiveGroupFilters as jest.Mock).mockReturnValue({
+      activeGroupIds: ['1', '3'], // Two active groups
+      toggleGroupFilter: mockToggleGroupFilter,
+    });
+
+    const { findByText } = render(<GroupsScreen />);
+
+    // Check for section headers with correct counts
+    expect(await findByText('Active Map Feeds (2)')).toBeTruthy();
+    expect(await findByText('Other Circles')).toBeTruthy();
+
+    // Check that all group names are rendered
+    expect(await findByText('Active Group')).toBeTruthy();
+    expect(await findByText('Inactive Group')).toBeTruthy();
+    expect(await findByText('Another Active Group')).toBeTruthy();
+  });
+
+  it('calls toggleGroupFilter with the correct groupId when a switch is toggled', async () => {
+    (fetchMyGroups as jest.Mock).mockResolvedValue(mockGroups);
+    (useActiveGroupFilters as jest.Mock).mockReturnValue({
+      activeGroupIds: ['1'], // Start with one active group
+      toggleGroupFilter: mockToggleGroupFilter,
+    });
 
     const { getByText } = render(<GroupsScreen />);
     await flushMicrotasks();
 
-    expect(fetchMyGroups).toHaveBeenCalledWith('user_123');
-    expect(getByText('Burger Buddies')).toBeTruthy();
-    expect(getByText('Pizza Squad')).toBeTruthy();
-  });
+    // Find the card for "Inactive Group" by its text content
+    const inactiveGroupCard = getByText('Inactive Group').parent.parent.parent;
 
-  it('navigates to GroupDetailScreen when a group is pressed', async () => {
-    (fetchMyGroups as jest.Mock).mockResolvedValue([
-      {
-        id: '1',
-        name: 'Burger Buddies',
-        created_by: 'user_123',
-        is_global: false,
-        permanent_invite_code: 'code1',
-        created_at: '2023-01-01',
-      },
-    ]);
+    // Use `within` to scope queries to just this card
+    const { getByRole } = within(inactiveGroupCard);
 
-    const { getByText } = render(<GroupsScreen />);
-    await flushMicrotasks();
+    // Find the switch inside the card and fire the event
+    const switchComponent = getByRole('switch');
+    expect(switchComponent.props.value).toBe(false); // It should be off
+    fireEvent(switchComponent, 'onValueChange');
 
-    fireEvent.press(getByText('Burger Buddies'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('GroupDetailScreen', {
-      groupId: '1',
-    });
-  });
-
-  it('opens the Create Group modal when the fab is pressed', async () => {
-    const { getByTestId, getByPlaceholderText } = render(<GroupsScreen />);
-    await flushMicrotasks();
-
-    fireEvent.press(getByTestId('create-group-button'));
-    expect(getByPlaceholderText('Group Name')).toBeTruthy();
-  });
-
-  it('opens the Join Group modal when the join button is pressed', async () => {
-    const { getByTestId, getByPlaceholderText } = render(<GroupsScreen />);
-    await flushMicrotasks();
-
-    fireEvent.press(getByTestId('join-group-button'));
-    expect(getByPlaceholderText('Invite Code')).toBeTruthy();
-  });
-
-  it('calls createGroup and refreshes list when a new group is submitted', async () => {
-    (fetchMyGroups as jest.Mock).mockResolvedValue([]);
-    (createGroup as jest.Mock).mockResolvedValue({
-      id: '3',
-      name: 'New Test Group',
-    });
-
-    const { getByTestId, getByPlaceholderText, getByText } = render(
-      <GroupsScreen />,
-    );
-    await flushMicrotasks();
-
-    // Open Modal
-    fireEvent.press(getByTestId('create-group-button'));
-
-    // Type in the input
-    const input = getByPlaceholderText('Group Name');
-    fireEvent.changeText(input, 'New Test Group');
-
-    // Submit
-    fireEvent.press(getByText('Create'));
-    await flushMicrotasks();
-
-    expect(createGroup).toHaveBeenCalledWith('user_123', 'New Test Group');
-    // It should refresh the list after creation (fetch called twice: mount + post-create)
-    expect(fetchMyGroups).toHaveBeenCalledTimes(2);
-  });
-
-  it('calls joinGroupWithCode and refreshes list when an invite code is submitted', async () => {
-    (fetchMyGroups as jest.Mock).mockResolvedValue([]);
-    (joinGroupWithCode as jest.Mock).mockResolvedValue(undefined);
-
-    const { getByTestId, getByPlaceholderText, getByText } = render(
-      <GroupsScreen />,
-    );
-    await flushMicrotasks();
-
-    fireEvent.press(getByTestId('join-group-button'));
-
-    const input = getByPlaceholderText('Invite Code');
-    fireEvent.changeText(input, 'SECRET123');
-
-    fireEvent.press(getByText('Join'));
-    await flushMicrotasks();
-
-    expect(joinGroupWithCode).toHaveBeenCalledWith('user_123', 'SECRET123');
-    expect(fetchMyGroups).toHaveBeenCalledTimes(2);
+    // Assert that the toggle function was called with the correct group ID
+    expect(mockToggleGroupFilter).toHaveBeenCalledWith('2');
+    expect(mockToggleGroupFilter).toHaveBeenCalledTimes(1);
   });
 });

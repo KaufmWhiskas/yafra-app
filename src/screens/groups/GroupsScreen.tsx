@@ -139,7 +139,11 @@ export default function GroupsScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator
+          testID="activity-indicator"
+          size="large"
+          color={COLORS.primary}
+        />
       </View>
     );
   }
