@@ -5,6 +5,10 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react-native';
 import App from '../App';
+import mockAsyncStorage from '@react-native-async-storage/async-storage/jest/async-storage-mock';
+
+// Mock AsyncStorage to prevent native module errors in Jest
+jest.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage);
 
 // Tell Jest to use the clean __mocks__ file we created earlier
 jest.mock('react-native-maps');

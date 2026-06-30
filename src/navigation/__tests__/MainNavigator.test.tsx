@@ -2,6 +2,10 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import MainNavigator from '../MainNavigator';
 import { useAuth } from '../../context/AuthContext';
+import mockAsyncStorage from '@react-native-async-storage/async-storage/jest/async-storage-mock';
+
+// Mock AsyncStorage to prevent native module errors in Jest
+jest.mock('@react-native-async-storage/async-storage', () => mockAsyncStorage);
 
 jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(),

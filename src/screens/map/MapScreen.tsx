@@ -18,7 +18,10 @@ import CompassIcon from '../../components/ui/CompassIcon';
 import { useMapScanner } from '../../hooks/useMapScanner';
 import { useAuth } from '../../context/AuthContext';
 import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
-import { fetchGroupReviewedRestaurantIds } from '../../services/groupService';
+import {
+  fetchGroupReviewedRestaurantIds,
+  fetchActiveGroupsReviewsForRestaurant,
+} from '../../services/groupService';
 import {
   useNavigation,
   useFocusEffect,
@@ -38,6 +41,8 @@ import {
 import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CollectionModal from '../../components/ui/CollectionModal';
+import { useActiveGroupFilters } from '../../hooks/useActiveGroupFilters';
+import { calculateGroupMapScore } from '../../utils/groupMath';
 
 const MAX_ZOOM_OUT = 0.1;
 
@@ -80,6 +85,9 @@ export default function MapScreen() {
   const { session } = useAuth();
   const user = session?.user;
 
+  const { activeGroupIds, isFilterLoading: isGroupFilterLoading } =
+    useActiveGroupFilters();
+
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -87,6 +95,10 @@ export default function MapScreen() {
   const [groupRestaurantIds, setGroupRestaurantIds] = useState<Set<string>>(
     new Set(),
   );
+
+  const [restaurantsWithGroupScores, setRestaurantsWithGroupScores] = useState<
+    Restaurant[]
+  >([]);
 
   useEffect(() => {
     if (filters.targetGroupId) {
@@ -100,8 +112,39 @@ export default function MapScreen() {
     }
   }, [filters.targetGroupId]);
 
+  useEffect(() => {
+    const applyGroupScores = async () => {
+      if (isGroupFilterLoading) {
+        return;
+      }
+
+      if (activeGroupIds.length > 0) {
+        const scoredRestaurants = await Promise.all(
+          restaurants.map(async (restaurant) => {
+            const groupReviews = await fetchActiveGroupsReviewsForRestaurant(
+              restaurant.id.toString(),
+              activeGroupIds,
+            );
+            const groupScore = calculateGroupMapScore(groupReviews);
+
+            if (groupScore > 0) {
+              // Override app_rating for display purposes
+              return { ...restaurant, app_rating: groupScore };
+            }
+            return restaurant;
+          }),
+        );
+        setRestaurantsWithGroupScores(scoredRestaurants);
+      } else {
+        setRestaurantsWithGroupScores(restaurants);
+      }
+    };
+
+    applyGroupScores();
+  }, [restaurants, activeGroupIds, isGroupFilterLoading]);
+
   const filteredRestaurants = useMemo(() => {
-    let list = filterRestaurants(restaurants, {
+    let list = filterRestaurants(restaurantsWithGroupScores, {
       cuisine: filters.cuisine,
       minRating: filters.minRating,
       inAppReviewsOnly: filters.inAppReviewsOnly,
@@ -146,7 +189,7 @@ export default function MapScreen() {
 
     return list;
   }, [
-    restaurants,
+    restaurantsWithGroupScores,
     filters,
     bookmarkedIds,
     groupRestaurantIds,
