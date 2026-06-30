@@ -462,3 +462,35 @@ export async function fetchSharedGroupMemberIds(
   sharedUserIds.delete(currentUserId);
   return sharedUserIds;
 }
+
+/**
+ * Fetches reviews for a given restaurant written exclusively by members
+ * belonging to a specific set of active groups.
+ */
+export async function fetchActiveGroupsReviewsForRestaurant(
+  restaurantId: string,
+  activeGroupIds: string[],
+): Promise<GroupFeedReview[]> {
+  if (!activeGroupIds || activeGroupIds.length === 0) return [];
+
+  // 1. Get all member IDs for the active groups
+  const { data: members, error: membersError } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', activeGroupIds);
+
+  if (membersError) throw membersError;
+  const userIds = Array.from(new Set((members || []).map((m) => m.user_id)));
+  if (userIds.length === 0) return [];
+
+  // 2. Fetch the corresponding reviews
+  const { data: reviews, error: reviewsError } = await supabase
+    .from('reviews')
+    .select('*, profiles(username, avatar_url)')
+    .eq('restaurant_id', restaurantId)
+    .in('user_id', userIds)
+    .eq('is_private', false);
+
+  if (reviewsError) throw reviewsError;
+  return reviews as GroupFeedReview[];
+}
