@@ -114,24 +114,6 @@ export default function MapScreen() {
     }
   }, [filters.targetGroupId]);
 
-  // Force view mode back to map when user double-clicks the active bottom tab button
-  useEffect(() => {
-    const parent =
-      navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
-    const unsubscribe = parent?.addListener('tabPress', (e) => {
-      // If the view is already focused, intercept the press
-      if (isFocused) {
-        // 1. Prevent React Navigation from handling the click with its default "do nothing" action
-        e.preventDefault();
-
-        // 2. Programmatically force our view layout mode back to map immediately
-        setViewMode('map');
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, isFocused]);
-
   useEffect(() => {
     const applyGroupScores = async () => {
       if (isGroupFilterLoading) {
@@ -217,10 +199,47 @@ export default function MapScreen() {
     userLocation,
   ]);
 
+  // Handle layout resets and fresh focus states cleanly
+  useFocusEffect(
+    useCallback(() => {
+      // Force layout back to map view whenever this tab is entered or re-focused
+      setViewMode('map');
+
+      if (user?.id) {
+        fetchUserBookmarkedRestaurantIds(user.id)
+          .then((ids) => {
+            setBookmarkedIds(ids);
+          })
+          .catch((error) => console.error('Failed to load bookmarks:', error));
+      }
+
+      if (mapRegionRef.current) {
+        loadData(getRegionBBox(mapRegionRef.current));
+      }
+    }, [user?.id]),
+  );
+
+  // Intercept double-taps while ALREADY on the Map tab to toggle from List back to Map mode
+  useEffect(() => {
+    // Traverse upwards to hook into the tab navigator instance
+    const tabNavigation =
+      navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
+    if (!tabNavigation) return;
+
+    const unsubscribe = tabNavigation.addListener('tabPress', (e) => {
+      if (isFocused) {
+        // Prevent default navigation reset behavior
+        e.preventDefault();
+        // Force view mode update instantly
+        setViewMode('map');
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isFocused]);
+
   const handleItemPress = (restaurant: Restaurant) => {
     if (restaurant.google_place_id) {
-      console.log('Navigation Object:', !!navigation);
-      console.log('Target Screen:', 'RestaurantDetail');
       navigation.navigate('RestaurantDetail', {
         restaurantId: restaurant.google_place_id,
         restaurantName: restaurant.name,
@@ -363,22 +382,6 @@ export default function MapScreen() {
       loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
     }
   }, [userLocation, hasSetInitialLocation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.id) {
-        fetchUserBookmarkedRestaurantIds(user.id)
-          .then((ids) => {
-            setBookmarkedIds(ids);
-          })
-          .catch((error) => console.error('Failed to load bookmarks:', error));
-      }
-
-      if (mapRegionRef.current) {
-        loadData(getRegionBBox(mapRegionRef.current));
-      }
-    }, [user?.id]),
-  );
 
   const handleToggleBookmark = (restaurantId: string | number) => {
     if (!user?.id) return;
