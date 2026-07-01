@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -6,8 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  Pressable,
+  Animated,
+  PanResponder,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Restaurant } from '../../types';
 import RestaurantCard from './RestaurantCard';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -26,17 +28,59 @@ export default function QuickAddModal({
   onClose,
 }: QuickAddModalProps) {
   const [showMore, setShowMore] = useState(false);
-  const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  // 1. Hoisted handleClose so the panResponder always has access to it
+  const handleClose = () => {
+    setShowMore(false);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(0);
+    }
+  }, [visible, translateY]);
+
+  const animateDismiss = () => {
+    Animated.timing(translateY, {
+      toValue: 600,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => handleClose());
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // 1. NEVER steal the initial tap (lets buttons work)
+      onStartShouldSetPanResponder: () => false,
+      // 2. ONLY steal the gesture if they drag down clearly (prevents horizontal scroll conflicts)
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        gestureState.dy > 15 &&
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120 || gestureState.vy > 0.5) {
+          animateDismiss();
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    }),
+  ).current;
 
   if (!visible || restaurants.length === 0) return null;
 
   const closest = restaurants[0];
   const others = restaurants.slice(1, 4);
-
-  const handleClose = () => {
-    setShowMore(false);
-    onClose();
-  };
 
   return (
     <Modal
@@ -46,12 +90,15 @@ export default function QuickAddModal({
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <View
-          style={[
-            styles.container,
-            { paddingBottom: Math.max(insets.bottom, 20) },
-          ]}
+        {/* 2. Absolute Fill Backdrop cleanly catches outside taps without interfering with inner layout */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+
+        <Animated.View
+          style={[styles.modalCard, { transform: [{ translateY }] }]}
+          {...panResponder.panHandlers}
         >
+          <View style={styles.swipeHandle} />
+
           {!showMore ? (
             <>
               <Text style={styles.title}>Are you here?</Text>
@@ -92,7 +139,7 @@ export default function QuickAddModal({
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Cancel</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -101,15 +148,25 @@ export default function QuickAddModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
-  container: {
+  modalCard: {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: 10,
     maxHeight: '80%',
+  },
+  swipeHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#cbd5e1',
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,

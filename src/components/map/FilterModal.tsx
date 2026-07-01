@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
+  Pressable,
+  Animated,
+  PanResponder,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES } from '../../constants/theme';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FilterGroup } from '../../constants/categories';
 import { useAuth } from '../../context/AuthContext';
 import { fetchMyGroups } from '../../services/groupService';
@@ -51,13 +52,15 @@ export default function FilterModal({
   onClose,
 }: FilterModalProps) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
-  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
+
+  const translateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setFilters(initialFilters);
+      translateY.setValue(0);
 
       if (session?.user?.id) {
         fetchMyGroups(session.user.id)
@@ -67,7 +70,40 @@ export default function FilterModal({
           );
       }
     }
-  }, [visible, initialFilters, session?.user?.id]);
+  }, [visible, initialFilters, session?.user?.id, translateY]);
+
+  const animateDismiss = () => {
+    Animated.timing(translateY, {
+      toValue: 600,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => onClose());
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        gestureState.dy > 15 &&
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120 || gestureState.vy > 0.5) {
+          animateDismiss();
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        }
+      },
+    }),
+  ).current;
 
   const handleApply = () => {
     onApply(filters);
@@ -82,22 +118,14 @@ export default function FilterModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View
-          style={[
-            styles.container,
-            { paddingBottom: Math.max(insets.bottom, SIZES.padding * 4) },
-          ]}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+
+        <Animated.View
+          style={[styles.modalCard, { transform: [{ translateY }] }]}
+          {...panResponder.panHandlers}
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>Filters</Text>
-            <TouchableOpacity onPress={onClose} testID="close-filter-modal">
-              <MaterialCommunityIcons
-                name="close"
-                size={24}
-                color={COLORS.text}
-              />
-            </TouchableOpacity>
-          </View>
+          <View style={styles.swipeHandle} />
+          <Text style={styles.title}>Filters</Text>
 
           <Text style={styles.sectionTitle}>Cuisine</Text>
           <ScrollView
@@ -176,7 +204,10 @@ export default function FilterModal({
             contentContainerStyle={styles.chipRowContent}
           >
             <TouchableOpacity
-              style={[styles.chip, !filters.targetGroupId && styles.chipActive]}
+              style={[
+                styles.chip,
+                !filters.targetGroupId && styles.chipActive,
+              ]}
               onPress={() => setFilters({ ...filters, targetGroupId: null })}
             >
               <Text
@@ -195,7 +226,9 @@ export default function FilterModal({
                   styles.chip,
                   filters.targetGroupId === g.id && styles.chipActive,
                 ]}
-                onPress={() => setFilters({ ...filters, targetGroupId: g.id })}
+                onPress={() =>
+                  setFilters({ ...filters, targetGroupId: g.id })
+                }
               >
                 <Text
                   style={[
@@ -236,7 +269,7 @@ export default function FilterModal({
           <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
             <Text style={styles.applyButtonText}>Apply Filters</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -245,24 +278,30 @@ export default function FilterModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
-  container: {
-    backgroundColor: COLORS.background,
+  modalCard: {
+    backgroundColor: '#fff',
     borderTopLeftRadius: SIZES.largeRadius,
     borderTopRightRadius: SIZES.largeRadius,
-    padding: SIZES.padding,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: 10,
+    minHeight: 350,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.padding,
+  swipeHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#cbd5e1',
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
+    marginBottom: 16,
     color: COLORS.text,
   },
   sectionTitle: {
