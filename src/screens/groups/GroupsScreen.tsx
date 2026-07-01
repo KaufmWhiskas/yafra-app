@@ -94,7 +94,10 @@ export default function GroupsScreen() {
     const isOwner = session?.user?.id === group.created_by;
 
     return (
-      <View style={[styles.card, isActive && styles.cardActive]}>
+      <View
+        style={[styles.card, isActive && styles.cardActive]}
+        testID={`group-card-${group.id}`}
+      >
         <TouchableOpacity
           style={styles.cardMain}
           onPress={() =>

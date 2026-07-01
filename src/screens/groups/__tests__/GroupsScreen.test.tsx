@@ -112,13 +112,10 @@ describe('GroupsScreen', () => {
       toggleGroupFilter: mockToggleGroupFilter,
     });
 
-    const { getByText } = render(<GroupsScreen />);
+    const { getByTestId } = render(<GroupsScreen />);
     await flushMicrotasks();
 
-    // Find the card for "Inactive Group" by its text content
-    const inactiveGroupCard = getByText('Inactive Group').parent.parent.parent;
-
-    // Use `within` to scope queries to just this card
+    const inactiveGroupCard = getByTestId('group-card-2');
     const { getByRole } = within(inactiveGroupCard);
 
     // Find the switch inside the card and fire the event

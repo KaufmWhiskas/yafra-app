@@ -178,7 +178,6 @@ export default function RestaurantDetailScreen() {
   const handleViewHistory = async () => {
     if (!user?.id || !details?.id) return;
 
-    // Fetch the raw review rows for this specific restaurant
     const { data } = await supabase
       .from('reviews')
       .select('*')

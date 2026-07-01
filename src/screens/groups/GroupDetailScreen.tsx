@@ -213,6 +213,7 @@ export default function GroupDetailScreen() {
       onPress: () => void;
     }[] = [];
 
+    // 1. Dynamic Promotion Boundaries
     if (member.role === 'member') {
       actions.push({
         text: 'Promote to Trusted',
@@ -231,6 +232,7 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Promote to Admin',
         onPress: () => {
+          // Double Safety Confirmation
           Alert.alert(
             'Confirm Promotion',
             `Are you sure you want to make ${member.profiles?.username || member.user_id} an Admin?`,
@@ -253,6 +255,7 @@ export default function GroupDetailScreen() {
       });
     }
 
+    // 2. Dynamic Demotion Boundaries
     if (member.role === 'admin' || member.role === 'trusted') {
       actions.push({
         text: 'Demote to Member',
@@ -273,6 +276,7 @@ export default function GroupDetailScreen() {
         text: 'Kick from Group',
         style: 'destructive',
         onPress: () => {
+          // Double Safety Confirmation
           Alert.alert(
             'Confirm Kick',
             `Are you sure you want to remove ${member.profiles?.username || member.user_id} from the group?`,

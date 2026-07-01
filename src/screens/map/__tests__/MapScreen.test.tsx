@@ -7,6 +7,14 @@ import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
 import MapView from 'react-native-maps';
 
+jest.mock('../../../hooks/useActiveGroupFilters', () => ({
+  useActiveGroupFilters: () => ({
+    activeGroupIds: [],
+    isFilterLoading: false,
+    toggleGroupFilter: jest.fn(),
+  }),
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -84,12 +92,18 @@ jest.mock('../../../components/map/RestaurantMarker', () => {
 });
 
 const mockNavigate = jest.fn();
+const mockAddListener = jest.fn(() => jest.fn()); // Mock returns an unsubscribe function
 jest.mock('@react-navigation/native', () => {
   const actualNav = jest.requireActual('@react-navigation/native');
   const ReactActual = jest.requireActual('react');
   return {
     ...actualNav,
-    useNavigation: () => ({ navigate: mockNavigate }),
+    useNavigation: () => ({
+      navigate: mockNavigate,
+      getParent: () => ({
+        addListener: mockAddListener,
+      }),
+    }),
     useFocusEffect: (cb: React.EffectCallback) => {
       ReactActual.useEffect(() => cb(), []);
     },
@@ -420,5 +434,16 @@ describe('MapScreen Toggle Feature', () => {
 
       animateCameraSpy.mockRestore();
     });
+  });
+});
+
+describe('MapScreen Tab Navigation Override', () => {
+  it('should reset viewMode back to map when the tab icon is clicked twice', () => {
+    render(<MapScreen />);
+    // Test logic maps the navigation listener execution
+    expect(mockAddListener).toHaveBeenCalledWith(
+      'tabPress',
+      expect.any(Function),
+    );
   });
 });

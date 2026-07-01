@@ -17,6 +17,7 @@ function generateSecureInviteCode(length = 6): string {
   let result = '';
 
   while (result.length < length) {
+    // Get a single cryptographically secure random byte (0-255)
     const randomByte = Crypto.getRandomBytes(1)[0];
 
     // 252 is the highest multiple of 36 under 256.
@@ -376,7 +377,6 @@ export async function fetchGroupFeed(
   groupId: string,
   currentUserId: string | null,
 ): Promise<GroupFeedReview[]> {
-  // 1. Get member IDs
   const { data: members, error: membersError } = await supabase
     .from('group_members')
     .select('user_id')
@@ -403,7 +403,6 @@ export async function fetchGroupFeed(
     .in('user_id', userIds)
     .order('created_at', { ascending: false });
 
-  // 3. Privacy Filter: Include if NOT private, OR if the current user wrote it
   if (currentUserId) {
     query = query.or(
       `is_private.eq.false,is_private.is.null,user_id.eq.${currentUserId}`,

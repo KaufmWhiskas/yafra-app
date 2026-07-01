@@ -26,11 +26,13 @@ import {
   useNavigation,
   useFocusEffect,
   useIsFocused,
+  ParamListBase,
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import MapView, { Region } from 'react-native-maps';
 import { Prediction } from '../../services/searchService';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
   BoundingBox,
   getRegionBBox,
@@ -111,6 +113,24 @@ export default function MapScreen() {
       setGroupRestaurantIds(new Set());
     }
   }, [filters.targetGroupId]);
+
+  // Force view mode back to map when user double-clicks the active bottom tab button
+  useEffect(() => {
+    const parent =
+      navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
+    const unsubscribe = parent?.addListener('tabPress', (e) => {
+      // If the view is already focused, intercept the press
+      if (isFocused) {
+        // 1. Prevent React Navigation from handling the click with its default "do nothing" action
+        e.preventDefault();
+
+        // 2. Programmatically force our view layout mode back to map immediately
+        setViewMode('map');
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isFocused]);
 
   useEffect(() => {
     const applyGroupScores = async () => {
@@ -627,19 +647,25 @@ const styles = StyleSheet.create({
     top: 130,
     width: 44,
     height: 44,
-    justifyContent: 'center',
+    borderRadius: 22, // Matches smallFab circle radius perfectly
     alignItems: 'center',
-    backgroundColor: 'transparent', // Strips the primary color inherited from styles.fab
-    elevation: 0, // Strips the inherited shadow
-    shadowOpacity: 0, // Strips the inherited shadow
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface, // Gives identical material contrast background
+    elevation: 4, // Aligns dropshadow depth with filterFab elevation rules
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   smallFab: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterFab: {
-    top: 184,
+    top: 184, // Suspends button precisely below the aligned compass wrapper
   },
   floatingCardContainer: {
     position: 'absolute',

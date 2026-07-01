@@ -107,12 +107,16 @@ export default function EditProfileScreen() {
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }, // Compress to ~40KB
       );
 
+      // 4. Fire the stream upload using verified session parameters
       const publicUrl = await uploadAvatar(manipulatedImage.uri);
 
+      // Create the cache-busted URL FIRST
       const cacheBustedUrl = `${publicUrl}?t=${new Date().getTime()}`;
 
+      // 5. Update the profiles data table row WITH the timestamped URL
       await updateProfileAvatar(cacheBustedUrl);
 
+      // Update local state for immediate feedback
       setProfile((prevProfile) =>
         prevProfile ? { ...prevProfile, avatar_url: cacheBustedUrl } : null,
       );

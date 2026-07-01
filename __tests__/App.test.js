@@ -6,6 +6,16 @@ import {
 } from '@testing-library/react-native';
 import App from '../App';
 
+jest.mock('../src/hooks/useActiveGroupFilters', () => ({
+  useActiveGroupFilters: () => ({
+    activeGroupIds: [],
+    isFilterLoading: false,
+    toggleGroupFilter: jest.fn(),
+  }),
+}));
+
+jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => cb());
+
 // Tell Jest to use the clean __mocks__ file we created earlier
 jest.mock('react-native-maps');
 
