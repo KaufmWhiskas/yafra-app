@@ -2,6 +2,7 @@
   "expo": {
     "name": "yafra-app",
     "slug": "yafra-app",
+    "scheme": "yafra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,16 +14,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kaufmirwhiskas.yafra"
+      "bundleIdentifier": "com.kaufmwhiskas.yafraapp"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.kaufmirwhiskas.yafra",
+      "package": "com.kaufmwhiskas.yafraapp",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBn6B2GnKhuaxSxseWZun5m766HP6Cw1Yo"
