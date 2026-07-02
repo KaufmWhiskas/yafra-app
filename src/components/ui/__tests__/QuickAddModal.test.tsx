@@ -1,71 +1,114 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import QuickAddModal from '../QuickAddModal';
 import { Restaurant } from '../../../types';
-
-jest.mock('@expo/vector-icons', () => ({
-  MaterialCommunityIcons: 'MaterialCommunityIcons',
-  Ionicons: 'Ionicons',
-}));
-
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, left: 0, bottom: 0, right: 0 }),
-}));
 
 const mockRestaurants: Restaurant[] = [
   {
     id: '1',
-    name: 'Closest Rest',
-    cuisine: 'Test',
+    name: 'Closest Place',
+    cuisine: 'Pizza',
     latitude: 0,
     longitude: 0,
-    rating: 4,
   },
   {
     id: '2',
-    name: 'Other Rest 1',
-    cuisine: 'Test',
+    name: 'Second Place',
+    cuisine: 'Burger',
     latitude: 0,
     longitude: 0,
-    rating: 4,
   },
-  {
-    id: '3',
-    name: 'Other Rest 2',
-    cuisine: 'Test',
-    latitude: 0,
-    longitude: 0,
-    rating: 4,
-  },
-] as Restaurant[];
+  { id: '3', name: 'Third Place', cuisine: 'Sushi', latitude: 0, longitude: 0 },
+];
 
 describe('QuickAddModal', () => {
-  it('displays the closest restaurant and shows more when No is pressed', () => {
-    const onSelect = jest.fn();
-    const onClose = jest.fn();
+  const mockOnSelect = jest.fn();
+  const mockOnClose = jest.fn();
 
-    const { getByText, queryByText } = render(
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders the closest restaurant initially', async () => {
+    const { findByText } = render(
       <QuickAddModal
         visible={true}
         restaurants={mockRestaurants}
-        onSelect={onSelect}
-        onClose={onClose}
+        onSelect={mockOnSelect}
+        onClose={mockOnClose}
       />,
     );
 
-    // Initial state: first restaurant is visible, others are not
-    expect(getByText('Are you here?')).toBeTruthy();
-    expect(getByText('Closest Rest')).toBeTruthy();
-    expect(queryByText('Other Rest 1')).toBeNull();
+    expect(await findByText('Are you here?')).toBeTruthy();
+    expect(await findByText('Closest Place')).toBeTruthy();
+    expect(await findByText("No, I'm somewhere else")).toBeTruthy();
+  });
 
-    // Press "No"
-    fireEvent.press(getByText("No, I'm somewhere else"));
+  it('calls onSelect with the closest restaurant when its review button is pressed', async () => {
+    const { findByTestId } = render(
+      <QuickAddModal
+        visible={true}
+        restaurants={mockRestaurants}
+        onSelect={mockOnSelect}
+        onClose={mockOnClose}
+      />,
+    );
 
-    expect(queryByText('Closest Rest')).toBeNull();
+    const reviewButton = await findByTestId('add-review-button');
+    fireEvent.press(reviewButton);
 
-    // Now others are visible
-    expect(getByText('Maybe one of these?')).toBeTruthy();
-    expect(getByText('Other Rest 1')).toBeTruthy();
-    expect(getByText('Other Rest 2')).toBeTruthy();
+    expect(mockOnSelect).toHaveBeenCalledWith(mockRestaurants[0]);
+  });
+
+  it('shows other restaurants when "No, I\'m somewhere else" is pressed', async () => {
+    const { getByText, findByText } = render(
+      <QuickAddModal
+        visible={true}
+        restaurants={mockRestaurants}
+        onSelect={mockOnSelect}
+        onClose={mockOnClose}
+      />,
+    );
+
+    const noButton = await findByText("No, I'm somewhere else");
+    fireEvent.press(noButton);
+
+    expect(await findByText('Maybe one of these?')).toBeTruthy();
+    expect(getByText('Second Place')).toBeTruthy();
+    expect(getByText('Third Place')).toBeTruthy();
+  });
+
+  it('calls onClose when the cancel button is pressed', async () => {
+    const { findByText } = render(
+      <QuickAddModal
+        visible={true}
+        restaurants={mockRestaurants}
+        onSelect={mockOnSelect}
+        onClose={mockOnClose}
+      />,
+    );
+
+    const cancelButton = await findByText('Cancel');
+
+    fireEvent.press(cancelButton);
+
+    await waitFor(() => expect(mockOnClose).toHaveBeenCalledTimes(1));
+  });
+
+  it('calls onClose when the backdrop is pressed', async () => {
+    const { findByTestId } = render(
+      <QuickAddModal
+        visible={true}
+        restaurants={mockRestaurants}
+        onSelect={mockOnSelect}
+        onClose={mockOnClose}
+      />,
+    );
+
+    const backdrop = await findByTestId('modal-backdrop');
+    fireEvent.press(backdrop);
+    await waitFor(() => {
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
   });
 });

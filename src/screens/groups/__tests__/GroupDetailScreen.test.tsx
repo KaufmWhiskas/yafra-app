@@ -31,6 +31,11 @@ jest.mock('../../../services/groupService', () => ({
 
 jest.mock('../../../services/bookmarkService', () => ({
   fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+  // Add mocks for functions used by the nested CollectionModal
+  fetchCollections: jest.fn().mockResolvedValue([]),
+  fetchRestaurantSavedCollectionIds: jest.fn().mockResolvedValue(new Set()),
+  createCollection: jest.fn(),
+  toggleBookmarkInCollection: jest.fn(),
 }));
 
 const mockNavigate = jest.fn();

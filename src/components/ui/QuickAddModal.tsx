@@ -28,7 +28,8 @@ export default function QuickAddModal({
   onClose,
 }: QuickAddModalProps) {
   const [showMore, setShowMore] = useState(false);
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(600)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   // 1. Hoisted handleClose so the panResponder always has access to it
   const handleClose = () => {
@@ -38,16 +39,36 @@ export default function QuickAddModal({
 
   useEffect(() => {
     if (visible) {
-      translateY.setValue(0);
+      backdropOpacity.setValue(0);
+      translateY.setValue(600);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          bounciness: 4,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [visible, translateY]);
+  }, [visible, backdropOpacity, translateY]);
 
   const animateDismiss = () => {
-    Animated.timing(translateY, {
-      toValue: 600,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => handleClose());
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 600,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(handleClose);
   };
 
   const panResponder = useRef(
@@ -86,13 +107,19 @@ export default function QuickAddModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={handleClose}
+      animationType="none"
+      onRequestClose={animateDismiss}
     >
-      <View style={styles.overlay}>
+      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
         {/* 2. Absolute Fill Backdrop cleanly catches outside taps without interfering with inner layout */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={animateDismiss}
+          testID="modal-backdrop"
+        />
+      </Animated.View>
 
+      <View style={styles.container} pointerEvents="box-none">
         <Animated.View
           style={[styles.modalCard, { transform: [{ translateY }] }]}
           {...panResponder.panHandlers}
@@ -136,7 +163,7 @@ export default function QuickAddModal({
             </View>
           )}
 
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={animateDismiss}>
             <Text style={styles.closeButtonText}>Cancel</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -146,9 +173,12 @@ export default function QuickAddModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  container: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
   },
   modalCard: {

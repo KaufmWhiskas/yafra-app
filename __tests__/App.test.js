@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import App from '../App';
 
 jest.mock('../src/hooks/useActiveGroupFilters', () => ({
@@ -85,13 +81,7 @@ describe('<App />', () => {
   it('renders the main tab navigator and initial screen', async () => {
     render(<App />);
 
-    const loading = screen.queryByText('Loading restaurants from database...');
-    if (loading) {
-      await waitForElementToBeRemoved(() =>
-        screen.queryByText('Loading restaurants from database...'),
-      );
-    }
-
+    // Wait for the main screen to finish loading by looking for a key element.
     const mapToggleBtn = await screen.findByText('Map View');
     expect(mapToggleBtn).toBeTruthy();
 

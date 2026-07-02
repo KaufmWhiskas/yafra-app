@@ -54,13 +54,13 @@ export default function FilterModal({
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const { session } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
 
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(600)).current;
 
   useEffect(() => {
     if (visible) {
       setFilters(initialFilters);
-      translateY.setValue(0);
 
       if (session?.user?.id) {
         fetchMyGroups(session.user.id)
@@ -69,15 +69,37 @@ export default function FilterModal({
             console.error('Failed to load groups for filter', err),
           );
       }
+      backdropOpacity.setValue(0);
+      translateY.setValue(600);
+
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          bounciness: 4,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [visible, initialFilters, session?.user?.id, translateY]);
+  }, [visible, initialFilters, session?.user?.id, backdropOpacity, translateY]);
 
   const animateDismiss = () => {
-    Animated.timing(translateY, {
-      toValue: 600,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => onClose());
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 600,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(onClose);
   };
 
   const panResponder = useRef(
@@ -107,19 +129,25 @@ export default function FilterModal({
 
   const handleApply = () => {
     onApply(filters);
-    onClose();
+    animateDismiss();
   };
 
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={animateDismiss}
     >
-      <View style={styles.overlay}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={animateDismiss}
+          testID="modal-backdrop"
+        />
+      </Animated.View>
 
+      <View style={styles.container} pointerEvents="box-none">
         <Animated.View
           style={[styles.modalCard, { transform: [{ translateY }] }]}
           {...panResponder.panHandlers}
@@ -204,10 +232,7 @@ export default function FilterModal({
             contentContainerStyle={styles.chipRowContent}
           >
             <TouchableOpacity
-              style={[
-                styles.chip,
-                !filters.targetGroupId && styles.chipActive,
-              ]}
+              style={[styles.chip, !filters.targetGroupId && styles.chipActive]}
               onPress={() => setFilters({ ...filters, targetGroupId: null })}
             >
               <Text
@@ -226,9 +251,7 @@ export default function FilterModal({
                   styles.chip,
                   filters.targetGroupId === g.id && styles.chipActive,
                 ]}
-                onPress={() =>
-                  setFilters({ ...filters, targetGroupId: g.id })
-                }
+                onPress={() => setFilters({ ...filters, targetGroupId: g.id })}
               >
                 <Text
                   style={[
@@ -276,9 +299,12 @@ export default function FilterModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  container: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
   },
   modalCard: {
