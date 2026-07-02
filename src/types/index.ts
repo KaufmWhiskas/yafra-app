@@ -20,7 +20,7 @@ export interface Restaurant {
   }[];
 }
 
-export type GroupRole = "owner" | "admin" | "trusted" | "member";
+export type GroupRole = 'owner' | 'admin' | 'trusted' | 'member';
 
 export interface Group {
   id: string;
@@ -75,4 +75,17 @@ export interface GroupFeedReview extends Review {
     name?: string;
     cuisine?: string;
   };
+}
+
+export interface Prediction {
+  description: string;
+  placeId: string;
+  distance?: string; // e.g., "1.2 km"
+  rating?: number; // Autocomplete API doesn't provide this, but useful for future expansion
+}
+
+export interface SearchRequest {
+  query: string;
+  latitude?: number;
+  longitude?: number;
 }

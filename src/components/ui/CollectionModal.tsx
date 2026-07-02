@@ -132,14 +132,12 @@ export default function CollectionModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Invisible background layer to handle tapping outside to close */}
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
           onPress={onClose}
         />
 
-        {/* The actual modal drawer */}
         <View
           style={[
             styles.container,

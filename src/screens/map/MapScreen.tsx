@@ -5,7 +5,7 @@ import {
   fetchRestaurants,
 } from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
-import { Restaurant } from '../../types';
+import { Restaurant, Prediction } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
 import { useLocation } from '../../hooks/useLocation';
 import RestaurantMap from '../../components/map/RestaurantMap';
@@ -31,7 +31,6 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import MapView, { Region } from 'react-native-maps';
-import { Prediction } from '../../services/searchService';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
   BoundingBox,
@@ -42,6 +41,7 @@ import {
 } from '../../utils/geo';
 import { filterRestaurants } from '../../utils/restaurantFilters';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CollectionModal from '../../components/ui/CollectionModal';
 import { useActiveGroupFilters } from '../../hooks/useActiveGroupFilters';
 import { calculateGroupMapScore } from '../../utils/groupMath';
@@ -57,6 +57,7 @@ export default function MapScreen() {
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
   const [previewHeight, setPreviewHeight] = useState(0);
+  const insets = useSafeAreaInsets();
 
   const mapRef = useRef<MapView>(null);
 
@@ -199,10 +200,8 @@ export default function MapScreen() {
     userLocation,
   ]);
 
-  // Handle layout resets and fresh focus states cleanly
   useFocusEffect(
     useCallback(() => {
-      // Force layout back to map view whenever this tab is entered or re-focused
       setViewMode('map');
 
       if (user?.id) {
@@ -219,18 +218,14 @@ export default function MapScreen() {
     }, [user?.id]),
   );
 
-  // Intercept double-taps while ALREADY on the Map tab to toggle from List back to Map mode
   useEffect(() => {
-    // Traverse upwards to hook into the tab navigator instance
     const tabNavigation =
       navigation.getParent<BottomTabNavigationProp<ParamListBase>>();
     if (!tabNavigation) return;
 
     const unsubscribe = tabNavigation.addListener('tabPress', (e) => {
       if (isFocused) {
-        // Prevent default navigation reset behavior
         e.preventDefault();
-        // Force view mode update instantly
         setViewMode('map');
       }
     });
@@ -250,6 +245,7 @@ export default function MapScreen() {
       );
     }
   };
+
   const handleReviewPress = (restaurant: Restaurant) => {
     navigation.navigate('ReviewScreen', { restaurant });
   };
@@ -258,8 +254,6 @@ export default function MapScreen() {
     async (restaurant: Restaurant) => {
       setSelectedRestaurant(restaurant);
 
-      // If the user is already zoomed in closer than 0.005, we keep their current zoom level.
-      // If they are zoomed out far away, we bring them into the 0.005 level.
       const targetLatDelta =
         mapRegion && mapRegion.latitudeDelta < 0.005
           ? mapRegion.latitudeDelta
@@ -284,26 +278,60 @@ export default function MapScreen() {
     [mapRegion],
   );
 
+  // ARCHITECTURAL FIX: Completely decouple rendering from animating.
   const handleSearchSelect = async (place: Prediction) => {
     try {
       const details = await fetchRestaurantDetails(place.placeId);
+
       if (
         details &&
         details.latitude !== undefined &&
         details.longitude !== undefined
       ) {
-        const newRegion = {
-          latitude: details.latitude,
-          longitude: details.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        };
-        setMapRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 1000);
-        setSelectedRestaurant(details as Restaurant);
+        const lat = Number(details.latitude);
+        const lng = Number(details.longitude);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const currentRegion = mapRegionRef.current;
+          const targetLatDelta =
+            currentRegion && currentRegion.latitudeDelta < 0.005
+              ? currentRegion.latitudeDelta
+              : 0.005;
+          const targetLonDelta =
+            currentRegion && currentRegion.longitudeDelta < 0.005
+              ? currentRegion.longitudeDelta
+              : 0.005;
+
+          // 1. Wait for the Search Modal and Keyboard to finish unmounting (~350ms)
+          setTimeout(() => {
+            // 2. Animate the map natively.
+            // DO NOT update React state yet! If we update state here, MapScreen re-renders,
+            // passing the OLD mapRegion down as a prop, killing the animation instantly.
+            mapRef.current?.animateToRegion(
+              {
+                latitude: lat,
+                longitude: lng,
+                latitudeDelta: targetLatDelta,
+                longitudeDelta: targetLonDelta,
+              },
+              800,
+            );
+
+            // 3. Only after the 800ms camera flight is fully complete do we update React state
+            // to display the RestaurantCard. This prevents the prop-lock bug entirely.
+            setTimeout(() => {
+              const sanitizedRestaurant = {
+                ...details,
+                latitude: lat,
+                longitude: lng,
+              } as Restaurant;
+              setSelectedRestaurant(sanitizedRestaurant);
+            }, 850);
+          }, 350);
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch place details from search:', error);
+      console.error('[MapScreen] Search selection failure:', error);
     }
   };
 
@@ -437,7 +465,10 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.floatingHeader} pointerEvents="box-none">
+      <View
+        style={[styles.floatingHeader, { top: insets.top }]}
+        pointerEvents="box-none"
+      >
         <View style={styles.searchRow}>
           <View style={{ flex: 1 }}>
             <SearchBar
@@ -453,6 +484,8 @@ export default function MapScreen() {
             />
           </View>
         </View>
+        {/* Add a spacer here to push the toggle down */}
+        <View style={{ height: 16 }} />
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
@@ -493,7 +526,9 @@ export default function MapScreen() {
                   handleToggleBookmark(selectedRestaurant.id)
                 }
                 distance={
-                  userLocation
+                  userLocation &&
+                  selectedRestaurant.latitude != null &&
+                  selectedRestaurant.longitude != null
                     ? calculateDistance(userLocation, {
                         latitude: selectedRestaurant.latitude,
                         longitude: selectedRestaurant.longitude,
@@ -612,7 +647,6 @@ const styles = StyleSheet.create({
   },
   floatingHeader: {
     position: 'absolute',
-    top: 60,
     left: 0,
     right: 0,
     zIndex: 100, // Ensure search dropdown overlays the map

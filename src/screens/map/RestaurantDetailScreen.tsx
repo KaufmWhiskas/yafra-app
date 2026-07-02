@@ -132,12 +132,12 @@ export default function RestaurantDetailScreen() {
     if (!details) return;
 
     const restaurantForReview: Restaurant = {
+      ...details,
       id: details.id || restaurantId,
       name: restaurantName,
       cuisine: details.cuisine || 'unknown',
       latitude: details.latitude || 0,
       longitude: details.longitude || 0,
-      ...details,
     };
 
     if (user?.id) {
@@ -417,12 +417,12 @@ export default function RestaurantDetailScreen() {
                       onPress={() => {
                         setHistoryModalVisible(false);
                         const restaurantForReview: Restaurant = {
+                          ...details,
                           id: details.id || restaurantId,
                           name: restaurantName,
                           cuisine: details.cuisine || 'unknown',
                           latitude: details.latitude || 0,
                           longitude: details.longitude || 0,
-                          ...details,
                         };
                         navigation.navigate('ReviewScreen', {
                           restaurant: restaurantForReview,

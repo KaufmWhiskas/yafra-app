@@ -48,7 +48,6 @@ export default function GroupsScreen() {
     }, [loadGroups]),
   );
 
-  // Split groups into visible vs hidden categories for cleaner organization
   const { activeCircles, inactiveCircles } = useMemo(() => {
     const active: Group[] = [];
     const inactive: Group[] = [];

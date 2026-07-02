@@ -1,7 +1,8 @@
-import { getPlacePredictions } from "../searchService";
-import { supabase } from "../supabase";
+import { getPlacePredictions } from '../searchService';
+import { supabase } from '../supabase';
+import { SearchRequest } from '../../types';
 
-jest.mock("../supabase", () => ({
+jest.mock('../supabase', () => ({
   supabase: {
     functions: {
       invoke: jest.fn(),
@@ -9,52 +10,62 @@ jest.mock("../supabase", () => ({
   },
 }));
 
-describe("Search Service", () => {
+describe('Search Service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    (supabase.functions.invoke as jest.Mock).mockClear();
   });
 
-  describe("getPlacePredictions", () => {
-    it("calls the search-places edge function with input and sessionToken", async () => {
-      const mockPredictions = [
-        { description: "Pizza Hut, Berlin", placeId: "123" },
-      ];
+  it('constructs the correct payload body when coordinates are provided', async () => {
+    const searchRequest: SearchRequest = {
+      query: 'coffee',
+      latitude: 47.3769,
+      longitude: 8.5417,
+    };
+    const sessionToken = 'test-token';
 
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: mockPredictions,
-        error: null,
-      });
-
-      const result = await getPlacePredictions("Pizza", "session_token_123");
-
-      expect(supabase.functions.invoke).toHaveBeenCalledWith("search-places", {
-        body: { input: "Pizza", sessionToken: "session_token_123" },
-      });
-      expect(result).toEqual(mockPredictions);
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: [],
+      error: null,
     });
 
-    it("includes location in the payload if provided", async () => {
-      const mockPredictions = [{
-        description: "Pizza Hut, Berlin",
-        placeId: "123",
-      }];
+    await getPlacePredictions(searchRequest, sessionToken);
 
-      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
-        data: mockPredictions,
-        error: null,
-      });
-
-      const location = { latitude: 49.46, longitude: 8.42 };
-      const result = await getPlacePredictions(
-        "Pizza",
-        "session_token_123",
-        location,
-      );
-
-      expect(supabase.functions.invoke).toHaveBeenCalledWith("search-places", {
-        body: { input: "Pizza", sessionToken: "session_token_123", location },
-      });
-      expect(result).toEqual(mockPredictions);
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('search-places', {
+      body: {
+        input: searchRequest.query,
+        sessionToken,
+        location: {
+          latitude: searchRequest.latitude,
+          longitude: searchRequest.longitude,
+        },
+      },
     });
+  });
+
+  it('safely omits the location from the payload when coordinates are not provided', async () => {
+    const searchRequest: SearchRequest = {
+      query: 'coffee',
+    };
+    const sessionToken = 'test-token';
+
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: [],
+      error: null,
+    });
+
+    await getPlacePredictions(searchRequest, sessionToken);
+
+    const expectedBody = {
+      input: searchRequest.query,
+      sessionToken,
+    };
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('search-places', {
+      body: expect.objectContaining(expectedBody),
+    });
+
+    const callBody = (supabase.functions.invoke as jest.Mock).mock.calls[0][1]
+      .body;
+    expect(callBody).not.toHaveProperty('location');
   });
 });

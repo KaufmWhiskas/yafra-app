@@ -72,16 +72,13 @@ describe('GroupsScreen', () => {
 
     const { queryByText, findByText, getByTestId } = render(<GroupsScreen />);
 
-    // The ActivityIndicator should be visible while loading
     expect(getByTestId('activity-indicator')).toBeTruthy();
     expect(queryByText('Food Circles')).toBeNull();
 
-    // Resolve the fetch to simulate data loading completion
     await act(async () => {
       resolveFetch(mockGroups);
     });
 
-    // Now, the main content should be rendered
     expect(await findByText('Food Circles')).toBeTruthy();
     expect(await findByText('Active Group')).toBeTruthy();
   });
@@ -95,11 +92,8 @@ describe('GroupsScreen', () => {
 
     const { findByText } = render(<GroupsScreen />);
 
-    // Check for section headers with correct counts
     expect(await findByText('Active Map Feeds (2)')).toBeTruthy();
     expect(await findByText('Other Circles')).toBeTruthy();
-
-    // Check that all group names are rendered
     expect(await findByText('Active Group')).toBeTruthy();
     expect(await findByText('Inactive Group')).toBeTruthy();
     expect(await findByText('Another Active Group')).toBeTruthy();
@@ -118,12 +112,10 @@ describe('GroupsScreen', () => {
     const inactiveGroupCard = getByTestId('group-card-2');
     const { getByRole } = within(inactiveGroupCard);
 
-    // Find the switch inside the card and fire the event
     const switchComponent = getByRole('switch');
     expect(switchComponent.props.value).toBe(false); // It should be off
     fireEvent(switchComponent, 'onValueChange');
 
-    // Assert that the toggle function was called with the correct group ID
     expect(mockToggleGroupFilter).toHaveBeenCalledWith('2');
     expect(mockToggleGroupFilter).toHaveBeenCalledTimes(1);
   });
