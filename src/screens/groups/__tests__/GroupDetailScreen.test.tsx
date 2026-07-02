@@ -29,6 +29,10 @@ jest.mock('../../../services/groupService', () => ({
   fetchGroupRestaurants: jest.fn(),
 }));
 
+jest.mock('../../../services/bookmarkService', () => ({
+  fetchUserBookmarkedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
@@ -596,5 +600,65 @@ describe('GroupDetailScreen', () => {
       groupId: 'group_1',
       groupName: 'Feed Group',
     });
+  });
+
+  it('navigates to RestaurantDetail screen when a group restaurant card is pressed', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'The Elite Squad',
+      created_by: 'user_1',
+      members: [],
+    });
+    (fetchGroupRestaurants as jest.Mock).mockResolvedValue([
+      {
+        id: 'r1',
+        name: 'Elite Pizza',
+        cuisine: 'pizza',
+        rating: 4.5,
+        google_place_id: 'gp_123',
+      },
+    ]);
+
+    const { getByText } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const restaurantCard = getByText('Elite Pizza');
+    fireEvent.press(restaurantCard);
+
+    expect(mockNavigate).toHaveBeenCalledWith('RestaurantDetail', {
+      restaurantId: 'gp_123',
+      restaurantName: 'Elite Pizza',
+    });
+  });
+
+  it('opens the CollectionModal when a restaurant bookmark button is pressed', async () => {
+    (useAuth as jest.Mock).mockReturnValue({
+      session: { user: { id: 'user_1' } },
+    });
+    (fetchGroupDetails as jest.Mock).mockResolvedValue({
+      id: 'group_1',
+      name: 'Bookmark Test Group',
+      created_by: 'user_1',
+      members: [],
+    });
+    (fetchGroupRestaurants as jest.Mock).mockResolvedValue([
+      {
+        id: 'r1',
+        name: 'Restaurant To Bookmark',
+        cuisine: 'test',
+        google_place_id: 'gp_456',
+      },
+    ]);
+
+    const { findByTestId } = render(<GroupDetailScreen />);
+    await flushMicrotasks();
+
+    const bookmarkButton = await findByTestId('bookmark-button');
+    fireEvent.press(bookmarkButton);
+
+    expect(await findByTestId('collection-modal')).toBeTruthy();
   });
 });

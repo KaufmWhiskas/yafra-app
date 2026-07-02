@@ -131,7 +131,7 @@ export default function CollectionModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} testID="collection-modal">
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}

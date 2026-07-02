@@ -28,6 +28,7 @@ import {
   removeGroupMember,
   fetchGroupRestaurants,
 } from '../../services/groupService';
+import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import {
   Group,
   GroupMember,
@@ -44,6 +45,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import FeedCard from '../../components/groups/FeedCard';
 import { Avatar } from '../../components/Avatar';
+import CollectionModal from '../../components/ui/CollectionModal';
 
 type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -93,6 +95,9 @@ export default function GroupDetailScreen() {
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
   const [showInvites, setShowInvites] = useState(false);
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [selectedRestaurantForBookmark, setSelectedRestaurantForBookmark] =
+    useState<string | number | null>(null);
 
   const {
     reviews: feedReviews,
@@ -135,7 +140,12 @@ export default function GroupDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       loadGroupDetails();
-    }, [loadGroupDetails]),
+      if (user?.id) {
+        fetchUserBookmarkedRestaurantIds(user.id)
+          .then(setBookmarkedIds)
+          .catch(console.error);
+      }
+    }, [loadGroupDetails, user?.id]),
   );
 
   const handleGenerateTempInvite = async () => {
@@ -188,6 +198,20 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.error('Failed to toggle code', error);
     }
+  };
+
+  const handleRestaurantCardPress = (restaurant: Restaurant) => {
+    if (restaurant.google_place_id) {
+      navigation.navigate('RestaurantDetail', {
+        restaurantId: restaurant.google_place_id,
+        restaurantName: restaurant.name,
+      });
+    }
+  };
+
+  const handleToggleBookmark = (restaurantId: string | number) => {
+    if (!user?.id) return;
+    setSelectedRestaurantForBookmark(restaurantId);
   };
 
   const currentUserRole = group?.members.find(
@@ -391,11 +415,9 @@ export default function GroupDetailScreen() {
               <View style={{ width: 280, marginRight: SIZES.padding }}>
                 <RestaurantCard
                   item={restaurant}
-                  onPressReview={() =>
-                    navigation.navigate('ReviewScreen', { restaurant })
-                  }
-                  isBookmarked={false}
-                  onToggleBookmark={() => {}}
+                  onPress={handleRestaurantCardPress}
+                  isBookmarked={bookmarkedIds.has(restaurant.id.toString())}
+                  onToggleBookmark={() => handleToggleBookmark(restaurant.id)}
                 />
               </View>
             )}
@@ -599,6 +621,21 @@ export default function GroupDetailScreen() {
           paddingHorizontal: SIZES.padding,
           paddingTop: Math.max(insets.top, 16),
           paddingBottom: Math.max(insets.bottom, 16) + 24,
+        }}
+      />
+
+      <CollectionModal
+        visible={!!selectedRestaurantForBookmark}
+        restaurantId={selectedRestaurantForBookmark}
+        userId={user?.id}
+        onClose={() => {
+          setSelectedRestaurantForBookmark(null);
+          // Refresh bookmark state after modal closes
+          if (user?.id) {
+            fetchUserBookmarkedRestaurantIds(user.id)
+              .then(setBookmarkedIds)
+              .catch(console.error);
+          }
         }}
       />
 
