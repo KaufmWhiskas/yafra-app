@@ -11,6 +11,7 @@ import {
 } from './service.ts';
 import { BoundingBox } from './scanner.ts';
 import { createGoogleFetcher } from './googleFetcher.ts';
+import { requireUser } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,12 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Secure endpoint with reusable auth guard
+    const { error: authError } = await requireUser(req);
+    if (authError) return authError;
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+
     let body;
     try {
       body = await req.json();
@@ -59,7 +66,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    // Note: supabaseUrl is already validated inside requireUser
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const googleApiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
 

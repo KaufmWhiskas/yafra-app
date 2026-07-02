@@ -1,4 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts';
+import { requireUser } from '../_shared/auth.ts';
 
 interface SearchRequest {
   input: string;
@@ -48,13 +49,27 @@ export async function serve(req: Request): Promise<Response> {
   }
 
   try {
+    // Secure endpoint with reusable auth guard
+    const { error: authError } = await requireUser(req);
+    if (authError) return authError;
+
     const { input, sessionToken, location }: SearchRequest = await req.json();
     const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
 
     if (!apiKey) throw new Error('Missing GOOGLE_PLACES_API_KEY env var');
-    if (!input) throw new Error('Missing "input" in request body');
     if (!sessionToken)
       throw new Error('Missing "sessionToken" in request body');
+
+    // Sanitize and validate input parameters
+    if (typeof input !== 'string' || input.length === 0 || input.length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or missing "input" parameter' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        },
+      );
+    }
 
     const googleApiUrl = 'https://places.googleapis.com/v1/places:autocomplete';
 
