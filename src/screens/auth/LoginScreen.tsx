@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -14,8 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 
 /**
- * Provides a user interface for existing users to authenticate
- * Includes links for registration and password recovery (soon:tm:)
+ * Provides a user interface for existing users to authenticate.
+ * Includes links for registration and password recovery.
  */
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -43,55 +45,69 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        placeholderTextColor={COLORS.textLight}
-        autoCapitalize="none"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholderTextColor={COLORS.textLight}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={handleLogin}
-        testID="login-submit-button"
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.loginButtonText}>Login</Text>
-      </TouchableOpacity>
+        <Text style={styles.title}>Login</Text>
 
-      <TouchableOpacity onPress={handleSignUp}>
-        <Text style={styles.linkText}>Don't have an account?</Text>
-      </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          placeholder="E-mail"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          placeholderTextColor={COLORS.textLight}
+          autoCapitalize="none"
+        />
 
-      <TouchableOpacity onPress={handleForgotPassword}>
-        <Text style={styles.linkText}>Forgot Password</Text>
-      </TouchableOpacity>
-    </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholderTextColor={COLORS.textLight}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={handleLogin}
+          testID="login-submit-button"
+        >
+          <Text style={styles.loginButtonText}>Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleSignUp}>
+          <Text style={styles.linkText}>Don't have an account?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleForgotPassword}>
+          <Text style={styles.linkText}>Forgot Password</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: SIZES.padding,
     backgroundColor: COLORS.background,
-    justifyContent: 'center',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center', // Dynamically handles vertical centering on mount
+    padding: SIZES.padding,
+    paddingTop: 120, // Adjust this value to set the baseline position lower or higher
+    paddingBottom: SIZES.padding * 2,
   },
   title: {
     fontSize: 28,

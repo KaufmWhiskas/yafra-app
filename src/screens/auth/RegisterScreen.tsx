@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +19,7 @@ import { RootStackParamList } from '../../types/navigation';
 
 /**
  * Provides the user interface for new account creation.
- * Captures email, display name, and password, and allows navigation back to the login flow.
+ * Captures credentials and profiles, and handles keyboard avoiding views.
  */
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -57,7 +60,10 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <TouchableOpacity
         style={styles.closeButton}
         onPress={handleLogin}
@@ -66,75 +72,92 @@ export default function RegisterScreen() {
         <Ionicons name="close" size={28} color={COLORS.text} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Register</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        placeholderTextColor={COLORS.textLight}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Display Name"
-        placeholderTextColor={COLORS.textLight}
-        value={displayName}
-        onChangeText={setDisplayName}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={COLORS.textLight}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        placeholderTextColor={COLORS.textLight}
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      <TouchableOpacity
-        style={styles.actionButton}
-        onPress={handleRegister}
-        testID="register-submit-button"
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.actionButtonText}>Register</Text>
-      </TouchableOpacity>
+        <Text style={styles.title}>Register</Text>
 
-      <TouchableOpacity onPress={handleLogin}>
-        <Text style={styles.linkText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </View>
+        <TextInput
+          style={styles.input}
+          placeholder="E-mail"
+          placeholderTextColor={COLORS.textLight}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Display Name"
+          placeholderTextColor={COLORS.textLight}
+          value={displayName}
+          onChangeText={setDisplayName}
+        />
+
+        {/* Side-by-side row layout to re-claim massive vertical height */}
+        <View style={styles.row}>
+          <View style={styles.rowInputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={COLORS.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <View style={styles.rowInputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm"
+              placeholderTextColor={COLORS.textLight}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleRegister}
+          testID="register-submit-button"
+        >
+          <Text style={styles.actionButtonText}>Register</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleLogin}>
+          <Text style={styles.linkText}>Already have an account? Login</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: SIZES.padding,
     backgroundColor: COLORS.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
+    padding: SIZES.padding,
+    paddingTop: 100, // Safe buffer clear of absolute layout back button
+    paddingBottom: SIZES.padding * 2,
   },
   closeButton: {
     position: 'absolute',
     top: 50,
     right: SIZES.padding,
-    zIndex: 1,
+    zIndex: 10,
   },
   title: {
     fontSize: 28,
@@ -142,6 +165,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: SIZES.padding * 2,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  rowInputWrapper: {
+    flex: 1,
   },
   input: {
     backgroundColor: COLORS.surface,
@@ -157,6 +187,7 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     alignItems: 'center',
     marginBottom: SIZES.padding,
+    marginTop: SIZES.base,
   },
   actionButtonText: {
     color: '#fff',
