@@ -66,7 +66,7 @@ describe('Auth Service - User Profile', () => {
         error: null,
       });
 
-      const result = await updateUsername('123', 'newname');
+      const result = await updateUsername('newname');
 
       // @ts-expect-error: custom mock property not on root client
       expect(supabase.update).toHaveBeenCalledWith({ username: 'newname' });

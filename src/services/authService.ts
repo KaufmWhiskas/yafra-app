@@ -1,6 +1,9 @@
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
+import { Session } from '@supabase/supabase-js';
 
 /**
  * Registers a new user with the application.
@@ -118,6 +121,53 @@ export async function sendPasswordResetOtp(email: string) {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/**
+ * Handles browser-based OAuth authentication for third-party providers.
+ * Generates an internal PKCE handshake verification challenge, loads the provider portal,
+ * and passes returning deep-link credentials back into the main active state container.
+ *
+ * @param provider Target authorization source (e.g., 'google', 'discord').
+ * @returns A promise resolving to the active authentication session, or null if cancelled.
+ */
+export async function signInWithProvider(
+  provider: 'google' | 'discord',
+): Promise<Session | null> {
+  const redirectTo = makeRedirectUri({ scheme: 'yafra' });
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+    },
+  });
+
+  if (error || !data?.url) throw error || new Error('OAuth URL generation failed');
+
+  const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+  if (authResult.type === 'success' && authResult.url) {
+    // Parse the fragment parameters securely from the custom schema string
+    const urlObj = new URL(authResult.url.replace('#', '?'));
+    const access_token = urlObj.searchParams.get('access_token');
+    const refresh_token = urlObj.searchParams.get('refresh_token');
+
+    if (!access_token || !refresh_token) {
+      throw new Error('Authentication parameters missing from redirect payload');
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+
+    if (sessionError) throw sessionError;
+    return sessionData.session;
+  }
+
+  return null;
 }
 
 /**
