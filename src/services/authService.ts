@@ -52,6 +52,10 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+/**
+ * Signs out the currently authenticated user.
+ * @throws Will throw an error if the sign-out process fails.
+ */
 export async function logout() {
   const { error } = await supabase.auth.signOut();
 
@@ -60,6 +64,12 @@ export async function logout() {
   }
 }
 
+/**
+ * Fetches the public profile for a given user.
+ * @param userId The ID of the user whose profile is to be fetched.
+ * @returns A promise that resolves with the user's profile data.
+ * @throws Will throw an error if the user is not found or the query fails.
+ */
 export async function fetchUserProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')

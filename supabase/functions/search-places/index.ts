@@ -27,7 +27,7 @@ interface GooglePlacesPayload {
 interface GoogleSuggestion {
   placePrediction?: {
     placeId: string;
-    distanceMeters?: number; // NEW: Google returns this if origin is provided
+    distanceMeters?: number;
     text: {
       text: string;
     };
@@ -93,10 +93,11 @@ async function serve(req: Request): Promise<Response> {
         description: s.placePrediction!.text.text,
         placeId: s.placePrediction!.placeId,
         distanceMeters: s.placePrediction!.distanceMeters ?? Infinity,
-        // Provide distance in KM for display context
-        distance: s.placePrediction!.distanceMeters
-          ? `${(s.placePrediction!.distanceMeters / 1000).toFixed(1)} km`
-          : null,
+        distance:
+          s.placePrediction!.distanceMeters !== undefined &&
+          s.placePrediction!.distanceMeters !== null
+            ? `${(s.placePrediction!.distanceMeters / 1000).toFixed(1)} km`
+            : null,
       }));
 
     // Force a strict distance sort if the user's location is known
