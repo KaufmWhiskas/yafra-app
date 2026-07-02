@@ -28,7 +28,7 @@ describe('RegisterScreen Component Render Check', () => {
     expect(getByPlaceholderText('Display Name')).toBeTruthy();
     expect(getByPlaceholderText('E-mail')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
-    expect(getByPlaceholderText('Confirm Password')).toBeTruthy();
+    expect(getByPlaceholderText('Confirm')).toBeTruthy();
 
     expect(getByTestId('register-submit-button')).toBeTruthy();
     expect(getByText('Already have an account? Login')).toBeTruthy();
@@ -72,7 +72,7 @@ describe('RegisterScreen Submission Logic', () => {
       'reallySecurePassword123',
     );
     fireEvent.changeText(
-      getByPlaceholderText('Confirm Password'),
+      getByPlaceholderText('Confirm'),
       'reallySecurePassword123',
     );
 
@@ -97,7 +97,7 @@ describe('RegisterScreen Submission Logic', () => {
       'reallySecurePassword123',
     );
     fireEvent.changeText(
-      getByPlaceholderText('Confirm Password'),
+      getByPlaceholderText('Confirm'),
       'reallySecurePassword123',
     );
 
@@ -125,7 +125,7 @@ describe('RegisterScreen Submission Logic', () => {
       'reallySecurePassword123',
     );
     fireEvent.changeText(
-      getByPlaceholderText('Confirm Password'),
+      getByPlaceholderText('Confirm'),
       'reallySecurePassword123',
     );
 

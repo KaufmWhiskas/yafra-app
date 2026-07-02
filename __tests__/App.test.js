@@ -2,6 +2,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import App from '../App';
 
+jest.mock('../src/services/versionService', () => ({
+  checkVersionIsSupported: jest.fn().mockResolvedValue(true),
+}));
+
 jest.mock('../src/hooks/useActiveGroupFilters', () => ({
   useActiveGroupFilters: () => ({
     activeGroupIds: [],

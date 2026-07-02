@@ -1,3 +1,5 @@
+export const CURRENT_VERSION = '1.0.0';
+
 export const COLORS = {
   // Some default colors as placeholders, will change later
   primary: '#2e64e5', // Main Color (for prominent features)
