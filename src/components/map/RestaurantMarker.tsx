@@ -79,7 +79,7 @@ function RestaurantMarker({
     }
   }, [isFocused]);
 
-  const displayState = resolveRestaurantDisplay(restaurant, isBookmarked);
+  const displayState = resolveRestaurantDisplay(restaurant);
   const bgColor = displayState.isHollow ? '#ffffff' : displayState.color;
   const borderColor = isSelected
     ? COLORS.primary
@@ -94,6 +94,11 @@ function RestaurantMarker({
   const height = isSelected ? 36 : 28;
   const borderRadius = isSelected ? 18 : 14;
 
+  // 1. Define explicit padding for the sub-badge canvas boundary
+  const CONTAINER_PADDING = 6;
+  const containerWidth = width + CONTAINER_PADDING * 2;
+  const containerHeight = height + CONTAINER_PADDING * 2;
+
   return (
     <>
       <Marker
@@ -106,45 +111,65 @@ function RestaurantMarker({
         anchor={{ x: 0.5, y: 0.5 }}
         zIndex={isSelected ? 50 : isBookmarked ? 10 : 5}
       >
+        {/* 2. Expand the root container view canvas bounds to accommodate the badge radius */}
         <View
           style={{
-            width,
-            height,
+            width: containerWidth,
+            height: containerHeight,
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
+          {/* 3. Keep standard relative centering alignment intact for scaling animations */}
           <Animated.View
-            style={[
-              styles.markerInner,
-              {
-                width,
-                height,
-                borderRadius,
-                backgroundColor: bgColor,
-                borderColor,
-                borderWidth: isSelected ? 3 : 2,
-                transform: [{ scale: scaleAnim }],
-              },
-            ]}
-            testID="marker-inner"
+            style={{
+              width: containerWidth,
+              height: containerHeight,
+              justifyContent: 'center',
+              alignItems: 'center',
+              transform: [{ scale: scaleAnim }],
+            }}
           >
-            {displayState.display === 'bookmark-icon' ? (
-              <MaterialCommunityIcons
-                name="bookmark"
-                size={14}
-                color={textColor}
+            {/* The core rating pill container asset */}
+            <View
+              style={[
+                styles.markerInner,
+                {
+                  width,
+                  height,
+                  borderRadius,
+                  backgroundColor: bgColor,
+                  borderColor,
+                  borderWidth: isSelected ? 3 : 2,
+                },
+              ]}
+              testID="marker-inner"
+            >
+              {displayState.display === 'unrated-icon' ? (
+                <MaterialCommunityIcons
+                  name={iconName}
+                  size={14}
+                  color={textColor}
+                />
+              ) : (
+                <Text style={[styles.markerText, { color: textColor }]}>
+                  {displayState.display}
+                </Text>
+              )}
+            </View>
+
+            {/* 4. Shift absolute badge coordinates down to align perfectly inside the expanded frame padding */}
+            {isBookmarked && (
+              <View
+                style={[
+                  styles.bookmarkBadge,
+                  {
+                    top: CONTAINER_PADDING - 4,
+                    right: CONTAINER_PADDING - 4,
+                  },
+                ]}
+                testID="bookmark-badge"
               />
-            ) : displayState.display === 'unrated-icon' ? (
-              <MaterialCommunityIcons
-                name={iconName}
-                size={14}
-                color={textColor}
-              />
-            ) : (
-              <Text style={[styles.markerText, { color: textColor }]}>
-                {displayState.display}
-              </Text>
             )}
           </Animated.View>
         </View>
@@ -174,12 +199,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   markerText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  bookmarkBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.bookmark,
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    zIndex: 10,
   },
 });
 

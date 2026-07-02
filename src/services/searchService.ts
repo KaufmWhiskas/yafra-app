@@ -13,15 +13,24 @@ export async function getPlacePredictions(
   sessionToken: string,
 ): Promise<Prediction[]> {
   try {
+    const payload: {
+      input: string;
+      sessionToken: string;
+      location?: { latitude: number; longitude: number };
+    } = {
+      input: request.query,
+      sessionToken,
+    };
+
+    if (request.latitude != null && request.longitude != null) {
+      payload.location = {
+        latitude: request.latitude,
+        longitude: request.longitude,
+      };
+    }
+
     const { data, error } = await supabase.functions.invoke('search-places', {
-      body: {
-        input: request.query,
-        sessionToken,
-        location:
-          request.latitude && request.longitude
-            ? { latitude: request.latitude, longitude: request.longitude }
-            : undefined,
-      },
+      body: payload,
     });
 
     if (error) throw new Error(error.message);

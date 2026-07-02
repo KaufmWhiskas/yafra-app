@@ -101,7 +101,7 @@ describe('SearchBar', () => {
       <SearchBar onPlaceSelect={mockOnPlaceSelect} />,
     );
 
-    // 1. Open the search bar trigger first to transition state layers cleanly
+    // 1. Open the search bar trigger layer first to mount the inner components safely
     fireEvent.press(getByTestId('search-bar-trigger'));
 
     // 2. Now target the active input node inside the modal container

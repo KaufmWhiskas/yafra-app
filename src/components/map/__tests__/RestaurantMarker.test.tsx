@@ -57,13 +57,9 @@ describe('RestaurantMarker UI', () => {
       />,
     );
     const markerInner = getByTestId('marker-inner');
-    expect(markerInner.props.style).toEqual(
-      expect.objectContaining({ backgroundColor: '#123456' }),
-    );
+    expect(markerInner).toHaveStyle({ backgroundColor: '#123456' });
     const textNode = getByText('4.5');
-    expect(textNode.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ color: '#fff' })]),
-    );
+    expect(textNode).toHaveStyle({ color: '#fff' });
   });
 
   it('applies a white background with a colored border and text for google state', () => {
@@ -81,36 +77,36 @@ describe('RestaurantMarker UI', () => {
       />,
     );
     const markerInner = getByTestId('marker-inner');
-    expect(markerInner.props.style).toEqual(
-      expect.objectContaining({
-        backgroundColor: '#ffffff',
-        borderColor: '#654321',
-      }),
-    );
+    expect(markerInner).toHaveStyle({
+      backgroundColor: '#ffffff',
+      borderColor: '#654321',
+    });
     const textNode = getByText('4.1');
-    expect(textNode.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ color: '#654321' })]),
-    );
+    expect(textNode).toHaveStyle({ color: '#654321' });
   });
 
-  it('renders a purple pin for bookmark state', () => {
+  it('renders a bookmark badge when bookmarked, without changing marker color', () => {
     (resolveRestaurantDisplay as jest.Mock).mockReturnValue({
-      type: 'bookmark',
-      color: '#673ab7',
-      display: 'bookmark-icon',
+      type: 'app',
+      color: '#123456', // A sample color for app-rated places
+      display: '4.5',
       isHollow: false,
     });
     const { getByTestId } = render(
       <RestaurantMarker
         restaurant={mockRestaurant}
-        isBookmarked
+        isBookmarked={true} // The restaurant is bookmarked
         isSelected={false}
         onPress={jest.fn()}
       />,
     );
+
+    // Verify the marker itself has the app-rated color, not a bookmark color
     const markerInner = getByTestId('marker-inner');
-    expect(markerInner.props.style).toEqual(
-      expect.objectContaining({ backgroundColor: '#673ab7' }),
-    );
+    expect(markerInner).toHaveStyle({ backgroundColor: '#123456' });
+
+    // Verify the bookmark badge is rendered
+    const bookmarkBadge = getByTestId('bookmark-badge');
+    expect(bookmarkBadge).toBeTruthy();
   });
 });

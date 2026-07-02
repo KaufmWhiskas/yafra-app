@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import {
-  fetchRestaurantDetails,
-  fetchRestaurants,
-} from '../../services/restaurantService';
+import { fetchRestaurants } from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant, Prediction } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
@@ -278,60 +275,16 @@ export default function MapScreen() {
     [mapRegion],
   );
 
-  // ARCHITECTURAL FIX: Completely decouple rendering from animating.
-  const handleSearchSelect = async (place: Prediction) => {
+  const handleSearchSelect = (place: Prediction) => {
     try {
-      const details = await fetchRestaurantDetails(place.placeId);
+      const restaurantName = place.description.split(',')[0];
 
-      if (
-        details &&
-        details.latitude !== undefined &&
-        details.longitude !== undefined
-      ) {
-        const lat = Number(details.latitude);
-        const lng = Number(details.longitude);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const currentRegion = mapRegionRef.current;
-          const targetLatDelta =
-            currentRegion && currentRegion.latitudeDelta < 0.005
-              ? currentRegion.latitudeDelta
-              : 0.005;
-          const targetLonDelta =
-            currentRegion && currentRegion.longitudeDelta < 0.005
-              ? currentRegion.longitudeDelta
-              : 0.005;
-
-          // 1. Wait for the Search Modal and Keyboard to finish unmounting (~350ms)
-          setTimeout(() => {
-            // 2. Animate the map natively.
-            // DO NOT update React state yet! If we update state here, MapScreen re-renders,
-            // passing the OLD mapRegion down as a prop, killing the animation instantly.
-            mapRef.current?.animateToRegion(
-              {
-                latitude: lat,
-                longitude: lng,
-                latitudeDelta: targetLatDelta,
-                longitudeDelta: targetLonDelta,
-              },
-              800,
-            );
-
-            // 3. Only after the 800ms camera flight is fully complete do we update React state
-            // to display the RestaurantCard. This prevents the prop-lock bug entirely.
-            setTimeout(() => {
-              const sanitizedRestaurant = {
-                ...details,
-                latitude: lat,
-                longitude: lng,
-              } as Restaurant;
-              setSelectedRestaurant(sanitizedRestaurant);
-            }, 850);
-          }, 350);
-        }
-      }
+      navigation.navigate('RestaurantDetail', {
+        restaurantId: place.placeId,
+        restaurantName: restaurantName,
+      });
     } catch (error) {
-      console.error('[MapScreen] Search selection failure:', error);
+      console.error('[MapScreen] Search navigation failure:', error);
     }
   };
 
