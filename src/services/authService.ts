@@ -1,7 +1,15 @@
 import { supabase } from './supabase';
-import * as FileSystem from 'expo-file-system/legacy'; // Use the LEGACY import as requested
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 
+/**
+ * Registers a new user with the application.
+ * @param email The user's email address.
+ * @param password The user's chosen password (must be at least 6 characters).
+ * @param displayName The user's public display name.
+ * @returns A promise that resolves with the user and session data upon successful registration.
+ * @throws Will throw an error if the registration fails (e.g., email already in use).
+ */
 export async function register(
   email: string,
   password: string,
@@ -24,6 +32,13 @@ export async function register(
   return data;
 }
 
+/**
+ * Authenticates an existing user with their email and password.
+ * @param email The user's email address.
+ * @param password The user's password.
+ * @returns A promise that resolves with the user and session data upon successful login.
+ * @throws Will throw an error if the login fails (e.g., invalid credentials).
+ */
 export async function login(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -56,7 +71,13 @@ export async function fetchUserProfile(userId: string) {
   return data;
 }
 
-export async function updateUsername(userId: string, username: string) {
+/**
+ * Updates the username for the currently authenticated user.
+ * @param username The new username for the user.
+ * @returns A promise that resolves with the updated profile data.
+ * @throws Will throw an error if authentication fails or the update operation fails.
+ */
+export async function updateUsername(username: string) {
   const {
     data: { user },
     error: authError,
@@ -74,6 +95,11 @@ export async function updateUsername(userId: string, username: string) {
   return data;
 }
 
+/**
+ * Sends a password reset one-time password (OTP) to the specified email address.
+ * @param email The email address to send the reset link to.
+ * @throws Will throw an error if the OTP cannot be sent.
+ */
 export async function sendPasswordResetOtp(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: undefined, // We are not using a redirect URL for native app flow
@@ -147,6 +173,12 @@ export async function updateProfileAvatar(avatarUrl: string) {
   return data;
 }
 
+/**
+ * Verifies a password reset OTP for a given email.
+ * @param email The user's email address.
+ * @param token The OTP received by the user.
+ * @throws Will throw an error if the OTP is invalid or expired.
+ */
 export async function verifyResetOtp(email: string, token: string) {
   const { error } = await supabase.auth.verifyOtp({
     email,
@@ -158,6 +190,12 @@ export async function verifyResetOtp(email: string, token: string) {
   }
 }
 
+/**
+ * Updates the password for the currently authenticated user.
+ * This should only be called after a user has successfully verified a password reset OTP.
+ * @param newPassword The new password for the user.
+ * @throws Will throw an error if the password update fails.
+ */
 export async function updateUserPassword(newPassword: string) {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) {

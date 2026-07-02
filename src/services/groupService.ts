@@ -356,6 +356,11 @@ export async function fetchGroupReviewedRestaurantIds(
   return restaurantIds;
 }
 
+/**
+ * Fetches the full restaurant records for a given group.
+ * @param groupId The ID of the group.
+ * @returns A promise resolving to an array of `Restaurant` objects.
+ */
 export async function fetchGroupRestaurants(
   groupId: string,
 ): Promise<Restaurant[]> {
@@ -373,6 +378,13 @@ export async function fetchGroupRestaurants(
   return data as Restaurant[];
 }
 
+/**
+ * Fetches the feed of reviews from all members of a specific group.
+ * It respects the `is_private` flag on reviews, filtering them out unless the review
+ * belongs to the `currentUserId`.
+ * @param groupId The ID of the group whose feed is being fetched.
+ * @param currentUserId The ID of the user viewing the feed, to include their own private reviews.
+ */
 export async function fetchGroupFeed(
   groupId: string,
   currentUserId: string | null,
@@ -422,6 +434,12 @@ export async function fetchGroupFeed(
   return data as GroupFeedReview[];
 }
 
+/**
+ * Fetches a set of all user IDs that the current user shares a group with.
+ * This is useful for determining "friend" relationships for social features.
+ * @param currentUserId The ID of the user for whom to find shared member IDs.
+ * @returns A promise resolving to a `Set` of user IDs.
+ */
 export async function fetchSharedGroupMemberIds(
   currentUserId: string,
 ): Promise<Set<string>> {

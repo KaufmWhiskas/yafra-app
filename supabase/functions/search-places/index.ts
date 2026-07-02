@@ -22,11 +22,6 @@ interface GooglePlacesPayload {
       radius: number;
     };
   };
-  // NEW: Instructs Google to calculate exact distances from the user
-  origin?: {
-    latitude: number;
-    longitude: number;
-  };
 }
 
 interface GoogleSuggestion {
@@ -43,7 +38,7 @@ interface GoogleAutocompleteResponse {
   suggestions: GoogleSuggestion[];
 }
 
-export async function serve(req: Request): Promise<Response> {
+async function serve(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -74,23 +69,6 @@ export async function serve(req: Request): Promise<Response> {
     const googleApiUrl = 'https://places.googleapis.com/v1/places:autocomplete';
 
     const payload: GooglePlacesPayload = { input, sessionToken };
-
-    // Tighten the radius and provide an origin to calculate distances
-    if (location?.latitude != null && location?.longitude != null) {
-      payload.locationBias = {
-        circle: {
-          center: {
-            latitude: location.latitude,
-            longitude: location.longitude,
-          },
-          radius: 5000, // Dropped back to a strict 5km local radius
-        },
-      };
-      payload.origin = {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      };
-    }
 
     const googleResponse = await fetch(googleApiUrl, {
       method: 'POST',
@@ -123,7 +101,12 @@ export async function serve(req: Request): Promise<Response> {
 
     // Force a strict distance sort if the user's location is known
     if (location?.latitude != null && location?.longitude != null) {
-      predictions.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      predictions.sort((a, b) => {
+        const distA = a.distanceMeters ?? Infinity;
+        const distB = b.distanceMeters ?? Infinity;
+        if (distA === distB) return 0;
+        return distA < distB ? -1 : 1;
+      });
     }
 
     return new Response(JSON.stringify(predictions), {
