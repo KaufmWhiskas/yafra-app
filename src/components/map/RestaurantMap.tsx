@@ -87,6 +87,10 @@ export default function RestaurantMap({
         customMapStyle={mapStyle}
       >
         {stableDOMRestaurants.map((restaurant) => {
+          if (selectedRestaurant && selectedRestaurant.id === restaurant.id) {
+            return null;
+          }
+
           const isBookmarked = bookmarkedIds?.has(restaurant.id.toString());
 
           return (
