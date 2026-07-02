@@ -25,11 +25,46 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Secure endpoint with reusable auth guard
-    const { error: authError } = await requireUser(req);
+    // 1. Secure endpoint with reusable auth guard
+    const { user, error: authError } = await requireUser(req);
     if (authError) return authError;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const googleApiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
+
+    if (!supabaseUrl || !supabaseKey || !googleApiKey) {
+      console.error('Server misconfiguration: Missing environment variables.');
+      return new Response(
+        JSON.stringify({ error: 'Server misconfiguration' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    // 2. Rate limit the user before proceeding
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const { data: allowed, error: rpcError } = await supabaseClient.rpc(
+      'check_and_log_rate_limit',
+      {
+        p_user_id: user!.id,
+        p_action_name: 'ingest_restaurants',
+        p_max_requests: 5, // Allow max 5 scans per hour per user
+        p_window_interval: '1 hour',
+      },
+    );
+
+    if (!allowed || rpcError) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
+    }
 
     let body;
     try {
@@ -66,22 +101,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Note: supabaseUrl is already validated inside requireUser
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const googleApiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
-
-    if (!supabaseUrl || !supabaseKey || !googleApiKey) {
-      console.error('Server misconfiguration: Missing environment variables.');
-      return new Response(
-        JSON.stringify({ error: 'Server misconfiguration' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
     const googleFetcher = createGoogleFetcher(googleApiKey);
 
     await fetchAndStoreRestaurants(
