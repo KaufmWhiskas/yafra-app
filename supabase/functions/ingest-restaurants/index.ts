@@ -44,28 +44,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 2. Rate limit the user before proceeding
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
-    const { data: allowed, error: rpcError } = await supabaseClient.rpc(
-      'check_and_log_rate_limit',
-      {
-        p_user_id: user!.id,
-        p_action_name: 'ingest_restaurants',
-        p_max_requests: 5, // Allow max 5 scans per hour per user
-        p_window_interval: '1 hour',
-      },
-    );
-
-    if (!allowed || rpcError) {
-      return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
     let body;
     try {
       body = await req.json();
@@ -75,6 +53,9 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Add this temporarily to the top of your Edge Function
+    console.log('Ingestion requested with body:', JSON.stringify(body));
 
     const bbox: BoundingBox | undefined = body.bbox;
 
@@ -101,12 +82,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
     const googleFetcher = createGoogleFetcher(googleApiKey);
 
     await fetchAndStoreRestaurants(
       bbox,
       supabaseClient as unknown as OrchestratorDatabaseClient,
       googleFetcher,
+      user!.id,
     );
 
     return new Response(JSON.stringify({ message: 'Scan complete' }), {
@@ -114,8 +97,17 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    if (error instanceof Error && error.name === 'RateLimitError') {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Capture EVERYTHING
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('FATAL ERROR INGESTION:', error);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
