@@ -44,7 +44,9 @@
     "extra": {
       "eas": {
         "projectId": "a46eda2f-9fa6-45f3-af16-3f28afe1939d"
-      }
+      },
+      "supabaseUrl": "https://bqsptnwxatgazcdlyule.supabase.co",
+      "supabaseAnonKey": "sb_publishable_bDf3wkMEX8W9K8nFVxNslg_aKwVjuGh"
     }
   }
 }

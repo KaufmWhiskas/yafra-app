@@ -4,7 +4,7 @@ module.exports = {
   // This tells Jest: "Whenever you see these imports, use these mocks instead."
   moduleNameMapper: {
     '@react-native-async-storage/async-storage':
-      '@react-native-async-storage/async-storage/jest/async-storage-mock',
+      '<rootDir>/__mocks__/@react-native-async-storage/async-storage.js',
     '^expo-asset$': '<rootDir>/__mocks__/expo-asset.js',
     '^expo-font$': '<rootDir>/__mocks__/expo-font.js',
     '^@expo/vector-icons$': '<rootDir>/__mocks__/@expo/vector-icons.js',
