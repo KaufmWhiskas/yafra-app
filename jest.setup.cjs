@@ -35,3 +35,18 @@ jest.mock('react-native-safe-area-context', () => {
     }),
   };
 });
+// Mock expo-constants to handle all ES module interop translation styles
+jest.mock('expo-constants', () => {
+  const mockConfig = {
+    expoConfig: {
+      extra: {
+        supabaseUrl: 'https://mock-url.supabase.co',
+        supabaseAnonKey: 'mock-anon-key',
+      },
+    },
+  };
+  return {
+    ...mockConfig,
+    default: mockConfig,
+  };
+});
