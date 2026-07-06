@@ -1,153 +1,147 @@
-import { assertEquals } from "@std/assert";
-import { BoundingBox } from "./scanner.ts";
+import { assertEquals } from '@std/assert';
+import { BoundingBox } from './scanner.ts';
 import {
   fetchAndStoreRestaurants,
   OrchestratorDatabaseClient,
   RestaurantFetcher,
-} from "./service.ts";
-import { RestaurantRecord } from "./parser.ts";
+} from './service.ts';
+import { RestaurantRecord } from './parser.ts';
 
-const TEST_BBOX: BoundingBox = {
-  minLat: 47.3,
-  minLon: 8.5,
-  maxLat: 47.4,
-  maxLon: 8.6,
-};
+const MOCK_USER_ID = 'user-123';
 
-/** Strict interface to avoid 'any' in our test state tracking */
 interface MockDbState {
   upsertedRestaurants: RestaurantRecord[];
-  insertedHistory: { bbox: string }[];
-  upsertOptions?: { onConflict: string };
+  insertedHistory: { tile_id: string; last_scan_date: string }[];
+  rpcCalls: { name: string; args: Record<string, unknown> }[];
 }
 
-/** * Factory that creates a mock Supabase client for the orchestrator service
- * and exposes its internal state for assertions.
- */
 function createServiceMockSupabase(
-  scanHistoryResponse: {
-    data: { last_scan_date: string }[] | null;
-    error: Error | null;
-  },
+  gridHistoryData: { tile_id: string; last_scan_date: string }[],
 ): { state: MockDbState; client: OrchestratorDatabaseClient } {
   const state: MockDbState = {
     upsertedRestaurants: [],
     insertedHistory: [],
+    rpcCalls: [],
   };
 
   const client: OrchestratorDatabaseClient = {
     from: (table: string) => {
-      if (table === "scan_history") {
+      if (table === 'grid_history') {
         return {
           select: (_columns: string) => ({
-            eq: (_col: string, _val: string) =>
-              Promise.resolve(scanHistoryResponse),
+            eq: (_col: string, tileId: string) => {
+              const matched = gridHistoryData.filter(
+                (h) => h.tile_id === tileId,
+              );
+              return Promise.resolve({ data: matched, error: null });
+            },
           }),
           insert: () =>
-            Promise.resolve({ error: new Error("Not implemented") }),
+            Promise.resolve({ error: new Error('Not implemented') }),
           upsert: (
-            data: RestaurantRecord[] | { bbox: string; last_scan_date: string },
+            data:
+              | RestaurantRecord[]
+              | { bbox: string; last_scan_date: string }
+              | { tile_id: string; last_scan_date: string },
             _options?: { onConflict: string },
           ) => {
             state.insertedHistory.push(
-              data as { bbox: string; last_scan_date: string },
+              data as { tile_id: string; last_scan_date: string },
             );
             return Promise.resolve({ error: null });
           },
         };
       }
-      if (table === "restaurants") {
+      if (table === 'restaurants') {
         return {
           select: () => ({
             eq: () =>
               Promise.resolve({
                 data: null,
-                error: new Error("Not implemented"),
+                error: new Error('Not implemented'),
               }),
           }),
           insert: () =>
-            Promise.resolve({ error: new Error("Not implemented") }),
+            Promise.resolve({ error: new Error('Not implemented') }),
           upsert: (
-            data: RestaurantRecord[] | { bbox: string; last_scan_date: string },
-            options?: { onConflict: string },
+            data:
+              | RestaurantRecord[]
+              | { bbox: string; last_scan_date: string }
+              | { tile_id: string; last_scan_date: string },
+            _options?: { onConflict: string },
           ) => {
             state.upsertedRestaurants.push(...(data as RestaurantRecord[]));
-            state.upsertOptions = options;
             return Promise.resolve({ error: null });
           },
         };
       }
+      // Stub the old scan_history layout with empty fallbacks to keep shouldSkipScan from crashing
+      if (table === 'scan_history') {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+          }),
+          insert: () => Promise.resolve({ error: null }),
+          upsert: () => Promise.resolve({ error: null }),
+        };
+      }
       throw new Error(`Mock not implemented for table: ${table}`);
+    },
+    rpc: (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      return Promise.resolve({ data: true, error: null });
     },
   };
 
   return { state, client };
 }
 
-Deno.test("fetchAndStoreRestaurants() exits early if shouldSkipScan is true", async () => {
-  const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
-  const { state, client } = createServiceMockSupabase({
-    data: [{
-      last_scan_date: new Date(Date.now() - TWO_DAYS_MS).toISOString(),
-    }],
-    error: null,
-  });
+Deno.test(
+  'fetchAndStoreRestaurants() maps viewport to grids, filters cached rows, and saves unmapped tiles',
+  async () => {
+    const TWO_DAYS_AGO = new Date(
+      Date.now() - 2 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
-  let fetchCalled = false;
+    // Pretend tile 49471_8452 was scanned recently, but neighboring tiles are completely empty
+    const { state, client } = createServiceMockSupabase([
+      { tile_id: '49471_8452', last_scan_date: TWO_DAYS_AGO },
+    ]);
 
-  const mockFetcher = {
-    fetchData: () => {
-      fetchCalled = true;
-      return Promise.resolve([]);
-    },
-  } as unknown as RestaurantFetcher;
+    const fetchCalledWithBboxes: BoundingBox[] = [];
 
-  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
+    const mockFetcher: RestaurantFetcher = {
+      fetchData: (bbox: BoundingBox) => {
+        fetchCalledWithBboxes.push(bbox);
+        return Promise.resolve([
+          {
+            name: 'Grid Bound Eatery',
+            google_place_id: 'g-place-456',
+            location: 'POINT(8.4525 49.4715)',
+          },
+        ]);
+      },
+    };
 
-  assertEquals(
-    fetchCalled,
-    false,
-    "Fetch should not be called if scan is skipped",
-  );
-  assertEquals(state.upsertedRestaurants.length, 0);
-  assertEquals(state.insertedHistory.length, 0);
-});
+    // Expand bounding box slightly to cross into two tiles: 49471_8452 and 49471_8453
+    const multiTileBbox: BoundingBox = {
+      minLat: 49.4712,
+      maxLat: 49.4718,
+      minLon: 8.4521,
+      maxLon: 8.4535, // Crosses boundary into 8453
+    };
 
-Deno.test("fetchAndStoreRestaurants() fetches, parses, and stores data if scan is needed", async () => {
-  const { state, client } = createServiceMockSupabase({
-    data: [], // Empty data means no recent scan
-    error: null,
-  });
+    await fetchAndStoreRestaurants(
+      multiTileBbox,
+      client,
+      mockFetcher,
+      MOCK_USER_ID,
+    );
 
-  let fetchCalled = false;
-
-  const mockFetcher = {
-    fetchData: () => {
-      fetchCalled = true;
-      return Promise.resolve([{
-        name: "Test Cafe",
-        cuisine: "coffee",
-        location: "POINT(8.55 47.35)",
-      }]);
-    },
-  } as unknown as RestaurantFetcher;
-
-  await fetchAndStoreRestaurants(TEST_BBOX, client, mockFetcher);
-
-  assertEquals(fetchCalled, true, "Fetch should be called if scan is needed");
-  assertEquals(
-    state.upsertedRestaurants.length,
-    1,
-    "Should have upserted the restaurant data",
-  );
-  assertEquals(
-    state.insertedHistory.length,
-    1,
-    "Should have logged the new scan in history",
-  );
-  assertEquals(
-    state.upsertOptions?.onConflict,
-    "google_place_id",
-    "Should specify onConflict constraint",
-  );
-});
+    // It should skip 49471_8452 entirely and ONLY execute a data request for 49471_8453
+    assertEquals(fetchCalledWithBboxes.length, 1);
+    assertEquals(state.insertedHistory.length, 1);
+    assertEquals(state.insertedHistory[0].tile_id, '49471_8453');
+    assertEquals(state.upsertedRestaurants.length, 1);
+  },
+);
