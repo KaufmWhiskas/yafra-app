@@ -38,14 +38,21 @@ interface GoogleAutocompleteResponse {
   suggestions: GoogleSuggestion[];
 }
 
-async function serve(req: Request): Promise<Response> {
+export async function serve(
+  req: Request,
+  options?: {
+    requireUserFn?: (req: Request) => Promise<{ error: Response | null }>;
+  },
+): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    const requireUserFn = options?.requireUserFn || requireUser;
+
     // Secure endpoint with reusable auth guard
-    const { error: authError } = await requireUser(req);
+    const { error: authError } = await requireUserFn(req);
     if (authError) return authError;
 
     const { input, sessionToken, location }: SearchRequest = await req.json();
@@ -69,6 +76,18 @@ async function serve(req: Request): Promise<Response> {
     const googleApiUrl = 'https://places.googleapis.com/v1/places:autocomplete';
 
     const payload: GooglePlacesPayload = { input, sessionToken };
+
+    if (location) {
+      payload.locationBias = {
+        circle: {
+          center: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+          radius: 5000, // 5km radius
+        },
+      };
+    }
 
     const googleResponse = await fetch(googleApiUrl, {
       method: 'POST',
@@ -125,4 +144,4 @@ async function serve(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(serve);
+Deno.serve((req) => serve(req));

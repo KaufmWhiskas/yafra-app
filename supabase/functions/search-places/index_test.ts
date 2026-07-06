@@ -6,6 +6,10 @@ const originalEnvGet = Deno.env.get;
 
 let fetchCallArgs: { url: string; options: RequestInit } | null = null;
 
+const mockRequireUser = () => {
+  return Promise.resolve({ error: null });
+};
+
 function setupMocks() {
   globalThis.fetch = ((
     input: RequestInfo | URL,
@@ -43,7 +47,9 @@ Deno.test('Edge Function: search-places', async (t) => {
         body: JSON.stringify(reqBody),
       });
 
-      await serve(request);
+      await serve(request, {
+        requireUserFn: mockRequireUser,
+      });
 
       assertExists(fetchCallArgs);
       assertEquals(
@@ -78,7 +84,9 @@ Deno.test('Edge Function: search-places', async (t) => {
         body: JSON.stringify(reqBody),
       });
 
-      await serve(request);
+      await serve(request, {
+        requireUserFn: mockRequireUser,
+      });
 
       assertExists(fetchCallArgs);
       const body = JSON.parse(fetchCallArgs.options.body as string);
