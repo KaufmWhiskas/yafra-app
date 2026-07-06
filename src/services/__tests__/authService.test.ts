@@ -1,4 +1,5 @@
 import {
+  register,
   fetchUserProfile,
   sendPasswordResetOtp,
   updateProfileAvatar,
@@ -22,6 +23,7 @@ jest.mock('../supabase', () => ({
     eq: jest.fn().mockReturnThis(),
     single: jest.fn().mockReturnThis(),
     auth: {
+      signUp: jest.fn(),
       resetPasswordForEmail: jest.fn(),
       verifyOtp: jest.fn(),
       updateUser: jest.fn(),
@@ -128,6 +130,32 @@ describe('Auth Service - User Profile', () => {
       expect(supabase.update).toHaveBeenCalledWith({ avatar_url: avatarUrl });
       // @ts-expect-error: custom mock property not on root client
       expect(supabase.eq).toHaveBeenCalledWith('id', userId);
+    });
+  });
+});
+
+describe('Auth Service - Registration', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes both display_name and username keys down within the raw auth metadata options payload', async () => {
+    (supabase.auth.signUp as jest.Mock).mockResolvedValueOnce({
+      data: { user: { id: '123' } },
+      error: null,
+    });
+
+    await register('newuser@example.com', 'password123', 'Chef Gordon');
+
+    expect(supabase.auth.signUp).toHaveBeenCalledWith({
+      email: 'newuser@example.com',
+      password: 'password123',
+      options: {
+        data: {
+          display_name: 'Chef Gordon',
+          username: 'Chef Gordon',
+        },
+      },
     });
   });
 });

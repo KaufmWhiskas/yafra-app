@@ -24,6 +24,7 @@ export async function register(
     options: {
       data: {
         display_name: displayName,
+        username: displayName, // FIX: Match database trigger parameter expectations
       },
     },
   });
@@ -144,9 +145,13 @@ export async function signInWithProvider(
     },
   });
 
-  if (error || !data?.url) throw error || new Error('OAuth URL generation failed');
+  if (error || !data?.url)
+    throw error || new Error('OAuth URL generation failed');
 
-  const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  const authResult = await WebBrowser.openAuthSessionAsync(
+    data.url,
+    redirectTo,
+  );
 
   if (authResult.type === 'success' && authResult.url) {
     // Parse the fragment parameters securely from the custom schema string
@@ -155,13 +160,16 @@ export async function signInWithProvider(
     const refresh_token = urlObj.searchParams.get('refresh_token');
 
     if (!access_token || !refresh_token) {
-      throw new Error('Authentication parameters missing from redirect payload');
+      throw new Error(
+        'Authentication parameters missing from redirect payload',
+      );
     }
 
-    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-      access_token,
-      refresh_token,
-    });
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
 
     if (sessionError) throw sessionError;
     return sessionData.session;
@@ -204,7 +212,9 @@ export async function uploadAvatar(fileUri: string): Promise<string> {
     if (!data.publicUrl)
       throw new Error('Could not get public URL for avatar.');
 
-    return data.publicUrl;
+    // Strip the cache-busting `t` query parameter before returning.
+    // This ensures a clean, permanent URL is stored in the database.
+    return data.publicUrl.split('?')[0];
   } catch (error) {
     console.error('Upload failed:', error);
     throw error;
