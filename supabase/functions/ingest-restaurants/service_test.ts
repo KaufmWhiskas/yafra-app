@@ -9,6 +9,13 @@ import { RestaurantRecord } from './parser.ts';
 
 const MOCK_USER_ID = 'user-123';
 
+const TEST_BBOX: BoundingBox = {
+  minLat: 49.4712,
+  maxLat: 49.4718, // Fits within tile 49471
+  minLon: 8.4521,
+  maxLon: 8.4528, // Fits within tile 8452
+};
+
 interface MockDbState {
   upsertedRestaurants: RestaurantRecord[];
   insertedHistory: { tile_id: string; last_scan_date: string }[];
@@ -36,8 +43,11 @@ function createServiceMockSupabase(
               return Promise.resolve({ data: matched, error: null });
             },
           }),
-          insert: () =>
-            Promise.resolve({ error: new Error('Not implemented') }),
+          insert: (
+            _data:
+              | { bbox: string }
+              | { tile_id: string; last_scan_date: string },
+          ) => Promise.resolve({ error: new Error('Not implemented') }),
           upsert: (
             data:
               | RestaurantRecord[]
@@ -61,8 +71,11 @@ function createServiceMockSupabase(
                 error: new Error('Not implemented'),
               }),
           }),
-          insert: () =>
-            Promise.resolve({ error: new Error('Not implemented') }),
+          insert: (
+            _data:
+              | { bbox: string }
+              | { tile_id: string; last_scan_date: string },
+          ) => Promise.resolve({ error: new Error('Not implemented') }),
           upsert: (
             data:
               | RestaurantRecord[]
@@ -81,8 +94,18 @@ function createServiceMockSupabase(
           select: () => ({
             eq: () => Promise.resolve({ data: [], error: null }),
           }),
-          insert: () => Promise.resolve({ error: null }),
-          upsert: () => Promise.resolve({ error: null }),
+          insert: (
+            _data:
+              | { bbox: string }
+              | { tile_id: string; last_scan_date: string },
+          ) => Promise.resolve({ error: null }),
+          upsert: (
+            _data:
+              | RestaurantRecord[]
+              | { bbox: string; last_scan_date: string }
+              | { tile_id: string; last_scan_date: string },
+            _options?: { onConflict: string },
+          ) => Promise.resolve({ error: null }),
         };
       }
       throw new Error(`Mock not implemented for table: ${table}`);
@@ -143,5 +166,68 @@ Deno.test(
     assertEquals(state.insertedHistory.length, 1);
     assertEquals(state.insertedHistory[0].tile_id, '49471_8453');
     assertEquals(state.upsertedRestaurants.length, 1);
+  },
+);
+
+Deno.test(
+  'fetchAndStoreRestaurants() recursively subdivides a tile if exactly 20 restaurants are returned',
+  async () => {
+    const { state, client } = createServiceMockSupabase([]);
+
+    let fetchCount = 0;
+    const mockFetcher: RestaurantFetcher = {
+      fetchData: (_bbox: BoundingBox) => {
+        fetchCount++;
+        // First call (parent tile): simulate a full cutoff of 20 places
+        if (fetchCount === 1) {
+          return Promise.resolve(
+            Array(20).fill({
+              name: 'Cutoff Place',
+              google_place_id: 'fake-id',
+              location: 'POINT(8.4525 49.4715)',
+            }),
+          );
+        }
+        // Subsequent sub-quadrant calls: return low density to end recursion
+        return Promise.resolve([
+          {
+            name: 'Sub-Quadrant Place',
+            google_place_id: `sub-id-${fetchCount}`,
+            location: 'POINT(8.4525 49.4715)',
+          },
+        ]);
+      },
+    };
+
+    // Run on a single precise tile bbox bounds configuration
+    await fetchAndStoreRestaurants(
+      TEST_BBOX,
+      client,
+      mockFetcher,
+      MOCK_USER_ID,
+    );
+
+    // Expect 1 parent call + 4 sub-quadrant quadrant branch queries = 5 fetches total
+    assertEquals(
+      fetchCount,
+      5,
+      'Should have triggered recursive sub-quadrant scans',
+    );
+
+    // The parent tile ID should NOT be marked complete because it was split!
+    // Instead, the 4 child tiles should be logged in history.
+    const hasParent = state.insertedHistory.some(
+      (h) => h.tile_id === '49471_8452',
+    );
+    assertEquals(
+      hasParent,
+      false,
+      'Should not mark a saturated parent tile as completely mapped',
+    );
+    assertEquals(
+      state.insertedHistory.length,
+      4,
+      'Should record history for all 4 sub-tiles',
+    );
   },
 );
