@@ -10,7 +10,10 @@ export interface BoundingBox {
 export interface DatabaseClient {
   from: (table: string) => {
     select: (columns: string) => {
-      eq: (column: string, value: string) => Promise<{
+      eq: (
+        column: string,
+        value: string,
+      ) => Promise<{
         data: { last_scan_date: string }[] | null;
         error: Error | null;
       }>;
@@ -28,13 +31,12 @@ export async function shouldSkipScan(
   bbox: BoundingBox,
   supabase: DatabaseClient,
 ): Promise<boolean> {
-  const bboxString =
-    `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
+  const bboxString = `${bbox.minLat},${bbox.minLon},${bbox.maxLat},${bbox.maxLon}`;
 
   const { data, error } = await supabase
-    .from("scan_history")
-    .select("last_scan_date")
-    .eq("bbox", bboxString);
+    .from('scan_history')
+    .select('last_scan_date')
+    .eq('bbox', bboxString);
 
   if (error || !data || data.length === 0) return false;
 
@@ -42,5 +44,31 @@ export async function shouldSkipScan(
   const now = Date.now();
   const lastScanTime = new Date(data[0].last_scan_date).getTime();
 
-  return (now - lastScanTime) < FOURTEEN_DAYS_MS;
+  return now - lastScanTime < FOURTEEN_DAYS_MS;
+}
+
+/**
+ * Checks the database to see if a grid tile has been scanned recently.
+ * @param tileId The ID of the grid tile to check.
+ * @param supabase The Supabase client instance.
+ * @returns True if a scan occurred within the last 14 days, false otherwise.
+ */
+export async function shouldSkipGridTile(
+  tileId: string,
+  supabase: DatabaseClient,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('grid_history')
+    .select('last_scan_date')
+    .eq('tile_id', tileId);
+
+  if (error || !data || data.length === 0) {
+    return false;
+  }
+
+  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const lastScanTime = new Date(data[0].last_scan_date).getTime();
+
+  return now - lastScanTime < FOURTEEN_DAYS_MS;
 }
