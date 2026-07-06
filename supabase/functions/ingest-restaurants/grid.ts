@@ -117,3 +117,26 @@ export function getTileCenterAndRadius(tileId: string) {
 
   return { centerLat, centerLon, radiusMeters };
 }
+
+/**
+ * Generates an X by X square grid cluster of tile IDs immediately surrounding a coordinate point.
+ * @param lat The center latitude.
+ * @param lon The center longitude.
+ * @param radius Number of tile steps to expand out in each direction (1 = 3x3 grid, 2 = 5x5 grid).
+ */
+export function getSurroundingTiles(
+  lat: number,
+  lon: number,
+  radius = 1,
+): string[] {
+  const centerLatIndex = Math.floor(lat / GRID_STEP);
+  const centerLonIndex = Math.floor(lon / GRID_STEP);
+  const tiles: string[] = [];
+
+  for (let i = centerLatIndex - radius; i <= centerLatIndex + radius; i++) {
+    for (let j = centerLonIndex - radius; j <= centerLonIndex + radius; j++) {
+      tiles.push(`${i}_${j}`);
+    }
+  }
+  return tiles;
+}

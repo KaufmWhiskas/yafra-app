@@ -4,6 +4,7 @@ import {
   getIntersectingTiles,
   getSubTiles,
   getTileCenterAndRadius,
+  getSurroundingTiles,
   GRID_STEP,
 } from './grid.ts';
 import { BoundingBox } from './scanner.ts';
@@ -110,3 +111,27 @@ Deno.test('getSubTiles() splits a tile ID into four sub-quadrant IDs', () => {
   const result = getSubTiles(tileId);
   assertEquals(result, expected);
 });
+
+Deno.test(
+  'getSurroundingTiles() returns a perfect 3x3 grid of tile IDs centered on a coordinate',
+  () => {
+    // Snaps to base tile 9894_1690
+    const lat = 49.4715;
+    const lon = 8.4525;
+
+    const expected = [
+      '9893_1689',
+      '9893_1690',
+      '9893_1691',
+      '9894_1689',
+      '9894_1690',
+      '9894_1691',
+      '9895_1689',
+      '9895_1690',
+      '9895_1691',
+    ];
+
+    const result = getSurroundingTiles(lat, lon, 1); // radius 1 = 3x3 grid
+    assertEquals(result.sort(), expected.sort());
+  },
+);

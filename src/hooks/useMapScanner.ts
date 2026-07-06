@@ -2,46 +2,72 @@ import { useRef, useState } from 'react';
 import { Region } from 'react-native-maps';
 import { triggerIngest } from '../services/restaurantService';
 import {
-  API_SCAN_THRESHOLD,
   BoundingBox,
   calculateDistance,
   Coordinate,
   getRegionBBox,
-  MAX_SCAN_BUTTON_THRESHOLD,
 } from '../utils/geo';
 
-/**
- * Custom hook to monitor map region changes and trigger background data ingestion.
- * Prevents heavy queries by tracking zoom levels and allowing manual search overrides.
- */
+// Match your backend grid step exactly (0.005 degrees = ~550m)
+const GRID_STEP = 0.005;
+
 export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastScannedLocation = useRef<Coordinate | null>(null);
+  const lastUserLocation = useRef<Coordinate | null>(null);
   const [showScanButton, setShowScanButton] = useState(false);
 
   /**
-   * Synchronizes map coordinates with backend repositories.
-   * Evaluates movement deltas to determine whether an external API ingest
-   * is required, while ensuring database records are pulled on minor
-   * viewport changes.
+   * Automatically triggers a tight grid scan focused around the user's active moving coordinate path.
+   * Typically wired to your live geolocation position stream context.
+   */
+  const scanUserRadius = async (userCoord: Coordinate) => {
+    if (lastUserLocation.current) {
+      const movement = calculateDistance(lastUserLocation.current, userCoord);
+      if (movement < 0.2) return; // Only update if user walked more than 200 meters
+    }
+    lastUserLocation.current = userCoord;
+
+    // Calculate a bounding box matching a 3x3 cluster around the user (~1.6km x 1.6km area)
+    const userBbox: BoundingBox = {
+      minLat: userCoord.latitude - GRID_STEP * 1.5,
+      maxLat: userCoord.latitude + GRID_STEP * 1.5,
+      minLon: userCoord.longitude - GRID_STEP * 1.5,
+      maxLon: userCoord.longitude + GRID_STEP * 1.5,
+    };
+
+    try {
+      await triggerIngest(userBbox);
+    } catch (e) {
+      console.error('Failed to update user rolling grid cache:', e);
+    }
+  };
+
+  /**
+   * Monitors map viewport camera movements, managing automated tight-zoom lookups
+   * vs city-scale manual overrides.
    */
   const scanRegion = async (region: Region, forceManualSearch = false) => {
     const bbox = getRegionBBox(region);
 
-    // Auto-scan is blocked if the viewport width crosses the tight tile boundary
-    const isPastAutoScan = region.latitudeDelta >= API_SCAN_THRESHOLD;
+    // Calculate exactly how many base grid tiles span across the current screen view
+    const latSpan = Math.ceil(region.latitudeDelta / GRID_STEP);
+    const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
+    const tileCount = latSpan * lonSpan;
 
-    // Scan button is only allowed if the viewport spans smaller than a small city (~2.7km)
-    const canScanArea = region.latitudeDelta <= MAX_SCAN_BUTTON_THRESHOLD;
+    // Auto-scan viewports is active only when zoomed in tightly (<= 3x3 tiles, i.e., 9 tiles)
+    const isTightZoom = tileCount <= 9;
+
+    // Manual scan button is allowed when spanning between a 3x3 up to a 7x7 city envelope (49 tiles)
+    const isCityScale = tileCount > 9 && tileCount <= 49;
 
     // Defer the state update to the next execution tick to prevent interrupting the native mount cycle
     setTimeout(() => {
-      // Button displays if auto-scan is active/off but we remain within city bounds limits
-      setShowScanButton(isPastAutoScan && canScanArea);
+      setShowScanButton(isCityScale && !forceManualSearch);
     }, 0);
 
-    // Stop background ingest if wide, unless user triggered the explicit override button
-    if (isPastAutoScan && !forceManualSearch) {
-      await loadData(bbox); // Still aggressively populate markers from the local DB!
+    // Block background sync if we are outside tight zoom parameters, unless explicit manual button click
+    if (!isTightZoom && !forceManualSearch) {
+      await loadData(bbox); // Still fluidly render anything already present in local db
       return;
     }
 
@@ -54,27 +80,20 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
       ? calculateDistance(lastScannedLocation.current, currentCoord)
       : Infinity;
 
-    // Minor panning: Instantly fetch existing database points without hitting Google limits
     if (distance < 0.5 && !forceManualSearch) {
       await loadData(bbox);
       return;
     }
 
-    // Major panning or manual search override: Update cache anchor and run ingestion task
     lastScannedLocation.current = currentCoord;
     try {
-      // Render existing records immediately to keep user experience fluid
       await loadData(bbox);
-
-      // Execute external integration pipeline asynchronously without blocking the thread
       await triggerIngest(bbox);
-
-      // Reload matching dataset rows into state memory caches
       await loadData(bbox);
     } catch (error) {
-      console.error('Failed to update map viewport data registry:', error);
+      console.error('Failed to update viewport registry:', error);
     }
   };
 
-  return { scanRegion, showScanButton };
+  return { scanRegion, scanUserRadius, showScanButton };
 }

@@ -8,13 +8,6 @@ jest.mock('../../services/restaurantService', () => ({
   triggerIngest: jest.fn(),
 }));
 
-// Mock the geo utilities to have a predictable threshold for testing.
-jest.mock('../../utils/geo', () => ({
-  ...jest.requireActual('../../utils/geo'),
-  API_SCAN_THRESHOLD: 0.005,
-  MAX_SCAN_BUTTON_THRESHOLD: 0.025,
-}));
-
 const MOCK_REGION_ZOOMED_IN: Region = {
   latitude: 49.4715,
   longitude: 8.4525,
@@ -22,11 +15,11 @@ const MOCK_REGION_ZOOMED_IN: Region = {
   longitudeDelta: 0.004,
 };
 
-// A region that is past the auto-scan threshold, but within the manual scan button threshold
-const MOCK_REGION_SHOW_BUTTON: Region = {
+// A region that is past the auto-scan threshold (9 tiles), but within the manual scan button threshold (49 tiles)
+const MOCK_REGION_CITY_SCALE: Region = {
   latitude: 49.4715,
   longitude: 8.4525,
-  latitudeDelta: 0.02,
+  latitudeDelta: 0.02, // Creates a 4x4 grid (16 tiles)
   longitudeDelta: 0.02,
 };
 
@@ -55,18 +48,18 @@ describe('useMapScanner', () => {
     loadDataMock = jest.fn().mockResolvedValue(undefined);
   });
 
-  it('shows scan button and skips ingest when past auto-scan threshold', async () => {
+  it('shows scan button and skips ingest when in city-scale view (16 tiles)', async () => {
     const { result } = renderHook(() => useMapScanner(loadDataMock));
 
     // Initial state should be false
     expect(result.current.showScanButton).toBe(false);
 
     await act(async () => {
-      await result.current.scanRegion(MOCK_REGION_SHOW_BUTTON);
+      await result.current.scanRegion(MOCK_REGION_CITY_SCALE);
     });
 
     // Advance timers to allow the deferred state update to run
-    act(() => {
+    await act(async () => {
       jest.runAllTimers();
     });
 
@@ -87,7 +80,7 @@ describe('useMapScanner', () => {
       await result.current.scanRegion(MOCK_REGION_TOO_WIDE);
     });
 
-    act(() => {
+    await act(async () => {
       jest.runAllTimers();
     });
 
@@ -102,16 +95,16 @@ describe('useMapScanner', () => {
 
     await act(async () => {
       // The second argument simulates the user pressing "Search this area".
-      await result.current.scanRegion(MOCK_REGION_SHOW_BUTTON, true);
+      await result.current.scanRegion(MOCK_REGION_CITY_SCALE, true);
     });
 
     // Advance timers to allow the deferred state update to run
-    act(() => {
+    await act(async () => {
       jest.runAllTimers();
     });
 
-    // The button state is still updated correctly.
-    expect(result.current.showScanButton).toBe(true);
+    // When forceManualSearch is true, the button is hidden to prevent double-clicks.
+    expect(result.current.showScanButton).toBe(false);
 
     // The manual override should force the ingest function to be called.
     expect(triggerIngest).toHaveBeenCalledTimes(1);
@@ -129,7 +122,7 @@ describe('useMapScanner', () => {
     });
 
     // Flush the timer from the initial scan
-    act(() => {
+    await act(async () => {
       jest.runAllTimers();
     });
 
@@ -147,12 +140,44 @@ describe('useMapScanner', () => {
     });
 
     // Flush the timer from the panning scan
-    act(() => {
+    await act(async () => {
       jest.runAllTimers();
     });
 
     // No ingestion should occur for a minor pan.
     expect(triggerIngest).not.toHaveBeenCalled();
     expect(loadDataMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useMapScanner hybrid validation', () => {
+  let loadDataMock: jest.Mock;
+
+  beforeEach(() => {
+    // Clear all mocks before each test to ensure isolation.
+    jest.clearAllMocks();
+    loadDataMock = jest.fn().mockResolvedValue(undefined);
+  });
+
+  it('should return showScanButton as true if screen view covers a medium city size (e.g. 5x5 tiles)', async () => {
+    const { result } = renderHook(() => useMapScanner(loadDataMock));
+
+    const mediumCityRegion: Region = {
+      latitude: 49.4715,
+      longitude: 8.4525,
+      latitudeDelta: 0.025, // ceil(0.025 / 0.005) = 5
+      longitudeDelta: 0.025, // ceil(0.025 / 0.005) = 5
+    }; // tileCount = 25
+
+    await act(async () => {
+      await result.current.scanRegion(mediumCityRegion);
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    expect(result.current.showScanButton).toBe(true);
+    expect(triggerIngest).not.toHaveBeenCalled();
   });
 });
