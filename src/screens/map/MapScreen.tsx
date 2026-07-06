@@ -310,7 +310,7 @@ export default function MapScreen() {
     }
   };
 
-  const { scanRegion, scanUserRadius, showScanButton } =
+  const { scanRegion, scanUserRadius, showScanButton, isScanning } =
     useMapScanner(loadData);
 
   useEffect(() => {
@@ -446,15 +446,18 @@ export default function MapScreen() {
           pointerEvents="box-none"
         >
           <TouchableOpacity
-            style={styles.scanButton}
+            style={[styles.scanButton, isScanning && styles.disabledButton]}
             activeOpacity={0.85}
+            disabled={isScanning} // Freeze interactions
             onPress={() => {
               if (mapRegionRef.current) {
                 scanRegion(mapRegionRef.current, true);
               }
             }}
           >
-            <Text style={styles.scanButtonText}>Search this area</Text>
+            <Text style={styles.scanButtonText}>
+              {isScanning ? 'Scanning area...' : 'Search this area'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -646,6 +649,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#111111',
+  },
+  disabledButton: {
+    backgroundColor: '#EFEFEF',
+    opacity: 0.7,
   },
   searchRow: {
     flexDirection: 'row',

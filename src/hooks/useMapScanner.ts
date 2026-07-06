@@ -15,28 +15,33 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastScannedLocation = useRef<Coordinate | null>(null);
   const lastUserLocation = useRef<Coordinate | null>(null);
   const [showScanButton, setShowScanButton] = useState(false);
+  const [isScanning, setIsScanning] = useState(false); // New lock state
 
-  const scanUserRadius = useCallback(async (userCoord: Coordinate) => {
-    if (lastUserLocation.current) {
-      const movement = calculateDistance(lastUserLocation.current, userCoord);
-      if (movement < 0.2) return; // Only update if user walked more than 200 meters
-    }
-    lastUserLocation.current = userCoord;
+  const scanUserRadius = useCallback(
+    async (userCoord: Coordinate) => {
+      if (isScanning) return; // Prevent user automation if a manual viewport fetch is running
+      if (lastUserLocation.current) {
+        const movement = calculateDistance(lastUserLocation.current, userCoord);
+        if (movement < 0.2) return; // Only update if user walked more than 200 meters
+      }
+      lastUserLocation.current = userCoord;
 
-    // Calculate a bounding box matching a 3x3 cluster around the user (~1.6km x 1.6km area)
-    const userBbox: BoundingBox = {
-      minLat: userCoord.latitude - GRID_STEP * 1.5,
-      maxLat: userCoord.latitude + GRID_STEP * 1.5,
-      minLon: userCoord.longitude - GRID_STEP * 1.5,
-      maxLon: userCoord.longitude + GRID_STEP * 1.5,
-    };
+      // Calculate a bounding box matching a 3x3 cluster around the user (~1.6km x 1.6km area)
+      const userBbox: BoundingBox = {
+        minLat: userCoord.latitude - GRID_STEP * 1.5,
+        maxLat: userCoord.latitude + GRID_STEP * 1.5,
+        minLon: userCoord.longitude - GRID_STEP * 1.5,
+        maxLon: userCoord.longitude + GRID_STEP * 1.5,
+      };
 
-    try {
-      await triggerIngest(userBbox);
-    } catch (e) {
-      console.error('Failed to update user rolling grid cache:', e);
-    }
-  }, []);
+      try {
+        await triggerIngest(userBbox);
+      } catch (e) {
+        console.error('Failed to update user rolling grid cache:', e);
+      }
+    },
+    [isScanning],
+  );
 
   const scanRegion = useCallback(
     async (region: Region, forceManualSearch = false) => {
@@ -80,6 +85,8 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
         return;
       }
 
+      // Acquire lock
+      setIsScanning(true);
       lastScannedLocation.current = currentCoord;
       try {
         await loadData(bbox);
@@ -87,10 +94,12 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
         await loadData(bbox);
       } catch (error) {
         console.error('Failed to update viewport registry:', error);
+      } finally {
+        setIsScanning(false); // Release lock
       }
     },
     [loadData],
   );
 
-  return { scanRegion, scanUserRadius, showScanButton };
+  return { scanRegion, scanUserRadius, showScanButton, isScanning };
 }
