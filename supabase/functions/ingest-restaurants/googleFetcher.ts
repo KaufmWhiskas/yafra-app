@@ -1,6 +1,11 @@
-import { RestaurantFetcher } from "./service.ts";
-import { BoundingBox } from "./scanner.ts";
-import { RestaurantRecord } from "./parser.ts";
+import { RestaurantFetcher } from './service.ts';
+import { BoundingBox } from './scanner.ts';
+import { RestaurantRecord } from './parser.ts';
+import {
+  calculateDistanceInMeters,
+  coordinateToTileId,
+  getTileCenterAndRadius,
+} from './grid.ts';
 
 interface GooglePlace {
   id?: string;
@@ -16,58 +21,39 @@ interface GooglePlace {
   userRatingCount?: number;
 }
 
-// Haversine formula to calculate distance in meters
-function calculateRadiusInMeters(
-  centerLat: number,
-  centerLon: number,
-  cornerLat: number,
-  cornerLon: number,
-): number {
-  const R = 6371e3; // Earth radius in meters
-  const toRad = (value: number) => (value * Math.PI) / 180;
-
-  const phi1 = toRad(centerLat);
-  const phi2 = toRad(cornerLat);
-  const deltaPhi = toRad(cornerLat - centerLat);
-  const deltaLambda = toRad(cornerLon - centerLon);
-
-  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-    Math.cos(phi1) *
-      Math.cos(phi2) *
-      Math.sin(deltaLambda / 2) *
-      Math.sin(deltaLambda / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
   return {
-    fetchData: async (
-      bbox: BoundingBox,
-    ): Promise<RestaurantRecord[]> => {
-      const url = "https://places.googleapis.com/v1/places:searchNearby";
+    fetchData: async (bbox: BoundingBox): Promise<RestaurantRecord[]> => {
+      const url = 'https://places.googleapis.com/v1/places:searchNearby';
+
+      // Is this a tiny 110m grid tile?
+      // If so, use the precision center/radius.
+      // If it's larger, use the legacy stretch-to-corner math.
+      const isGridTile = Math.abs(bbox.maxLat - bbox.minLat) <= 0.001;
 
       const centerLat = (bbox.minLat + bbox.maxLat) / 2;
       const centerLon = (bbox.minLon + bbox.maxLon) / 2;
 
-      const radius = calculateRadiusInMeters(
-        centerLat,
-        centerLon,
-        bbox.maxLat,
-        bbox.maxLon,
-      );
+      const radius = isGridTile
+        ? getTileCenterAndRadius(coordinateToTileId(centerLat, centerLon))
+            .radiusMeters
+        : calculateDistanceInMeters(
+            centerLat,
+            centerLon,
+            bbox.maxLat,
+            bbox.maxLon,
+          );
 
       const response = await fetch(url, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask":
-            "places.id,places.location,places.displayName.text,places.rating,places.primaryType,places.userRatingCount",
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask':
+            'places.id,places.location,places.displayName.text,places.rating,places.primaryType,places.userRatingCount',
         },
         body: JSON.stringify({
-          includedTypes: ["restaurant"],
+          includedTypes: ['restaurant'],
           locationRestriction: {
             circle: {
               center: {
@@ -84,10 +70,9 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
 
       return (data.places || []).map(
         (place: GooglePlace): RestaurantRecord => ({
-          name: place.displayName?.text ?? "Unknown",
+          name: place.displayName?.text ?? 'Unknown',
           google_place_id: place.id,
-          location:
-            `POINT(${place.location.longitude} ${place.location.latitude})`,
+          location: `POINT(${place.location.longitude} ${place.location.latitude})`,
           cuisine: place.primaryType,
           google_rating: place.rating,
           details: { user_ratings_total: place.userRatingCount },

@@ -1,5 +1,11 @@
-import { assertEquals } from '@std/assert';
-import { coordinateToTileId, getIntersectingTiles, GRID_STEP } from './grid.ts';
+import { assertAlmostEquals, assertEquals } from '@std/assert';
+import {
+  coordinateToTileId,
+  getIntersectingTiles,
+  getSubTiles,
+  getTileCenterAndRadius,
+  GRID_STEP,
+} from './grid.ts';
 import { BoundingBox } from './scanner.ts';
 
 Deno.test('GRID_STEP constant is strictly defined as 0.001 degrees', () => {
@@ -60,3 +66,41 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  'getTileCenterAndRadius() resolves exact center coordinates and a correct circumscribed radius in meters',
+  () => {
+    // Tile "49471_8452" means:
+    // lat boundaries: [49.471, 49.472] -> Center: 49.4715
+    // lon boundaries: [8.452, 8.453]   -> Center: 8.4525
+    const tileId = '49471_8452';
+
+    const { centerLat, centerLon, radiusMeters } =
+      getTileCenterAndRadius(tileId);
+
+    assertAlmostEquals(centerLat, 49.4715);
+    assertAlmostEquals(centerLon, 8.4525);
+
+    // A 0.001 x 0.001 degree square at this latitude has a diagonal corner distance
+    // (from center to corner) of roughly 65-70 meters. The tile is not a perfect
+    // square in meters due to latitude.
+    assertEquals(
+      radiusMeters > 65 && radiusMeters < 70,
+      true,
+      `Expected radius to be ~65-70m, but got ${radiusMeters}m`,
+    );
+  },
+);
+
+Deno.test('getSubTiles() splits a tile ID into four sub-quadrant IDs', () => {
+  const tileId = '49471_8452';
+  const expected = [
+    '49471_8452_0', // Bottom-Left
+    '49471_8452_1', // Bottom-Right
+    '49471_8452_2', // Top-Left
+    '49471_8452_3', // Top-Right
+  ];
+
+  const result = getSubTiles(tileId);
+  assertEquals(result, expected);
+});

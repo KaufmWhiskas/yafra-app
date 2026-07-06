@@ -56,7 +56,7 @@ export async function fetchAndStoreRestaurants(
     {
       p_user_id: userId,
       p_action_name: 'ingest_restaurants',
-      p_max_requests: 20,
+      p_max_requests: 50,
       p_window_interval: '1 hour',
     },
   );
