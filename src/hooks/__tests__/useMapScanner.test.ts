@@ -11,25 +11,43 @@ jest.mock('../../services/restaurantService', () => ({
 // Mock the geo utilities to have a predictable threshold for testing.
 jest.mock('../../utils/geo', () => ({
   ...jest.requireActual('../../utils/geo'),
-  ZOOM_OUT_THRESHOLD: 0.1,
+  API_SCAN_THRESHOLD: 0.005,
+  MAX_SCAN_BUTTON_THRESHOLD: 0.025,
 }));
 
 const MOCK_REGION_ZOOMED_IN: Region = {
   latitude: 49.4715,
   longitude: 8.4525,
-  latitudeDelta: 0.01, // Well below the threshold
-  longitudeDelta: 0.01,
+  latitudeDelta: 0.004, // Below the threshold
+  longitudeDelta: 0.004,
 };
 
-const MOCK_REGION_ZOOMED_OUT: Region = {
+// A region that is past the auto-scan threshold, but within the manual scan button threshold
+const MOCK_REGION_SHOW_BUTTON: Region = {
   latitude: 49.4715,
   longitude: 8.4525,
-  latitudeDelta: 0.2, // Greater than ZOOM_OUT_THRESHOLD
-  longitudeDelta: 0.2,
+  latitudeDelta: 0.02,
+  longitudeDelta: 0.02,
+};
+
+// A region that is too wide for even the manual scan button
+const MOCK_REGION_TOO_WIDE: Region = {
+  latitude: 49.4715,
+  longitude: 8.4525,
+  latitudeDelta: 0.1,
+  longitudeDelta: 0.1,
 };
 
 describe('useMapScanner', () => {
   let loadDataMock: jest.Mock;
+
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(() => {
     // Clear all mocks before each test to ensure isolation.
@@ -37,36 +55,63 @@ describe('useMapScanner', () => {
     loadDataMock = jest.fn().mockResolvedValue(undefined);
   });
 
-  it('should not trigger ingest and set isZoomedOut to true when map is zoomed out', async () => {
+  it('shows scan button and skips ingest when past auto-scan threshold', async () => {
     const { result } = renderHook(() => useMapScanner(loadDataMock));
 
     // Initial state should be false
-    expect(result.current.isZoomedOut).toBe(false);
+    expect(result.current.showScanButton).toBe(false);
 
     await act(async () => {
-      await result.current.scanRegion(MOCK_REGION_ZOOMED_OUT);
+      await result.current.scanRegion(MOCK_REGION_SHOW_BUTTON);
     });
 
-    // The hook should now report that the user is zoomed out.
-    expect(result.current.isZoomedOut).toBe(true);
+    // Advance timers to allow the deferred state update to run
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    // The button should be visible.
+    expect(result.current.showScanButton).toBe(true);
 
     // It should still load local data from the database.
     expect(loadDataMock).toHaveBeenCalledTimes(1);
 
-    // Crucially, it should NOT call the expensive backend ingest function.
+    // Crucially, it should NOT call the backend ingest function.
     expect(triggerIngest).not.toHaveBeenCalled();
   });
 
-  it('should trigger ingest when zoomed out if forceManualSearch is true', async () => {
+  it('hides scan button and skips ingest when zoomed out too far', async () => {
+    const { result } = renderHook(() => useMapScanner(loadDataMock));
+
+    await act(async () => {
+      await result.current.scanRegion(MOCK_REGION_TOO_WIDE);
+    });
+
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    // The button should be hidden because the region is too large.
+    expect(result.current.showScanButton).toBe(false);
+    expect(loadDataMock).toHaveBeenCalledTimes(1);
+    expect(triggerIngest).not.toHaveBeenCalled();
+  });
+
+  it('should trigger ingest when forceManualSearch is true', async () => {
     const { result } = renderHook(() => useMapScanner(loadDataMock));
 
     await act(async () => {
       // The second argument simulates the user pressing "Search this area".
-      await result.current.scanRegion(MOCK_REGION_ZOOMED_OUT, true);
+      await result.current.scanRegion(MOCK_REGION_SHOW_BUTTON, true);
     });
 
-    // The zoom state is still updated correctly.
-    expect(result.current.isZoomedOut).toBe(true);
+    // Advance timers to allow the deferred state update to run
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    // The button state is still updated correctly.
+    expect(result.current.showScanButton).toBe(true);
 
     // The manual override should force the ingest function to be called.
     expect(triggerIngest).toHaveBeenCalledTimes(1);
@@ -83,6 +128,11 @@ describe('useMapScanner', () => {
       await result.current.scanRegion(MOCK_REGION_ZOOMED_IN);
     });
 
+    // Flush the timer from the initial scan
+    act(() => {
+      jest.runAllTimers();
+    });
+
     // Reset mocks to test the next action in isolation.
     jest.clearAllMocks();
 
@@ -94,6 +144,11 @@ describe('useMapScanner', () => {
 
     await act(async () => {
       await result.current.scanRegion(slightlyMovedRegion);
+    });
+
+    // Flush the timer from the panning scan
+    act(() => {
+      jest.runAllTimers();
     });
 
     // No ingestion should occur for a minor pan.

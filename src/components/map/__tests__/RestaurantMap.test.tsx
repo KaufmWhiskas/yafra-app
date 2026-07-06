@@ -39,8 +39,8 @@ describe('RestaurantMap', () => {
       name: 'New Sushi Place',
       cuisine: 'sushi',
       rating: undefined, // Unrated
-      latitude: 49.47,
-      longitude: 8.43,
+      latitude: 49.461,
+      longitude: 8.421,
     }),
   ];
 
@@ -92,17 +92,17 @@ describe('RestaurantMap', () => {
   });
 
   it('renders correctly when unselected', async () => {
-    const zoomedOutRegion = {
+    const zoomedInRegion = {
       latitude: 49.46,
       longitude: 8.42,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
+      latitudeDelta: 0.004, // Zoomed IN
+      longitudeDelta: 0.004,
     };
 
     const { getAllByTestId } = render(
       <RestaurantMap
         restaurants={mockRestaurants}
-        region={zoomedOutRegion}
+        region={zoomedInRegion}
         onRestaurantSelect={jest.fn()}
         selectedRestaurant={null}
         onMapPress={jest.fn()}

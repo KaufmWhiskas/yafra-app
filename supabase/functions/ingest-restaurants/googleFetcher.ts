@@ -5,6 +5,7 @@ import {
   calculateDistanceInMeters,
   coordinateToTileId,
   getTileCenterAndRadius,
+  GRID_STEP,
 } from './grid.ts';
 
 interface GooglePlace {
@@ -26,10 +27,10 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
     fetchData: async (bbox: BoundingBox): Promise<RestaurantRecord[]> => {
       const url = 'https://places.googleapis.com/v1/places:searchNearby';
 
-      // Is this a tiny 110m grid tile?
+      // Is this a grid tile? (approx 550m or smaller)
       // If so, use the precision center/radius.
       // If it's larger, use the legacy stretch-to-corner math.
-      const isGridTile = Math.abs(bbox.maxLat - bbox.minLat) <= 0.001;
+      const isGridTile = Math.abs(bbox.maxLat - bbox.minLat) <= GRID_STEP;
 
       const centerLat = (bbox.minLat + bbox.maxLat) / 2;
       const centerLon = (bbox.minLon + bbox.maxLon) / 2;

@@ -2,9 +2,9 @@ import { BoundingBox } from './scanner.ts';
 
 /**
  * The fixed step size for the geographic grid, in degrees.
- * Approximately 111 meters at the equator.
+ * Approximately 550 meters.
  */
-export const GRID_STEP = 0.001;
+export const GRID_STEP = 0.005;
 
 /**
  * Snaps a geographic coordinate to a standardized tile ID string.

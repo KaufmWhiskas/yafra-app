@@ -113,6 +113,7 @@ jest.mock('@react-navigation/native', () => {
 
 jest.mock('../../../utils/geo', () => ({
   ...jest.requireActual('../../../utils/geo'),
+  getVisibleRestaurants: (restaurants: Restaurant[]) => restaurants,
 }));
 
 jest.mock('expo-location', () => ({

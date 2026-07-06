@@ -126,9 +126,9 @@ Deno.test(
       Date.now() - 2 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    // Pretend tile 49471_8452 was scanned recently, but neighboring tiles are completely empty
+    // Pretend tile 9894_1690 was scanned recently, but neighboring tiles are completely empty
     const { state, client } = createServiceMockSupabase([
-      { tile_id: '49471_8452', last_scan_date: TWO_DAYS_AGO },
+      { tile_id: '9894_1690', last_scan_date: TWO_DAYS_AGO },
     ]);
 
     const fetchCalledWithBboxes: BoundingBox[] = [];
@@ -146,12 +146,12 @@ Deno.test(
       },
     };
 
-    // Expand bounding box slightly to cross into two tiles: 49471_8452 and 49471_8453
+    // Expand bounding box to cross from tile 1690 to 1691
     const multiTileBbox: BoundingBox = {
       minLat: 49.4712,
       maxLat: 49.4718,
       minLon: 8.4521,
-      maxLon: 8.4535, // Crosses boundary into 8453
+      maxLon: 8.456, // Crosses boundary into tile 1691
     };
 
     await fetchAndStoreRestaurants(
@@ -161,10 +161,10 @@ Deno.test(
       MOCK_USER_ID,
     );
 
-    // It should skip 49471_8452 entirely and ONLY execute a data request for 49471_8453
+    // It should skip 9894_1690 entirely and ONLY execute a data request for 9894_1691
     assertEquals(fetchCalledWithBboxes.length, 1);
     assertEquals(state.insertedHistory.length, 1);
-    assertEquals(state.insertedHistory[0].tile_id, '49471_8453');
+    assertEquals(state.insertedHistory[0].tile_id, '9894_1691');
     assertEquals(state.upsertedRestaurants.length, 1);
   },
 );
@@ -217,7 +217,7 @@ Deno.test(
     // The parent tile ID should NOT be marked complete because it was split!
     // Instead, the 4 child tiles should be logged in history.
     const hasParent = state.insertedHistory.some(
-      (h) => h.tile_id === '49471_8452',
+      (h) => h.tile_id === '9894_1690',
     );
     assertEquals(
       hasParent,

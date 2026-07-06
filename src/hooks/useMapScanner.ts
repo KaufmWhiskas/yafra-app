@@ -2,11 +2,12 @@ import { useRef, useState } from 'react';
 import { Region } from 'react-native-maps';
 import { triggerIngest } from '../services/restaurantService';
 import {
+  API_SCAN_THRESHOLD,
   BoundingBox,
   calculateDistance,
   Coordinate,
   getRegionBBox,
-  ZOOM_OUT_THRESHOLD,
+  MAX_SCAN_BUTTON_THRESHOLD,
 } from '../utils/geo';
 
 /**
@@ -15,7 +16,7 @@ import {
  */
 export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastScannedLocation = useRef<Coordinate | null>(null);
-  const [isZoomedOut, setIsZoomedOut] = useState(false);
+  const [showScanButton, setShowScanButton] = useState(false);
 
   /**
    * Synchronizes map coordinates with backend repositories.
@@ -26,13 +27,21 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const scanRegion = async (region: Region, forceManualSearch = false) => {
     const bbox = getRegionBBox(region);
 
-    // Check if the current zoom delta crosses our macro-scale boundary threshold
-    const zoomedOut = region.latitudeDelta >= ZOOM_OUT_THRESHOLD;
-    setIsZoomedOut(zoomedOut);
+    // Auto-scan is blocked if the viewport width crosses the tight tile boundary
+    const isPastAutoScan = region.latitudeDelta >= API_SCAN_THRESHOLD;
 
-    // If the map is zoomed out too far, block background requests to safeguard server memory
-    if (zoomedOut && !forceManualSearch) {
-      await loadData(bbox);
+    // Scan button is only allowed if the viewport spans smaller than a small city (~2.7km)
+    const canScanArea = region.latitudeDelta <= MAX_SCAN_BUTTON_THRESHOLD;
+
+    // Defer the state update to the next execution tick to prevent interrupting the native mount cycle
+    setTimeout(() => {
+      // Button displays if auto-scan is active/off but we remain within city bounds limits
+      setShowScanButton(isPastAutoScan && canScanArea);
+    }, 0);
+
+    // Stop background ingest if wide, unless user triggered the explicit override button
+    if (isPastAutoScan && !forceManualSearch) {
+      await loadData(bbox); // Still aggressively populate markers from the local DB!
       return;
     }
 
@@ -67,5 +76,5 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
     }
   };
 
-  return { scanRegion, isZoomedOut };
+  return { scanRegion, showScanButton };
 }

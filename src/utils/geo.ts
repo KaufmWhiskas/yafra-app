@@ -1,5 +1,5 @@
-import { Region } from "react-native-maps";
-import { Restaurant } from "../types";
+import { Region } from 'react-native-maps';
+import { Restaurant } from '../types';
 
 export interface BoundingBox {
   minLat: number;
@@ -29,7 +29,8 @@ export function calculateDistance(
   const R = 6371; // Radius of the Earth in km
   const dLat = (coord2.latitude - coord1.latitude) * (Math.PI / 180);
   const dLon = (coord2.longitude - coord1.longitude) * (Math.PI / 180);
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(coord1.latitude * (Math.PI / 180)) *
       Math.cos(coord2.latitude * (Math.PI / 180)) *
       Math.sin(dLon / 2) *
@@ -143,7 +144,11 @@ export function filterWithinRadius(
  * @param bookmarkedIds An optional set of bookmarked restaurant IDs to retain at all zoom levels.
  * @returns An array of restaurants that fall within the buffered region.
  */
-export const ZOOM_OUT_THRESHOLD = 0.2;
+
+// Define clear, separate boundaries for UI vs API
+export const API_SCAN_THRESHOLD = 0.005;
+export const UI_RENDER_THRESHOLD = 0.05; // Restore fluid rendering up to ~5.5km bounds
+export const MAX_SCAN_BUTTON_THRESHOLD = 0.025; // Show "Search this area" up to ~2.7km wide cities
 
 export function getVisibleRestaurants(
   restaurants: Restaurant[],
@@ -158,11 +163,14 @@ export function getVisibleRestaurants(
   const minLon = region.longitude - lonBuffer;
   const maxLon = region.longitude + lonBuffer;
 
-  const isZoomedOut = region.latitudeDelta >= ZOOM_OUT_THRESHOLD;
+  // Use the UI rendering constant here to check for map display clutter pruning
+  const isZoomedOut = region.latitudeDelta >= UI_RENDER_THRESHOLD;
 
   const visible = restaurants.filter((r) => {
     if (
-      r.latitude < minLat || r.latitude > maxLat || r.longitude < minLon ||
+      r.latitude < minLat ||
+      r.latitude > maxLat ||
+      r.longitude < minLon ||
       r.longitude > maxLon
     ) {
       return false;
