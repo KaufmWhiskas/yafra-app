@@ -72,16 +72,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (
-      Math.abs(bbox.maxLat - bbox.minLat) > 0.15 ||
-      Math.abs(bbox.maxLon - bbox.minLon) > 0.15
-    ) {
-      return new Response(JSON.stringify({ error: 'Bounding box too large' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
     const googleFetcher = createGoogleFetcher(googleApiKey);
 
@@ -100,6 +90,12 @@ Deno.serve(async (req: Request) => {
     if (error instanceof Error && error.name === 'RateLimitError') {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (error instanceof RangeError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400, // Bad Request, as the area is too large
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
