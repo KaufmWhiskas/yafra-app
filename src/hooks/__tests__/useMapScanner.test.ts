@@ -31,16 +31,16 @@ const MOCK_REGION_TOO_WIDE: Region = {
   longitudeDelta: 0.1,
 };
 
+beforeAll(() => {
+  jest.useFakeTimers();
+});
+
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 describe('useMapScanner', () => {
   let loadDataMock: jest.Mock;
-
-  beforeAll(() => {
-    jest.useFakeTimers();
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
 
   beforeEach(() => {
     // Clear all mocks before each test to ensure isolation.
@@ -147,6 +147,34 @@ describe('useMapScanner', () => {
     // No ingestion should occur for a minor pan.
     expect(triggerIngest).not.toHaveBeenCalled();
     expect(loadDataMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the manual scan button visible when zoomed in tightly if no active pan occurs', async () => {
+    const { result } = renderHook(() => useMapScanner(loadDataMock));
+
+    await act(async () => {
+      // Run an initial scan to ground the current anchor position
+      await result.current.scanRegion(MOCK_REGION_ZOOMED_IN);
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    // Reset tracking stats
+    jest.clearAllMocks();
+
+    // Fire a second call at the exact same location (simulating a deep zoom or minor wiggle)
+    await act(async () => {
+      await result.current.scanRegion(MOCK_REGION_ZOOMED_IN);
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    // Because it is stationary, auto-scan skips, leaving the manual search button visible!
+    expect(result.current.showScanButton).toBe(true);
   });
 });
 

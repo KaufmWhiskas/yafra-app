@@ -43,8 +43,6 @@ import CollectionModal from '../../components/ui/CollectionModal';
 import { useActiveGroupFilters } from '../../hooks/useActiveGroupFilters';
 import { calculateGroupMapScore } from '../../utils/groupMath';
 
-const MAX_ZOOM_OUT = 0.1;
-
 export default function MapScreen() {
   const isFocused = useIsFocused();
 
@@ -143,6 +141,30 @@ export default function MapScreen() {
     applyGroupScores();
   }, [restaurants, activeGroupIds, isGroupFilterLoading]);
 
+  const loadData = useCallback(async (bbox?: BoundingBox) => {
+    try {
+      if (!bbox) return;
+      const data = await fetchRestaurants(bbox);
+
+      setRestaurants((prev) => {
+        const merged = new Map<string, Restaurant>();
+
+        [...prev, ...(data || [])].forEach((r) => {
+          merged.set(r.id.toString(), r);
+        });
+
+        const scanCenter = {
+          latitude: (bbox.minLat + bbox.maxLat) / 2,
+          longitude: (bbox.minLon + bbox.maxLon) / 2,
+        };
+
+        return filterWithinRadius(Array.from(merged.values()), scanCenter, 15);
+      });
+    } catch (error) {
+      console.error('Failed to fetch restaurants:', error);
+    }
+  }, []);
+
   const filteredRestaurants = useMemo(() => {
     let list = filterRestaurants(restaurantsWithGroupScores, {
       cuisine: filters.cuisine,
@@ -212,7 +234,7 @@ export default function MapScreen() {
       if (mapRegionRef.current) {
         loadData(getRegionBBox(mapRegionRef.current));
       }
-    }, [user?.id]),
+    }, [user?.id, loadData]),
   );
 
   useEffect(() => {
@@ -288,47 +310,20 @@ export default function MapScreen() {
     }
   };
 
-  const loadData = async (bbox?: BoundingBox) => {
-    try {
-      if (!bbox) return;
-      const data = await fetchRestaurants(bbox);
+  const { scanRegion, scanUserRadius, showScanButton } =
+    useMapScanner(loadData);
 
-      setRestaurants((prev) => {
-        const merged = new Map<string, Restaurant>();
-
-        [...prev, ...(data || [])].forEach((r) => {
-          merged.set(r.id.toString(), r);
-        });
-
-        const scanCenter = {
-          latitude: (bbox.minLat + bbox.maxLat) / 2,
-          longitude: (bbox.minLon + bbox.maxLon) / 2,
-        };
-
-        return filterWithinRadius(Array.from(merged.values()), scanCenter, 15);
-      });
-    } catch (error) {
-      console.error('Failed to fetch restaurants:', error);
+  useEffect(() => {
+    if (userLocation) {
+      // Keep a rolling cache alive around the user's feet while they walk or navigate
+      scanUserRadius(userLocation);
     }
-  };
-
-  const { scanRegion } = useMapScanner(loadData);
+  }, [userLocation, scanUserRadius]);
 
   const handleRegionChangeComplete = async (region: Region) => {
-    setMapRegion((prev) => {
-      if (!prev) return region;
-      const hasChanged =
-        Math.abs(prev.latitude - region.latitude) > 0.0001 ||
-        Math.abs(prev.longitude - region.longitude) > 0.0001 ||
-        Math.abs(prev.latitudeDelta - region.latitudeDelta) > 0.0001 ||
-        Math.abs(prev.longitudeDelta - region.longitudeDelta) > 0.0001;
-
-      return hasChanged ? region : prev;
-    });
-
-    if (region.latitudeDelta < MAX_ZOOM_OUT) {
-      scanRegion(region);
-    }
+    setMapRegion(region);
+    mapRegionRef.current = region;
+    scanRegion(region);
 
     if (mapRef.current) {
       const camera = await mapRef.current.getCamera();
@@ -362,7 +357,7 @@ export default function MapScreen() {
 
       loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
     }
-  }, [userLocation, hasSetInitialLocation]);
+  }, [userLocation, hasSetInitialLocation, loadData]);
 
   const handleToggleBookmark = (restaurantId: string | number) => {
     if (!user?.id) return;
@@ -441,6 +436,28 @@ export default function MapScreen() {
         <View style={{ height: 16 }} />
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
+
+      {showScanButton && (
+        <View
+          style={[
+            styles.floatingButtonContainer,
+            { bottom: selectedRestaurant ? previewHeight + 90 : 100 },
+          ]}
+          pointerEvents="box-none"
+        >
+          <TouchableOpacity
+            style={styles.scanButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              if (mapRegionRef.current) {
+                scanRegion(mapRegionRef.current, true);
+              }
+            }}
+          >
+            <Text style={styles.scanButtonText}>Search this area</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {viewMode === 'map' && mapRegion && isFocused ? (
         <>
@@ -603,6 +620,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100, // Ensure search dropdown overlays the map
+  },
+  floatingButtonContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 102, // Layer above FAB items to ensure interaction focus
+  },
+  scanButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  scanButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111111',
   },
   searchRow: {
     flexDirection: 'row',

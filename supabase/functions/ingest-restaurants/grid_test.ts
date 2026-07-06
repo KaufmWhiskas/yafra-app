@@ -52,13 +52,13 @@ Deno.test(
 );
 
 Deno.test(
-  'getIntersectingTiles() throws a RangeError if the requested viewport covers more than 25 base tiles',
+  'getIntersectingTiles() throws a RangeError if the requested viewport covers more than 50 base tiles',
   () => {
     const massiveBBox: BoundingBox = {
       minLat: 49.4,
-      maxLat: 49.426, // Creates a 6-tile span
+      maxLat: 49.436, // Creates an 8-tile span
       minLon: 8.4,
-      maxLon: 8.426, // Creates a 6-tile span (6x6 = 36 tiles total)
+      maxLon: 8.436, // Creates an 8-tile span (8x8 = 64 tiles total)
     };
 
     try {

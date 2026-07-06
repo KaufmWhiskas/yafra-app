@@ -37,9 +37,10 @@ export function getIntersectingTiles(bbox: BoundingBox): string[] {
   const latSpan = endLat - startLat + 1;
   const lonSpan = endLon - startLon + 1;
 
-  if (latSpan * lonSpan > 25) {
+  // Raise from 25 to 50 to accommodate manual city-scale searches
+  if (latSpan * lonSpan > 50) {
     throw new RangeError(
-      `Area too large. Requested ${latSpan * lonSpan} tiles, but the limit is 25.`,
+      `Area too large. Requested ${latSpan * lonSpan} tiles, but the limit is 50.`,
     );
   }
 

@@ -59,6 +59,8 @@ jest.mock('@expo/vector-icons', () => ({
 jest.mock('../../../hooks/useMapScanner', () => ({
   useMapScanner: jest.fn(() => ({
     scanRegion: jest.fn(),
+    scanUserRadius: jest.fn(),
+    showScanButton: false,
   })),
 }));
 
@@ -336,6 +338,8 @@ describe('MapScreen Toggle Feature', () => {
     const mockScanRegion = jest.fn();
     (useMapScanner as jest.Mock).mockReturnValue({
       scanRegion: mockScanRegion,
+      scanUserRadius: jest.fn(),
+      showScanButton: false,
     });
 
     const { getByTestId } = render(<MapScreen />);
@@ -371,29 +375,6 @@ describe('MapScreen Toggle Feature', () => {
         expect.objectContaining({ latitude: 49.46 }),
       );
     });
-  });
-
-  it('does not call scanRegion when zoomed out past the maximum threshold', async () => {
-    const mockScanRegion = jest.fn();
-    (useMapScanner as jest.Mock).mockReturnValue({
-      scanRegion: mockScanRegion,
-    });
-
-    const { getByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
-
-    const mapElement = getByTestId('mock-map');
-    const zoomedOutRegion = {
-      latitude: 47.35,
-      longitude: 8.55,
-      latitudeDelta: 0.15,
-      longitudeDelta: 0.15,
-    };
-
-    fireEvent(mapElement, 'regionChangeComplete', zoomedOutRegion);
-    await flushMicrotasks();
-
-    expect(mockScanRegion).not.toHaveBeenCalled();
   });
 
   describe('Custom Map Controls', () => {

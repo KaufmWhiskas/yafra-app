@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { Region } from 'react-native-maps';
 import { triggerIngest } from '../services/restaurantService';
 import {
@@ -16,11 +16,7 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastUserLocation = useRef<Coordinate | null>(null);
   const [showScanButton, setShowScanButton] = useState(false);
 
-  /**
-   * Automatically triggers a tight grid scan focused around the user's active moving coordinate path.
-   * Typically wired to your live geolocation position stream context.
-   */
-  const scanUserRadius = async (userCoord: Coordinate) => {
+  const scanUserRadius = useCallback(async (userCoord: Coordinate) => {
     if (lastUserLocation.current) {
       const movement = calculateDistance(lastUserLocation.current, userCoord);
       if (movement < 0.2) return; // Only update if user walked more than 200 meters
@@ -40,60 +36,61 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
     } catch (e) {
       console.error('Failed to update user rolling grid cache:', e);
     }
-  };
+  }, []);
 
-  /**
-   * Monitors map viewport camera movements, managing automated tight-zoom lookups
-   * vs city-scale manual overrides.
-   */
-  const scanRegion = async (region: Region, forceManualSearch = false) => {
-    const bbox = getRegionBBox(region);
+  const scanRegion = useCallback(
+    async (region: Region, forceManualSearch = false) => {
+      const bbox = getRegionBBox(region);
 
-    // Calculate exactly how many base grid tiles span across the current screen view
-    const latSpan = Math.ceil(region.latitudeDelta / GRID_STEP);
-    const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
-    const tileCount = latSpan * lonSpan;
+      // Calculate exactly how many base grid tiles span across the current screen view
+      const latSpan = Math.ceil(region.latitudeDelta / GRID_STEP);
+      const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
+      const tileCount = latSpan * lonSpan;
 
-    // Auto-scan viewports is active only when zoomed in tightly (<= 3x3 tiles, i.e., 9 tiles)
-    const isTightZoom = tileCount <= 9;
+      // Auto-scan viewports is active only when zoomed in tightly (<= 3x3 tiles, i.e., 9 tiles)
+      const isTightZoom = tileCount <= 9;
+      const isCityScale = tileCount >= 1 && tileCount <= 49;
 
-    // Manual scan button is allowed when spanning between a 3x3 up to a 7x7 city envelope (49 tiles)
-    const isCityScale = tileCount > 9 && tileCount <= 49;
+      const currentCoord = {
+        latitude: region.latitude,
+        longitude: region.longitude,
+      };
 
-    // Defer the state update to the next execution tick to prevent interrupting the native mount cycle
-    setTimeout(() => {
-      setShowScanButton(isCityScale && !forceManualSearch);
-    }, 0);
+      const distance = lastScannedLocation.current
+        ? calculateDistance(lastScannedLocation.current, currentCoord)
+        : Infinity;
 
-    // Block background sync if we are outside tight zoom parameters, unless explicit manual button click
-    if (!isTightZoom && !forceManualSearch) {
-      await loadData(bbox); // Still fluidly render anything already present in local db
-      return;
-    }
+      const willAutoScanExecute = isTightZoom && distance >= 0.5;
 
-    const currentCoord = {
-      latitude: region.latitude,
-      longitude: region.longitude,
-    };
+      setTimeout(() => {
+        // The button stays visible on deep zoom-ins unless an auto-scan is currently running or it is forced.
+        setShowScanButton(
+          isCityScale && !willAutoScanExecute && !forceManualSearch,
+        );
+      }, 0);
 
-    const distance = lastScannedLocation.current
-      ? calculateDistance(lastScannedLocation.current, currentCoord)
-      : Infinity;
+      // Guard background ingestion block
+      if (!isTightZoom && !forceManualSearch) {
+        await loadData(bbox);
+        return;
+      }
 
-    if (distance < 0.5 && !forceManualSearch) {
-      await loadData(bbox);
-      return;
-    }
+      if (distance < 0.5 && !forceManualSearch) {
+        await loadData(bbox);
+        return;
+      }
 
-    lastScannedLocation.current = currentCoord;
-    try {
-      await loadData(bbox);
-      await triggerIngest(bbox);
-      await loadData(bbox);
-    } catch (error) {
-      console.error('Failed to update viewport registry:', error);
-    }
-  };
+      lastScannedLocation.current = currentCoord;
+      try {
+        await loadData(bbox);
+        await triggerIngest(bbox);
+        await loadData(bbox);
+      } catch (error) {
+        console.error('Failed to update viewport registry:', error);
+      }
+    },
+    [loadData],
+  );
 
   return { scanRegion, scanUserRadius, showScanButton };
 }
