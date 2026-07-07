@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Restaurant } from "../types";
+import { useEffect, useState } from 'react';
+import { Restaurant } from '../types';
 
 /**
  * A React hook that gradually yields items from a list over successive animation frames.
@@ -19,21 +19,24 @@ export function useStaggeredList(
   // Find which items in the current viewport haven't been mounted yet
   const unmountedItems = items.filter((i) => !mountedIds.has(i.id.toString()));
 
+  // Create a stable primitive serialization hash from unmounted target keys.
+  const unmountedIdsHash = unmountedItems.map((i) => i.id.toString()).join(',');
+
   useEffect(() => {
-    if (unmountedItems.length === 0) return;
+    // If the hash is empty, it means no items are left to mount.
+    if (unmountedIdsHash === '') return;
 
     const frameId = requestAnimationFrame(() => {
+      const idsToMount = unmountedIdsHash.split(',').slice(0, batchSize);
       setMountedIds((prev) => {
         const next = new Set(prev);
-        // Add only the next small batch of unmounted items
-        const batch = unmountedItems.slice(0, batchSize);
-        batch.forEach((i) => next.add(i.id.toString()));
+        idsToMount.forEach((id) => next.add(id));
         return next;
       });
     });
 
     return () => cancelAnimationFrame(frameId);
-  }, [unmountedItems, batchSize]);
+  }, [unmountedIdsHash, batchSize]);
 
   // Return the viewport items, but ONLY the ones we've authorized to mount
   return items.filter((i) => mountedIds.has(i.id.toString()));

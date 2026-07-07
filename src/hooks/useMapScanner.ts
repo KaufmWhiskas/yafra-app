@@ -13,6 +13,7 @@ const GRID_STEP = 0.005;
 
 export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastScannedLocation = useRef<Coordinate | null>(null);
+  const lastLoadedLocation = useRef<Coordinate | null>(null); // Tracks local Supabase DB queries
   const lastUserLocation = useRef<Coordinate | null>(null);
   const [showScanButton, setShowScanButton] = useState(false);
   const [isScanning, setIsScanning] = useState(false); // New lock state
@@ -52,7 +53,6 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
       const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
       const tileCount = latSpan * lonSpan;
 
-      // Auto-scan viewports is active only when zoomed in tightly (<= 3x3 tiles, i.e., 9 tiles)
       const isTightZoom = tileCount <= 9;
       const isCityScale = tileCount >= 1 && tileCount <= 49;
 
@@ -61,41 +61,54 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
         longitude: region.longitude,
       };
 
-      const distance = lastScannedLocation.current
+      // Distance since we last called Google Places
+      const apiDistance = lastScannedLocation.current
         ? calculateDistance(lastScannedLocation.current, currentCoord)
         : Infinity;
 
-      const willAutoScanExecute = isTightZoom && distance >= 0.5;
+      // Distance since we last queried our local Supabase DB
+      const dbDistance = lastLoadedLocation.current
+        ? calculateDistance(lastLoadedLocation.current, currentCoord)
+        : Infinity;
+
+      const willAutoScanExecute = isTightZoom && apiDistance >= 0.5;
 
       setTimeout(() => {
-        // The button stays visible on deep zoom-ins unless an auto-scan is currently running or it is forced.
         setShowScanButton(
           isCityScale && !willAutoScanExecute && !forceManualSearch,
         );
       }, 0);
 
-      // Guard background ingestion block
+      // Guard 1: Ignore micro-movements to prevent DB flooding (Threshold: ~100m)
+      if (dbDistance < 0.1 && !forceManualSearch) {
+        return;
+      }
+
+      // Guard passed: We are moving enough to need new local points. Update the DB anchor.
+      lastLoadedLocation.current = currentCoord;
+
       if (!isTightZoom && !forceManualSearch) {
         await loadData(bbox);
         return;
       }
 
-      if (distance < 0.5 && !forceManualSearch) {
+      // Guard 2: If we moved >100m but <500m, just query local DB, don't hit Google yet
+      if (apiDistance < 0.5 && !forceManualSearch) {
         await loadData(bbox);
         return;
       }
 
-      // Acquire lock
+      // Guard 3: We moved > 500m! Update the API anchor, query DB, and hit Google.
       setIsScanning(true);
       lastScannedLocation.current = currentCoord;
       try {
         await loadData(bbox);
         await triggerIngest(bbox);
-        await loadData(bbox);
+        await loadData(bbox); // Refresh DB cache with new Google data
       } catch (error) {
         console.error('Failed to update viewport registry:', error);
       } finally {
-        setIsScanning(false); // Release lock
+        setIsScanning(false);
       }
     },
     [loadData],

@@ -17,7 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import {
   fetchGroupReviewedRestaurantIds,
-  fetchActiveGroupsReviewsForRestaurant,
+  fetchActiveGroupsReviewsForRestaurantsBulk,
 } from '../../services/groupService';
 import {
   useNavigation,
@@ -117,27 +117,34 @@ export default function MapScreen() {
 
   useEffect(() => {
     const applyGroupScores = async () => {
-      if (isGroupFilterLoading) {
-        return;
-      }
+      if (isGroupFilterLoading) return;
 
-      if (activeGroupIds.length > 0) {
-        const scoredRestaurants = await Promise.all(
-          restaurants.map(async (restaurant) => {
-            const groupReviews = await fetchActiveGroupsReviewsForRestaurant(
-              restaurant.id.toString(),
-              activeGroupIds,
-            );
+      if (activeGroupIds.length > 0 && restaurants.length > 0) {
+        try {
+          // Extract all IDs for the bulk query
+          const restaurantIds = restaurants.map((r) => r.id.toString());
+
+          // ONE network request instead of hundreds
+          const bulkReviews = await fetchActiveGroupsReviewsForRestaurantsBulk(
+            restaurantIds,
+            activeGroupIds,
+          );
+
+          const scoredRestaurants = restaurants.map((restaurant) => {
+            const groupReviews = bulkReviews[restaurant.id.toString()] || [];
             const groupScore = calculateGroupMapScore(groupReviews);
 
             if (groupScore > 0) {
-              // Override app_rating for display purposes
               return { ...restaurant, app_rating: groupScore };
             }
             return restaurant;
-          }),
-        );
-        setRestaurantsWithGroupScores(scoredRestaurants);
+          });
+
+          setRestaurantsWithGroupScores(scoredRestaurants);
+        } catch (error) {
+          console.error('Failed bulk group score calculation:', error);
+          setRestaurantsWithGroupScores(restaurants);
+        }
       } else {
         setRestaurantsWithGroupScores(restaurants);
       }

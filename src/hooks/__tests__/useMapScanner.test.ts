@@ -113,40 +113,33 @@ describe('useMapScanner', () => {
     expect(loadDataMock).toHaveBeenCalledTimes(2);
   });
 
-  it('should not trigger ingest on minor panning when zoomed in', async () => {
+  it('should ignore micro-panning entirely to prevent DB flooding', async () => {
     const { result } = renderHook(() => useMapScanner(loadDataMock));
 
-    // First, perform a major scan to set the anchor location.
+    // 1. Initial scan anchors both DB and API coordinates
     await act(async () => {
       await result.current.scanRegion(MOCK_REGION_ZOOMED_IN);
     });
 
-    // Flush the timer from the initial scan
     await act(async () => {
       jest.runAllTimers();
     });
 
-    // Reset mocks to test the next action in isolation.
     jest.clearAllMocks();
 
-    // Now, simulate a small pan that is below the distance threshold.
-    const slightlyMovedRegion: Region = {
+    // 2. Micro pan: Move slightly (under 100 meters)
+    const microPanRegion: Region = {
       ...MOCK_REGION_ZOOMED_IN,
-      latitude: MOCK_REGION_ZOOMED_IN.latitude + 0.0001,
+      latitude: MOCK_REGION_ZOOMED_IN.latitude + 0.0005, // Very tiny shift
     };
 
     await act(async () => {
-      await result.current.scanRegion(slightlyMovedRegion);
+      await result.current.scanRegion(microPanRegion);
     });
 
-    // Flush the timer from the panning scan
-    await act(async () => {
-      jest.runAllTimers();
-    });
-
-    // No ingestion should occur for a minor pan.
+    // NEITHER the DB nor the external API should be hit!
     expect(triggerIngest).not.toHaveBeenCalled();
-    expect(loadDataMock).toHaveBeenCalledTimes(1);
+    expect(loadDataMock).not.toHaveBeenCalled(); // The micro-pan guard worked!
   });
 
   it('keeps the manual scan button visible when zoomed in tightly if no active pan occurs', async () => {

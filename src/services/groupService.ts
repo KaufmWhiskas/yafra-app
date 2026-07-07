@@ -513,3 +513,51 @@ export async function fetchActiveGroupsReviewsForRestaurant(
   if (reviewsError) throw reviewsError;
   return reviews as GroupFeedReview[];
 }
+
+/**
+ * Bulk fetches reviews for an array of restaurants to prevent N+1 DB flooding.
+ */
+export async function fetchActiveGroupsReviewsForRestaurantsBulk(
+  restaurantIds: string[],
+  activeGroupIds: string[],
+): Promise<Record<string, GroupFeedReview[]>> {
+  if (
+    !activeGroupIds ||
+    activeGroupIds.length === 0 ||
+    !restaurantIds ||
+    restaurantIds.length === 0
+  ) {
+    return {};
+  }
+
+  // 1. Get relevant user IDs from the active groups
+  const { data: members, error: membersError } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', activeGroupIds);
+
+  if (membersError) throw membersError;
+
+  const userIds = Array.from(new Set((members || []).map((m) => m.user_id)));
+  if (userIds.length === 0) return {};
+
+  // 2. Fetch all reviews for all restaurants in ONE network request
+  const { data: reviews, error: reviewsError } = await supabase
+    .from('reviews')
+    .select('*, profiles(username, avatar_url)')
+    .in('restaurant_id', restaurantIds)
+    .in('user_id', userIds)
+    .eq('is_private', false);
+
+  if (reviewsError) throw reviewsError;
+
+  // 3. Group them locally by restaurant ID
+  const result: Record<string, GroupFeedReview[]> = {};
+  for (const review of reviews as GroupFeedReview[]) {
+    const rId = String(review.restaurant_id);
+    if (!result[rId]) result[rId] = [];
+    result[rId].push(review);
+  }
+
+  return result;
+}
