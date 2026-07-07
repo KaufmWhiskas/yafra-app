@@ -8,26 +8,26 @@ import {
   getRegionBBox,
 } from '../utils/geo';
 
-// Match your backend grid step exactly (0.005 degrees = ~550m)
 const GRID_STEP = 0.005;
 
 export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
   const lastScannedLocation = useRef<Coordinate | null>(null);
-  const lastLoadedLocation = useRef<Coordinate | null>(null); // Tracks local Supabase DB queries
+  const lastLoadedLocation = useRef<Coordinate | null>(null);
   const lastUserLocation = useRef<Coordinate | null>(null);
+  const debounceTimer = useRef<number | null>(null); // Guard reference for transient camera movements
+
   const [showScanButton, setShowScanButton] = useState(false);
-  const [isScanning, setIsScanning] = useState(false); // New lock state
+  const [isScanning, setIsScanning] = useState(false);
 
   const scanUserRadius = useCallback(
     async (userCoord: Coordinate) => {
-      if (isScanning) return; // Prevent user automation if a manual viewport fetch is running
+      if (isScanning) return;
       if (lastUserLocation.current) {
         const movement = calculateDistance(lastUserLocation.current, userCoord);
-        if (movement < 0.2) return; // Only update if user walked more than 200 meters
+        if (movement < 0.2) return;
       }
       lastUserLocation.current = userCoord;
 
-      // Calculate a bounding box matching a 3x3 cluster around the user (~1.6km x 1.6km area)
       const userBbox: BoundingBox = {
         minLat: userCoord.latitude - GRID_STEP * 1.5,
         maxLat: userCoord.latitude + GRID_STEP * 1.5,
@@ -48,7 +48,6 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
     async (region: Region, forceManualSearch = false) => {
       const bbox = getRegionBBox(region);
 
-      // Calculate exactly how many base grid tiles span across the current screen view
       const latSpan = Math.ceil(region.latitudeDelta / GRID_STEP);
       const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
       const tileCount = latSpan * lonSpan;
@@ -61,12 +60,10 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
         longitude: region.longitude,
       };
 
-      // Distance since we last called Google Places
       const apiDistance = lastScannedLocation.current
         ? calculateDistance(lastScannedLocation.current, currentCoord)
         : Infinity;
 
-      // Distance since we last queried our local Supabase DB
       const dbDistance = lastLoadedLocation.current
         ? calculateDistance(lastLoadedLocation.current, currentCoord)
         : Infinity;
@@ -84,31 +81,47 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
         return;
       }
 
-      // Guard passed: We are moving enough to need new local points. Update the DB anchor.
-      lastLoadedLocation.current = currentCoord;
-
-      if (!isTightZoom && !forceManualSearch) {
-        await loadData(bbox);
-        return;
+      // Clear any pending debounced animation handlers to absorb ongoing drags smoothly
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
       }
 
-      // Guard 2: If we moved >100m but <500m, just query local DB, don't hit Google yet
-      if (apiDistance < 0.5 && !forceManualSearch) {
-        await loadData(bbox);
-        return;
-      }
+      // Wrapper handler function to execute database load queries safely
+      const executeScanLifecycle = async () => {
+        lastLoadedLocation.current = currentCoord;
 
-      // Guard 3: We moved > 500m! Update the API anchor, query DB, and hit Google.
-      setIsScanning(true);
-      lastScannedLocation.current = currentCoord;
-      try {
-        await loadData(bbox);
-        await triggerIngest(bbox);
-        await loadData(bbox); // Refresh DB cache with new Google data
-      } catch (error) {
-        console.error('Failed to update viewport registry:', error);
-      } finally {
-        setIsScanning(false);
+        if (!isTightZoom && !forceManualSearch) {
+          await loadData(bbox);
+          return;
+        }
+
+        if (apiDistance < 0.5 && !forceManualSearch) {
+          await loadData(bbox);
+          return;
+        }
+
+        setIsScanning(true);
+        lastScannedLocation.current = currentCoord;
+        try {
+          await loadData(bbox);
+          await triggerIngest(bbox);
+          await loadData(bbox);
+        } catch (error) {
+          console.error('Failed to update viewport registry:', error);
+        } finally {
+          setIsScanning(false);
+        }
+      };
+
+      if (forceManualSearch) {
+        // Run immediately if button is pressed
+        await executeScanLifecycle();
+      } else {
+        // Debounce automatic panning checks by 400ms to filter momentum flings safely
+        debounceTimer.current = setTimeout(() => {
+          executeScanLifecycle();
+        }, 400) as unknown as number;
       }
     },
     [loadData],

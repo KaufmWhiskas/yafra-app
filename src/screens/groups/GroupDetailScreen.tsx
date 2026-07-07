@@ -124,13 +124,17 @@ export default function GroupDetailScreen() {
 
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
+  const [activeQrCode, setActiveQrCode] = useState<string | null>(null);
 
-  const handleShare = async () => {
-    if (!group?.permanent_invite_code) return;
+  const handleShareCode = async (code: string, isTemporary = false) => {
+    if (!code) return;
     try {
-      await Share.share({
-        message: `Join my food review group "${group.name}" on YAFRA! Enter invitation code: ${group.permanent_invite_code}`,
-      });
+      const groupName = group?.name || 'our food circle';
+      const message = isTemporary
+        ? `Join my group "${groupName}" on YAFRA using this temporary single-use invite code: ${code} (Expires soon!)`
+        : `Join my food review group "${groupName}" on YAFRA! Enter invitation code: ${code}`;
+
+      await Share.share({ message });
     } catch (error) {
       console.error('Failed to trigger native share sheet:', error);
     }
@@ -568,7 +572,9 @@ export default function GroupDetailScreen() {
               <View style={styles.inviteActionRow}>
                 <TouchableOpacity
                   style={styles.inviteButton}
-                  onPress={handleShare}
+                  onPress={() =>
+                    handleShareCode(group.permanent_invite_code, false)
+                  }
                 >
                   <MaterialCommunityIcons
                     name="export-variant"
@@ -605,7 +611,41 @@ export default function GroupDetailScreen() {
                 </Text>
               </TouchableOpacity>
               {tempCode && (
-                <Text style={styles.tempCodeText}>Temp Code: {tempCode}</Text>
+                <View style={styles.tempCodeWrapper}>
+                  <Text style={styles.tempCodeLabel}>
+                    Temporary Invite Ready:
+                  </Text>
+                  <Text style={styles.tempCodeText}>{tempCode}</Text>
+
+                  <View style={styles.tempActionRow}>
+                    <TouchableOpacity
+                      style={styles.tempActionButton}
+                      onPress={() => handleShareCode(tempCode, true)}
+                    >
+                      <MaterialCommunityIcons
+                        name="export-variant"
+                        size={16}
+                        color="#fff"
+                      />
+                      <Text style={styles.tempActionText}>Share</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.tempActionButton}
+                      onPress={() => {
+                        setActiveQrCode(tempCode);
+                        setQrModalVisible(true);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="qrcode"
+                        size={16}
+                        color="#fff"
+                      />
+                      <Text style={styles.tempActionText}>QR Code</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
 
               {activeInvites.length > 0 ? (
@@ -678,27 +718,36 @@ export default function GroupDetailScreen() {
         visible={isQrModalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setQrModalVisible(false)}
+        onRequestClose={() => {
+          setQrModalVisible(false);
+          setActiveQrCode(null);
+        }}
       >
         <View style={styles.qrOverlay}>
           <View style={styles.qrContainer}>
             <Text style={styles.qrTitle}>Scan to Join</Text>
-            {group?.permanent_invite_code ? (
+
+            {activeQrCode || group?.permanent_invite_code ? (
               <View style={styles.qrWrapper}>
                 <QRCode
-                  value={group.permanent_invite_code}
+                  value={activeQrCode || group.permanent_invite_code}
                   size={200}
                   backgroundColor="#fff"
                   color="#000"
                 />
               </View>
             ) : null}
+
             <Text style={styles.qrCodeText}>
-              {group?.permanent_invite_code}
+              {activeQrCode || group?.permanent_invite_code}
             </Text>
+
             <TouchableOpacity
               style={styles.qrCloseButton}
-              onPress={() => setQrModalVisible(false)}
+              onPress={() => {
+                setQrModalVisible(false);
+                setActiveQrCode(null);
+              }}
             >
               <Text style={styles.qrCloseText}>Close</Text>
             </TouchableOpacity>
@@ -805,13 +854,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  tempCodeText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: SIZES.base,
-    fontWeight: 'bold',
-  },
   invitesContainer: {
     marginTop: SIZES.padding,
     flexShrink: 1,
@@ -916,5 +958,47 @@ const styles = StyleSheet.create({
   qrCloseText: {
     fontWeight: 'bold',
     color: COLORS.text,
+  },
+  tempCodeWrapper: {
+    backgroundColor: COLORS.surface,
+    padding: SIZES.padding,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
+    marginTop: SIZES.base,
+  },
+  tempCodeLabel: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  tempCodeText: {
+    textAlign: 'center',
+    fontSize: 15,
+    color: COLORS.textLight,
+    marginBottom: SIZES.base,
+  },
+  tempActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  tempActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    gap: 6,
+  },
+  tempActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

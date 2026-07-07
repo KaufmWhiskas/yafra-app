@@ -1,15 +1,29 @@
 import React from 'react';
-import { render, fireEvent, act, within } from '@testing-library/react-native';
+import {
+  render,
+  fireEvent,
+  act,
+  within,
+  waitFor,
+} from '@testing-library/react-native';
 import GroupsScreen from '../GroupsScreen';
-import { fetchMyGroups } from '../../../services/groupService'; // Corrected path
-import { useActiveGroupFilters } from '../../../hooks/useActiveGroupFilters'; // Corrected path
-import { useAuth } from '../../../context/AuthContext'; // Corrected path
+import { fetchMyGroups } from '../../../services/groupService';
+import { useActiveGroupFilters } from '../../../hooks/useActiveGroupFilters';
+import { useAuth } from '../../../context/AuthContext';
+import { useCameraPermissions } from 'expo-camera';
 
 jest.mock('../../../services/groupService', () => ({
   fetchMyGroups: jest.fn(),
+  createGroup: jest.fn(),
+  joinGroupWithCode: jest.fn(),
 }));
 
 const mockNavigate = jest.fn();
+
+jest.mock('expo-camera', () => ({
+  CameraView: 'CameraView',
+  useCameraPermissions: jest.fn(() => [{ granted: false }, jest.fn()]),
+}));
 
 jest.mock('@react-navigation/native', () => {
   const actualNav = jest.requireActual('@react-navigation/native');
@@ -118,5 +132,35 @@ describe('GroupsScreen', () => {
 
     expect(mockToggleGroupFilter).toHaveBeenCalledWith('2');
     expect(mockToggleGroupFilter).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GroupsScreen QR Scanning Integration', () => {
+  beforeEach(() => {
+    (fetchMyGroups as jest.Mock).mockResolvedValue(mockGroups);
+  });
+
+  it('requests camera permission when the QR scan action is initiated', async () => {
+    const mockRequestPermission = jest
+      .fn()
+      .mockResolvedValue({ granted: true });
+    (useCameraPermissions as jest.Mock).mockReturnValue([
+      { granted: false },
+      mockRequestPermission,
+    ]);
+
+    const { getByTestId, findByText } = render(<GroupsScreen />);
+
+    // Open join code modal
+    const joinButton = await findByText('Join Code');
+    fireEvent.press(joinButton);
+
+    // Tap the scan button to activate camera permissions path
+    const scanTrigger = getByTestId('launch-camera-scanner');
+    fireEvent.press(scanTrigger);
+
+    await waitFor(() => {
+      expect(mockRequestPermission).toHaveBeenCalled();
+    });
   });
 });

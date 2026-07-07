@@ -166,7 +166,8 @@ describe('GroupDetailScreen', () => {
     fireEvent.press(generateBtn);
 
     expect(createOneTimeInvite).toHaveBeenCalledWith('group_1', 'user_1');
-    expect(await findByText('Temp Code: TEMP45')).toBeTruthy();
+    expect(await findByText('Temporary Invite Ready:')).toBeTruthy();
+    expect(await findByText('TEMP45')).toBeTruthy();
   });
 
   it('Non-owners do not see invite generation controls', async () => {
