@@ -1,11 +1,12 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
 import { submitReview } from '../../../services/reviewService';
 
 jest.mock('../../../services/reviewService', () => ({
   submitReview: jest.fn(),
+  updateReview: jest.fn(),
   fetchUserTags: jest.fn().mockResolvedValue([]),
 }));
 
@@ -35,9 +36,15 @@ jest.mock('@react-native-community/datetimepicker', () => {
     ReactActual.createElement(View, { testID: 'mock-date-picker', ...props });
 });
 
-jest.mock('@expo/vector-icons', () => ({
-  MaterialCommunityIcons: 'MaterialCommunityIcons',
-}));
+jest.mock('@expo/vector-icons', () => {
+  const React = jest.requireActual('react');
+  const { View } = jest.requireActual('react-native');
+  return {
+    MaterialCommunityIcons: (
+      props: React.ComponentProps<typeof View>,
+    ): React.ReactElement => <View {...props} />,
+  };
+});
 
 jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
@@ -47,6 +54,25 @@ jest.mock('../../../context/AuthContext', () => ({
 }));
 
 jest.spyOn(Alert, 'alert');
+
+jest.mock('react-native', () => {
+  const ActualReactNative = jest.requireActual('react-native');
+  const ReactActual = jest.requireActual('react'); // Safely retrieve React within scope
+
+  // Custom mock wrapper for KeyboardAvoidingView to preserve child node rendering pass-throughs
+  // Preserve child rendering passthrough without triggering variable hoisting issues
+  const MockKAV = ({
+    children,
+    ...props
+  }: React.ComponentProps<typeof ActualReactNative.KeyboardAvoidingView>) => {
+    return ReactActual.createElement(ActualReactNative.View, props, children);
+  };
+
+  return Object.defineProperty(ActualReactNative, 'KeyboardAvoidingView', {
+    get: () => MockKAV,
+    configurable: true,
+  });
+});
 
 describe('ReviewScreen', () => {
   beforeEach(() => {
@@ -135,5 +161,18 @@ describe('ReviewScreen', () => {
       ),
     ).toBeTruthy();
     expect(mockGoBack).not.toHaveBeenCalled();
+  });
+
+  it('configures KeyboardAvoidingView behavior and keyboardVerticalOffset according to native runtime guidelines', () => {
+    const { getByTestId } = render(<ReviewScreen />);
+    const keyboardAvoidingView = getByTestId('review-screen-kav');
+
+    // Assert that keyboard offsets are specified to account for platform layout constraints
+    expect(keyboardAvoidingView.props.keyboardVerticalOffset).toBe(
+      Platform.OS === 'ios' ? 88 : 80,
+    );
+    expect(keyboardAvoidingView.props.behavior).toBe(
+      Platform.OS === 'ios' ? 'padding' : 'height',
+    );
   });
 });

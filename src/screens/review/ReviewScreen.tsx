@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useReducer, useRef } from 'react';
 import {
   TextInput,
   TouchableOpacity,
@@ -29,6 +29,49 @@ import { useAuth } from '../../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+interface ReviewState {
+  rating: number;
+  priceScore: number;
+  experienceType: ExperienceType;
+  description: string;
+  visitDate: Date | null;
+  isPrivate: boolean;
+  selectedTags: string[];
+  isAdvanced: boolean;
+}
+
+type ReviewAction =
+  | {
+      type: 'SET_FIELD';
+      field: keyof ReviewState;
+      value: ReviewState[keyof ReviewState];
+    }
+  | { type: 'TOGGLE_TAG'; tag: string }
+  | { type: 'ADD_CUSTOM_TAG'; tag: string }
+  | { type: 'TOGGLE_ADVANCED' };
+
+function reviewReducer(state: ReviewState, action: ReviewAction): ReviewState {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, [action.field]: action.value };
+    case 'TOGGLE_TAG':
+      return {
+        ...state,
+        selectedTags: state.selectedTags.includes(action.tag)
+          ? state.selectedTags.filter((t) => t !== action.tag)
+          : [...state.selectedTags, action.tag],
+      };
+    case 'ADD_CUSTOM_TAG':
+      return {
+        ...state,
+        selectedTags: [...new Set([...state.selectedTags, action.tag])],
+      };
+    case 'TOGGLE_ADVANCED':
+      return { ...state, isAdvanced: !state.isAdvanced };
+    default:
+      return state;
+  }
+}
 /**
  * Screen allowing users to submit a rating and text review for a restaurant.
  */
@@ -53,38 +96,51 @@ export default function ReviewScreen() {
       initialTags.length > 0)
   );
 
-  const [isAdvanced, setIsAdvanced] = useState(initialAdvanced);
-  const [rating, setRating] = useState<number>(
-    (existingReviewData?.rating as number | undefined) || 3.0,
-  );
-  const [priceScore, setPriceScore] = useState<number>(
-    (existingReviewData?.price_value_rating as number | undefined) || 3.0,
-  );
-  const [experienceType, setExperienceType] = useState<ExperienceType>(
-    (metadata?.experience_type as ExperienceType | undefined) || 'eat-in',
-  );
-  const [description, setDescription] = useState<string>(
-    (existingReviewData?.review_text as string | undefined) || '',
-  );
-  const [visitDate, setVisitDate] = useState<Date | null>(() => {
-    if (isEditing) {
-      return existingReviewData?.visit_date
-        ? new Date(existingReviewData.visit_date as string)
-        : null; // Keep it clear if it was clear before
-    }
-    return new Date(); // Only default to today for brand new reviews
-  });
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isPrivate, setIsPrivate] = useState<boolean>(
-    (existingReviewData?.is_private as boolean | undefined) || false
-  );
+  const initialState: ReviewState = {
+    rating: (existingReviewData?.rating as number | undefined) || 3.0,
+    priceScore:
+      (existingReviewData?.price_value_rating as number | undefined) || 3.0,
+    experienceType:
+      (metadata?.experience_type as ExperienceType | undefined) || 'eat-in',
+    description: (existingReviewData?.review_text as string | undefined) || '',
+    isPrivate: (existingReviewData?.is_private as boolean | undefined) || false,
+    selectedTags: initialTags,
+    isAdvanced: initialAdvanced,
+    visitDate: (() => {
+      if (isEditing) {
+        return existingReviewData?.visit_date
+          ? new Date(existingReviewData.visit_date as string)
+          : null;
+      }
+      return new Date();
+    })(),
+  };
 
-  const [selectedTags, setSelectedTags] = useState<string[]>(initialTags);
+  const [state, dispatch] = useReducer(reviewReducer, initialState);
+  const {
+    rating,
+    priceScore,
+    experienceType,
+    description,
+    visitDate,
+    isPrivate,
+    selectedTags,
+    isAdvanced,
+  } = state;
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   const displayedTags = showAllTags ? availableTags : availableTags.slice(0, 6);
+
+  useEffect(() => {
+    if (isEditing) {
+      setShowAllTags(true);
+    }
+  }, [isEditing]);
 
   useEffect(() => {
     if (user?.id) {
@@ -158,24 +214,28 @@ export default function ReviewScreen() {
   };
 
   const handleToggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
+    dispatch({ type: 'TOGGLE_TAG', tag });
   };
 
   const handleAddCustomTag = (tag: string) => {
-    if (!availableTags.includes(tag))
+    if (!availableTags.includes(tag)) {
       setAvailableTags((prev) => [tag, ...prev]);
-    if (!selectedTags.includes(tag)) setSelectedTags((prev) => [...prev, tag]);
-    setShowAllTags(true);
+    }
+    if (!state.selectedTags.includes(tag)) {
+      dispatch({ type: 'ADD_CUSTOM_TAG', tag });
+    }
+    if (!showAllTags) setShowAllTags(true);
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 80} // Reverted to original offset
+      testID="review-screen-kav"
     >
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -183,7 +243,9 @@ export default function ReviewScreen() {
 
         <ScoreSelector
           value={rating}
-          onChange={setRating}
+          onChange={(value) =>
+            dispatch({ type: 'SET_FIELD', field: 'rating', value })
+          }
           label="Overall Score"
         />
 
@@ -208,7 +270,7 @@ export default function ReviewScreen() {
           <TouchableOpacity
             style={styles.unknownButton}
             onPress={() => {
-              setVisitDate(null);
+              dispatch({ type: 'SET_FIELD', field: 'visitDate', value: null });
               setShowDatePicker(false);
             }}
           >
@@ -232,18 +294,27 @@ export default function ReviewScreen() {
                 setShowDatePicker(false);
               }
               if (event.type === 'set' && selectedDate) {
-                setVisitDate(selectedDate);
+                dispatch({
+                  type: 'SET_FIELD',
+                  field: 'visitDate',
+                  value: selectedDate,
+                });
               }
             }}
           />
         )}
 
         <Text style={styles.sectionTitle}>Experience Type</Text>
-        <ExperienceToggle value={experienceType} onChange={setExperienceType} />
+        <ExperienceToggle
+          value={experienceType}
+          onChange={(value) =>
+            dispatch({ type: 'SET_FIELD', field: 'experienceType', value })
+          }
+        />
 
         <TouchableOpacity
           style={styles.advancedToggle}
-          onPress={() => setIsAdvanced(!isAdvanced)}
+          onPress={() => dispatch({ type: 'TOGGLE_ADVANCED' })}
         >
           <Text style={styles.advancedToggleText}>
             {isAdvanced
@@ -263,7 +334,9 @@ export default function ReviewScreen() {
 
             <ScoreSelector
               value={priceScore}
-              onChange={setPriceScore}
+              onChange={(value) =>
+                dispatch({ type: 'SET_FIELD', field: 'priceScore', value })
+              }
               label="Price / Value"
             />
 
@@ -283,20 +356,23 @@ export default function ReviewScreen() {
               onAddCustom={handleAddCustomTag}
             />
 
-      <View style={styles.privacyRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.sectionTitle}>Group Only (Private)</Text>
-          <Text style={styles.privacyDescription}>
-            Hide this review from the public. Only people in your groups will see it.
-          </Text>
-        </View>
-        <Switch
-          value={isPrivate}
-          onValueChange={setIsPrivate}
-          trackColor={{ false: '#ccc', true: COLORS.primary }}
-          thumbColor={'#fff'}
-        />
-      </View>
+            <View style={styles.privacyRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sectionTitle}>Group Only (Private)</Text>
+                <Text style={styles.privacyDescription}>
+                  Hide this review from the public. Only people in your groups
+                  will see it.
+                </Text>
+              </View>
+              <Switch
+                value={isPrivate}
+                onValueChange={(value) =>
+                  dispatch({ type: 'SET_FIELD', field: 'isPrivate', value })
+                }
+                trackColor={{ false: '#ccc', true: COLORS.primary }}
+                thumbColor={'#fff'}
+              />
+            </View>
 
             <Text style={styles.sectionTitle}>Detailed Notes</Text>
             <TextInput
@@ -304,9 +380,17 @@ export default function ReviewScreen() {
               placeholder="What did you love or hate?"
               placeholderTextColor={COLORS.textLight}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(value) =>
+                dispatch({ type: 'SET_FIELD', field: 'description', value })
+              }
               multiline
               numberOfLines={4}
+              onFocus={() => {
+                // A slight delay ensures the keyboard is fully visible before scrolling
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
             />
           </View>
         )}
