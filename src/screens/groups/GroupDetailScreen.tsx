@@ -668,15 +668,43 @@ export default function GroupDetailScreen() {
                   {showInvites &&
                     activeInvites.map((inv) => (
                       <View key={inv.id} style={styles.inviteCard}>
-                        <Text style={styles.inviteCode}>{inv.code}</Text>
-                        <View>
-                          <Text style={styles.inviteMeta}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.inviteCode}>{inv.code}</Text>
+                          <Text style={styles.inviteMetaLeft}>
                             Created by: {inv.profiles?.username || 'Unknown'}
                           </Text>
-                          <Text style={styles.inviteMeta}>
+                          <Text style={styles.inviteMetaLeft}>
                             Expires:{' '}
                             {new Date(inv.expires_at).toLocaleDateString()}
                           </Text>
+                        </View>
+
+                        {/* Quick Row sharing links for historic active invites */}
+                        <View style={styles.inviteRowActions}>
+                          <TouchableOpacity
+                            style={styles.inviteRowActionButton}
+                            onPress={() => handleShareCode(inv.code, true)}
+                          >
+                            <MaterialCommunityIcons
+                              name="export-variant"
+                              size={16}
+                              color={COLORS.primary}
+                            />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.inviteRowActionButton}
+                            onPress={() => {
+                              setActiveQrCode(inv.code);
+                              setQrModalVisible(true);
+                            }}
+                          >
+                            <MaterialCommunityIcons
+                              name="qrcode"
+                              size={16}
+                              color={COLORS.primary}
+                            />
+                          </TouchableOpacity>
                         </View>
                       </View>
                     ))}
@@ -873,7 +901,7 @@ const styles = StyleSheet.create({
   inviteCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'center', // Centered to align the text block evenly with right actions
     backgroundColor: COLORS.surface,
     padding: SIZES.padding,
     borderRadius: SIZES.base,
@@ -882,7 +910,24 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   inviteCode: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary },
-  inviteMeta: { fontSize: 14, color: COLORS.textLight, textAlign: 'right' },
+  inviteMetaLeft: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  inviteRowActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 12,
+  },
+  inviteRowActionButton: {
+    backgroundColor: '#f1f5f9',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   deleteButton: {
     backgroundColor: COLORS.danger,
     padding: SIZES.padding,
