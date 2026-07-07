@@ -80,6 +80,7 @@ export interface GroupFeedReview extends Review {
 export interface Prediction {
   description: string;
   placeId: string;
+  types?: string[];
   distance?: string; // e.g., "1.2 km"
   rating?: number; // Autocomplete API doesn't provide this, but useful for future expansion
 }

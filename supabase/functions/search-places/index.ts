@@ -22,12 +22,18 @@ interface GooglePlacesPayload {
       radius: number;
     };
   };
+  origin?: {
+    // FIX: Add origin to payload type
+    latitude: number;
+    longitude: number;
+  };
 }
 
 interface GoogleSuggestion {
   placePrediction?: {
     placeId: string;
     distanceMeters?: number;
+    types?: string[]; // <-- ADD THIS
     text: {
       text: string;
     };
@@ -78,14 +84,21 @@ export async function serve(
     const payload: GooglePlacesPayload = { input, sessionToken };
 
     if (location) {
+      // 1. Bias search relevance tightly around the viewport anchor bubble
       payload.locationBias = {
         circle: {
           center: {
             latitude: location.latitude,
             longitude: location.longitude,
           },
-          radius: 5000, // 5km radius
+          radius: 10000, // Expanded slightly to 10km for robust city-wide matching
         },
+      };
+
+      // 2. Pass origin parameters so Google returns true geodesic distanceMeters
+      payload.origin = {
+        latitude: location.latitude,
+        longitude: location.longitude,
       };
     }
 
@@ -111,10 +124,10 @@ export async function serve(
       .map((s: GoogleSuggestion) => ({
         description: s.placePrediction!.text.text,
         placeId: s.placePrediction!.placeId,
+        types: s.placePrediction!.types || [], // <-- ADD THIS
         distanceMeters: s.placePrediction!.distanceMeters ?? Infinity,
         distance:
-          s.placePrediction!.distanceMeters !== undefined &&
-          s.placePrediction!.distanceMeters !== null
+          s.placePrediction!.distanceMeters != null
             ? `${(s.placePrediction!.distanceMeters / 1000).toFixed(1)} km`
             : null,
       }));

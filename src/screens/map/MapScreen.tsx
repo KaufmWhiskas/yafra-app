@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { fetchRestaurants } from '../../services/restaurantService';
+import {
+  fetchRestaurants,
+  fetchRestaurantDetails,
+} from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant, Prediction } from '../../types';
 import ViewToggle from '../../components/ui/ViewToggle';
@@ -57,6 +60,7 @@ export default function MapScreen() {
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
   const [previewHeight, setPreviewHeight] = useState(0);
+  const [isCameraAnimating, setIsCameraTransit] = useState(false);
   const insets = useSafeAreaInsets();
 
   const mapRef = useRef<MapView>(null);
@@ -306,16 +310,104 @@ export default function MapScreen() {
     [mapRegion],
   );
 
-  const handleSearchSelect = (place: Prediction) => {
-    try {
-      const restaurantName = place.description.split(',')[0];
+  const handleSearchSelect = async (place: Prediction) => {
+    if (isScanning) return; // Prevent double-triggering if an ingest block is active
 
-      navigation.navigate('RestaurantDetail', {
-        restaurantId: place.placeId,
-        restaurantName: restaurantName,
-      });
+    try {
+      // 1. Fetch exact geographic coordinates from cache/edge functions
+      const details = await fetchRestaurantDetails(place.placeId);
+
+      if (!details || details.latitude == null || details.longitude == null) {
+        console.warn(
+          '[MapScreen] Could not resolve coordinates for searched place',
+        );
+        return;
+      }
+
+      // 2. Identify the target viewport zoom framework based on Google's type classifications
+      const isEstablishment = place.types?.some((t) =>
+        [
+          'restaurant',
+          'cafe',
+          'bar',
+          'bakery',
+          'meal_takeaway',
+          'food',
+          'establishment',
+          'point_of_interest',
+        ].includes(t),
+      );
+
+      const isCityOrRegion = place.types?.some((t) =>
+        [
+          'locality',
+          'sublocality',
+          'administrative_area_level_1',
+          'administrative_area_level_2',
+          'country',
+        ].includes(t),
+      );
+
+      // Determine responsive camera frame spans based on context
+      let latDelta = 0.01; // Safe mid-range zoom level for specific street addresses
+      let lonDelta = 0.01;
+
+      if (isEstablishment) {
+        latDelta = 0.003; // Tight high-resolution focus directly over the venue
+        lonDelta = 0.003;
+      } else if (isCityOrRegion) {
+        latDelta = 0.04; // Broad context view for matching entire city bounds
+        lonDelta = 0.02;
+      }
+
+      const targetRegion: Region = {
+        latitude: details.latitude,
+        longitude: details.longitude,
+        latitudeDelta: latDelta,
+        longitudeDelta: lonDelta,
+      };
+
+      // 3. Acquire UI Lock & pan camera smoothly to destination coordinates
+      setIsCameraTransit(true);
+      setMapRegion(targetRegion);
+      mapRegionRef.current = targetRegion;
+      mapRef.current?.animateToRegion(targetRegion, 800);
+
+      // 4. Construct presentation state parameters
+      if (isEstablishment) {
+        const restaurantName = place.description.split(',')[0];
+
+        const parsedRestaurant: Restaurant = {
+          id: details.id || place.placeId,
+          name: details.name || restaurantName,
+          cuisine: details.cuisine || 'restaurant',
+          latitude: details.latitude,
+          longitude: details.longitude,
+          google_place_id: place.placeId,
+          rating: details.rating,
+          app_rating: details.app_rating,
+          app_review_count: details.app_review_count,
+          user_ratings_total: details.user_ratings_total,
+          opening_hours: details.opening_hours,
+        };
+
+        // Open the bottom preview card layout floating on top of the map view!
+        setSelectedRestaurant(parsedRestaurant);
+      } else {
+        // Clear any previous restaurant selection cards if a city or wide region is chosen
+        setSelectedRestaurant(null);
+      }
+
+      // 5. Release UI lock cleanly after the 800ms animation has concluded
+      setTimeout(() => {
+        setIsCameraTransit(false);
+      }, 850);
     } catch (error) {
-      console.error('[MapScreen] Search navigation failure:', error);
+      setIsCameraTransit(false);
+      console.error(
+        '[MapScreen] Search integration navigation failure:',
+        error,
+      );
     }
   };
 
@@ -634,6 +726,17 @@ export default function MapScreen() {
           }
         }}
       />
+
+      {/* Absolute fullscreen touch barrier active only during camera movements */}
+      {isCameraAnimating && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: 'transparent', zIndex: 99999 },
+          ]}
+          pointerEvents="auto"
+        />
+      )}
     </View>
   );
 }

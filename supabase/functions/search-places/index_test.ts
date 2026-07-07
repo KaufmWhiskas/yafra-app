@@ -63,7 +63,10 @@ Deno.test('Edge Function: search-places', async (t) => {
       assertExists(body.locationBias);
       assertEquals(body.locationBias.circle.center.latitude, 47.3769);
       assertEquals(body.locationBias.circle.center.longitude, 8.5417);
-      assertEquals(body.locationBias.circle.radius, 5000);
+      assertEquals(body.locationBias.circle.radius, 10000);
+      assertExists(body.origin);
+      assertEquals(body.origin.latitude, 47.3769);
+      assertEquals(body.origin.longitude, 8.5417);
 
       teardownMocks();
     },
