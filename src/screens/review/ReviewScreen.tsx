@@ -218,6 +218,10 @@ export default function ReviewScreen() {
   };
 
   const handleAddCustomTag = (tag: string) => {
+    if (tag.length > 25) {
+      Alert.alert('Tag Too Long', 'Custom tags cannot be more than 25 characters.');
+      return;
+    }
     if (!availableTags.includes(tag)) {
       setAvailableTags((prev) => [tag, ...prev]);
     }
@@ -354,6 +358,7 @@ export default function ReviewScreen() {
               selected={selectedTags}
               onToggle={handleToggleTag}
               onAddCustom={handleAddCustomTag}
+              testID="tag-selector"
             />
 
             <View style={styles.privacyRow}>
@@ -385,6 +390,7 @@ export default function ReviewScreen() {
               }
               multiline
               numberOfLines={4}
+              maxLength={500} // FIX: Restrict string payloads to a safe 500 characters
               onFocus={() => {
                 // A slight delay ensures the keyboard is fully visible before scrolling
                 setTimeout(() => {

@@ -43,6 +43,11 @@ import CollectionModal from '../../components/ui/CollectionModal';
 import { useActiveGroupFilters } from '../../hooks/useActiveGroupFilters';
 import { calculateGroupMapScore } from '../../utils/groupMath';
 
+type RestaurantWithDistance = Restaurant & {
+  distance: number | undefined;
+  sortingDistance: number;
+};
+
 export default function MapScreen() {
   const isFocused = useIsFocused();
 
@@ -165,12 +170,44 @@ export default function MapScreen() {
     }
   }, []);
 
+  // Memoize the list of restaurants with their distances calculated.
+  // This only re-runs when the base restaurant list or the user/map location changes.
+  const restaurantsWithDistance: RestaurantWithDistance[] = useMemo(() => {
+    const center = mapRegion
+      ? { latitude: mapRegion.latitude, longitude: mapRegion.longitude }
+      : userLocation;
+
+    if (!center) {
+      return restaurantsWithGroupScores.map((r) => ({
+        ...r,
+        distance: undefined,
+        sortingDistance: Infinity,
+      }));
+    }
+
+    return restaurantsWithGroupScores.map((r) => {
+      const sortingDistance = calculateDistance(center, {
+        latitude: r.latitude,
+        longitude: r.longitude,
+      });
+      const displayDistance = userLocation
+        ? calculateDistance(userLocation, {
+            latitude: r.latitude,
+            longitude: r.longitude,
+          })
+        : sortingDistance;
+      return { ...r, distance: displayDistance, sortingDistance };
+    });
+  }, [restaurantsWithGroupScores, mapRegion, userLocation]);
+
+  // Memoize the final filtered and sorted list.
+  // This re-runs when filters change, but it doesn't need to recalculate distances.
   const filteredRestaurants = useMemo(() => {
-    let list = filterRestaurants(restaurantsWithGroupScores, {
+    let list = filterRestaurants(restaurantsWithDistance, {
       cuisine: filters.cuisine,
       minRating: filters.minRating,
       inAppReviewsOnly: filters.inAppReviewsOnly,
-    });
+    }) as RestaurantWithDistance[];
 
     if (filters.onlyBookmarks) {
       list = list.filter((r) => bookmarkedIds.has(r.id.toString()));
@@ -180,44 +217,9 @@ export default function MapScreen() {
       list = list.filter((r) => groupRestaurantIds.has(r.id.toString()));
     }
 
-    if (mapRegion) {
-      const center = {
-        latitude: mapRegion.latitude,
-        longitude: mapRegion.longitude,
-      };
-
-      list = list
-        .map((r) => {
-          const sortingDistance = calculateDistance(center, {
-            latitude: r.latitude,
-            longitude: r.longitude,
-          });
-
-          const displayDistance = userLocation
-            ? calculateDistance(userLocation, {
-                latitude: r.latitude,
-                longitude: r.longitude,
-              })
-            : sortingDistance;
-
-          return {
-            ...r,
-            distance: displayDistance,
-            sortingDistance: sortingDistance,
-          };
-        })
-        .sort((a, b) => (a.sortingDistance ?? 0) - (b.sortingDistance ?? 0));
-    }
-
-    return list;
-  }, [
-    restaurantsWithGroupScores,
-    filters,
-    bookmarkedIds,
-    groupRestaurantIds,
-    mapRegion,
-    userLocation,
-  ]);
+    // Sort the already-annotated list
+    return list.sort((a, b) => a.sortingDistance - b.sortingDistance);
+  }, [restaurantsWithDistance, filters, bookmarkedIds, groupRestaurantIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -326,18 +328,34 @@ export default function MapScreen() {
     scanRegion(region);
 
     if (mapRef.current) {
-      const camera = await mapRef.current.getCamera();
-      setMapHeading(camera.heading);
+      try {
+        const camera = await mapRef.current.getCamera();
+        setMapHeading(camera.heading);
+      } catch (error) {
+        // Suppress transient map camera unmount rejections safely
+        console.debug(
+          '[MapScreen] Camera detached during region change complete:',
+          error,
+        );
+      }
     }
   };
 
   const handleRegionChangeLive = async () => {
     if (mapRef.current) {
-      const camera = await mapRef.current.getCamera();
-      setMapHeading((prev) => {
-        if (Math.abs(prev - camera.heading) > 1) return camera.heading;
-        return prev;
-      });
+      try {
+        const camera = await mapRef.current.getCamera();
+        setMapHeading((prev) => {
+          if (Math.abs(prev - camera.heading) > 1) return camera.heading;
+          return prev;
+        });
+      } catch (error) {
+        // Suppress transient map camera unmount rejections safely
+        console.debug(
+          '[MapScreen] Camera detached during live region change:',
+          error,
+        );
+      }
     }
   };
 

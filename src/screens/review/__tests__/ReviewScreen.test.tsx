@@ -175,4 +175,40 @@ describe('ReviewScreen', () => {
       Platform.OS === 'ios' ? 'padding' : 'height',
     );
   });
+
+  it('enforces character limits on the detailed notes input field', async () => {
+    const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
+
+    // Expand advanced details section
+    fireEvent.press(getByText('Add Advanced Details (Optional)'));
+
+    const notesInput = getByPlaceholderText('What did you love or hate?');
+
+    // Verify that maxLength attribute constraint is explicitly attached to the node
+    expect(notesInput.props.maxLength).toBe(500);
+  });
+
+  it('enforces a 25-character limit on custom tags', async () => {
+    const { getByText, getByTestId, findByPlaceholderText } = render(
+      <ReviewScreen />,
+    );
+
+    // Expand advanced details section
+    fireEvent.press(getByText('Add Advanced Details (Optional)'));
+
+    // Find and press the button to add a custom tag
+    const addTagButton = getByTestId('add-custom-tag-button');
+    fireEvent.press(addTagButton);
+
+    // Find the input, type a long tag, and submit
+    const customTagInput = await findByPlaceholderText('Add a custom tag...');
+    const longTag = 'this-is-a-very-long-tag-that-is-over-25-chars';
+    fireEvent.changeText(customTagInput, longTag);
+    fireEvent.press(getByText('Add'));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Tag Too Long',
+      'Custom tags cannot be more than 25 characters.',
+    );
+  });
 });

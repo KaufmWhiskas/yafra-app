@@ -3,8 +3,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   TextInput,
+  StyleSheet,
+  LayoutAnimation,
 } from 'react-native';
 import { COLORS, SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ interface TagSelectorProps {
   selected: string[];
   onToggle: (tag: string) => void;
   onAddCustom: (tag: string) => void;
+  testID?: string;
 }
 
 export default function TagSelector({
@@ -21,95 +23,138 @@ export default function TagSelector({
   selected,
   onToggle,
   onAddCustom,
+  testID,
 }: TagSelectorProps) {
   const [customTag, setCustomTag] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleAdd = () => {
     if (customTag.trim()) {
       onAddCustom(customTag.trim());
       setCustomTag('');
+      setIsAdding(false);
     }
   };
 
+  const toggleAdd = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsAdding(!isAdding);
+  };
+
   return (
-    <View style={styles.container}>
+    <View testID={testID}>
       <View style={styles.tagContainer}>
-        {tags.map((tag) => {
-          const isSelected = selected.includes(tag);
-          return (
-            <TouchableOpacity
-              key={tag}
-              style={[styles.tag, isSelected && styles.tagSelected]}
-              onPress={() => onToggle(tag)}
+        {tags.map((tag) => (
+          <TouchableOpacity
+            key={tag}
+            style={[styles.tag, selected.includes(tag) && styles.tagSelected]}
+            onPress={() => onToggle(tag)}
+          >
+            <Text
+              style={[
+                styles.tagText,
+                selected.includes(tag) && styles.tagTextSelected,
+              ]}
             >
-              <Text
-                style={[styles.tagText, isSelected && styles.tagTextSelected]}
-              >
-                {tag}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      <View style={styles.customContainer}>
-        <TextInput
-          style={styles.input}
-          value={customTag}
-          onChangeText={setCustomTag}
-          placeholder="Add custom tag..."
-          placeholderTextColor={COLORS.textLight}
-          onSubmitEditing={handleAdd}
-        />
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+              {tag}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={toggleAdd}
+          testID="add-custom-tag-button"
+        >
           <MaterialCommunityIcons
-            name="plus"
-            size={24}
-            color={COLORS.surface}
+            name={isAdding ? 'close' : 'plus'}
+            size={18}
+            color={isAdding ? COLORS.textLight : COLORS.primary}
           />
         </TouchableOpacity>
       </View>
+
+      {isAdding && (
+        <View style={styles.customTagContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Add a custom tag..."
+            placeholderTextColor={COLORS.textLight}
+            value={customTag}
+            onChangeText={setCustomTag}
+            onSubmitEditing={handleAdd}
+            autoFocus
+          />
+          <TouchableOpacity
+            style={styles.submitCustomButton}
+            onPress={handleAdd}
+          >
+            <Text style={styles.submitCustomButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { marginVertical: SIZES.base },
   tagContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: SIZES.base,
+    gap: SIZES.base,
+    marginBottom: SIZES.padding,
   },
   tag: {
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.base,
     backgroundColor: COLORS.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 8,
-    marginBottom: 8,
+    borderColor: '#eee',
   },
-  tagSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  tagText: { color: COLORS.text, fontSize: 14, fontWeight: '500' },
-  tagTextSelected: { color: COLORS.surface, fontWeight: 'bold' },
-  customContainer: { flexDirection: 'row', alignItems: 'center' },
+  tagSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  tagText: {
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  tagTextSelected: {
+    color: COLORS.surface,
+  },
+  addButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  customTagContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SIZES.base,
+  },
   input: {
     flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radius,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 8,
-    color: COLORS.text,
+    padding: SIZES.padding,
     fontSize: 16,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  addButton: {
+  submitCustomButton: {
     backgroundColor: COLORS.primary,
-    padding: 10,
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding,
     borderRadius: SIZES.radius,
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  submitCustomButtonText: {
+    color: COLORS.surface,
+    fontWeight: '600',
   },
 });
