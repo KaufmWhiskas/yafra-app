@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,14 @@ type GroupWithMembers = Group & {
   })[];
 };
 
+type GroupFeedReviewWithPlaceId = Omit<GroupFeedReview, 'restaurant'> & {
+  restaurant:
+    | (NonNullable<GroupFeedReview['restaurant']> & {
+        google_place_id?: string;
+      })
+    | undefined;
+};
+
 type ListItem =
   | { type: 'section_title'; title: string }
   | { type: 'restaurants'; data: Restaurant[] }
@@ -68,7 +76,7 @@ type ListItem =
   | { type: 'error'; message: string; key: string }
   | { type: 'empty'; message: string; key: string }
   | { type: 'feed_action_button'; key: string }
-  | { type: 'feed_item'; review: GroupFeedReview }
+  | { type: 'feed_item'; review: GroupFeedReviewWithPlaceId }
   | {
       type: 'member_item';
       member: GroupMember & {
@@ -100,10 +108,19 @@ export default function GroupDetailScreen() {
     useState<string | number | null>(null);
 
   const {
-    reviews: feedReviews,
+    reviews: feedReviewsFromHook,
     isLoading: isFeedLoading,
     error: feedError,
   } = useGroupFeed(groupId);
+
+  const feedReviews = useMemo(() => {
+    const reviews = feedReviewsFromHook as GroupFeedReviewWithPlaceId[];
+    // Sanitize data for components that may not expect `null` restaurant objects.
+    return reviews.map((review) => ({
+      ...review,
+      restaurant: review.restaurant === null ? undefined : review.restaurant,
+    }));
+  }, [feedReviewsFromHook]);
 
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
@@ -416,6 +433,9 @@ export default function GroupDetailScreen() {
                 <RestaurantCard
                   item={restaurant}
                   onPress={handleRestaurantCardPress}
+                  onPressReview={() =>
+                    navigation.navigate('ReviewScreen', { restaurant })
+                  }
                   isBookmarked={bookmarkedIds.has(restaurant.id.toString())}
                   onToggleBookmark={() => handleToggleBookmark(restaurant.id)}
                 />
@@ -459,7 +479,22 @@ export default function GroupDetailScreen() {
           </View>
         );
       case 'feed_item':
-        return <FeedCard review={item.review} />;
+        return (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              if (item.review.restaurant?.google_place_id) {
+                navigation.navigate('RestaurantDetail', {
+                  restaurantId: item.review.restaurant.google_place_id,
+                  restaurantName:
+                    item.review.restaurant.name || 'Restaurant Details',
+                });
+              }
+            }}
+          >
+            <FeedCard review={item.review} />
+          </TouchableOpacity>
+        );
       case 'member_item': {
         // Safely handle both single object and array-wrapped profile data from joins
         const profileData = Array.isArray(item.member.profiles)

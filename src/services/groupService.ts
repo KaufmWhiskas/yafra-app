@@ -9,6 +9,14 @@ import {
   Restaurant,
 } from '../types';
 
+// Define a more specific type for the feed review to include the google_place_id
+// This avoids having to modify the global types file, which might be out of scope.
+type GroupFeedReviewWithPlaceId = Omit<GroupFeedReview, 'restaurant'> & {
+  restaurant:
+    | (GroupFeedReview['restaurant'] & { google_place_id?: string })
+    | null;
+};
+
 /**
  * Generates a cryptographically secure 6-character alphanumeric code.
  */
@@ -388,7 +396,7 @@ export async function fetchGroupRestaurants(
 export async function fetchGroupFeed(
   groupId: string,
   currentUserId: string | null,
-): Promise<GroupFeedReview[]> {
+): Promise<GroupFeedReviewWithPlaceId[]> {
   const { data: members, error: membersError } = await supabase
     .from('group_members')
     .select('user_id')
@@ -409,7 +417,7 @@ export async function fetchGroupFeed(
       `
       *, 
       profiles(username, avatar_url), 
-      restaurant:restaurants(id, name, cuisine)
+      restaurant:restaurants(id, name, cuisine, google_place_id)
     `,
     )
     .in('user_id', userIds)
@@ -431,7 +439,7 @@ export async function fetchGroupFeed(
     throw new Error(error.message);
   }
 
-  return data as GroupFeedReview[];
+  return data as GroupFeedReviewWithPlaceId[];
 }
 
 /**
