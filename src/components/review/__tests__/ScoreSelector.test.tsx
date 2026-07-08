@@ -13,7 +13,7 @@ describe('ScoreSelector', () => {
     );
 
     expect(getByTestId('score-input').props.value).toBe('4.6');
-    expect(getByText('Very Good')).toBeTruthy();
+    expect(getByText('Great')).toBeTruthy();
   });
 
   it('rejects numbers > 5.0 and < 1.0 on blur', () => {
@@ -27,7 +27,7 @@ describe('ScoreSelector', () => {
     // Simulate typing text, then blurring
     fireEvent.changeText(input, '6.0');
     fireEvent(input, 'blur');
-    
+
     // Check that it clamped down to 5.0
     expect(handleChange).toHaveBeenCalledWith(5.0);
 
