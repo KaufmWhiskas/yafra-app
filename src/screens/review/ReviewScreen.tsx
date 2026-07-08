@@ -32,7 +32,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface ReviewState {
   rating: number;
-  priceScore: number | null; // FIX: Change from number to number | null
+  priceScore: number | null;
   experienceType: ExperienceType;
   description: string;
   visitDate: Date | null;
@@ -101,7 +101,7 @@ export default function ReviewScreen() {
   const initialState: ReviewState = {
     rating: (existingReviewData?.rating as number | undefined) || 3.0,
     priceScore:
-      (existingReviewData?.price_value_rating as number | null) || null, // Defaults to null
+      (existingReviewData?.price_value_rating as number | null) || null,
     experienceType:
       (metadata?.experience_type as ExperienceType | undefined) || 'eat-in',
     description: (existingReviewData?.review_text as string | undefined) || '',
@@ -179,7 +179,6 @@ export default function ReviewScreen() {
       const payload = {
         restaurantId: restaurant.id.toString(),
         rating,
-        // Passes null directly to Postgres if unselected or if simple mode is active
         priceScore: isAdvanced ? priceScore : null,
         experienceType,
         tags: isAdvanced ? selectedTags : [],
@@ -264,7 +263,6 @@ export default function ReviewScreen() {
           label="Overall Score"
         />
 
-        {/* FIX: Price Tier is now standard, top-level metadata directly in simple view */}
         <PriceTierSelector
           value={priceTier}
           onChange={(val) =>
@@ -355,7 +353,6 @@ export default function ReviewScreen() {
           <View style={styles.advancedSection}>
             <View style={styles.divider} />
 
-            {/* If priceScore is null, present a prominent button card that initializes it to an average of 3.0 */}
             {priceScore === null ? (
               <TouchableOpacity
                 style={styles.addOptionalRatingButtonCard}
@@ -378,7 +375,6 @@ export default function ReviewScreen() {
                 </Text>
               </TouchableOpacity>
             ) : (
-              /* If initialized, render the original ScoreSelector with your clean native gradient array */
               <View style={styles.optionalRatingHeaderRow}>
                 <ScoreSelector
                   value={priceScore}
@@ -407,7 +403,6 @@ export default function ReviewScreen() {
               </View>
             )}
 
-            {/* Replaced legacy headers with high-visibility contextual controls */}
             <View style={styles.tagsHeaderContainer}>
               <Text style={styles.sectionTitle}>Tags & Highlights</Text>
 
@@ -466,7 +461,7 @@ export default function ReviewScreen() {
               }
               multiline
               numberOfLines={4}
-              maxLength={500} // FIX: Restrict string payloads to a safe 500 characters
+              maxLength={500}
               onFocus={() => {
                 // A slight delay ensures the keyboard is fully visible before scrolling
                 setTimeout(() => {

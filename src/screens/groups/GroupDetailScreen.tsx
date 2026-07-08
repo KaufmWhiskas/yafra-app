@@ -152,7 +152,6 @@ export default function GroupDetailScreen() {
     try {
       const data = await fetchGroupDetails(groupId);
       setGroup(data);
-      setOriginalGroupName(data.name); // Store original name for potential cancel
       if (user?.id === data.created_by) {
         const invites = await fetchActiveInvites(groupId);
         setActiveInvites(invites);
@@ -246,13 +245,13 @@ export default function GroupDetailScreen() {
 
   const handleEditGroupName = () => {
     if (!group) return;
-    setOriginalGroupName(group.name); // Save current name before editing
+    setOriginalGroupName(group.name);
     setIsEditingName(true);
   };
 
   const handleSaveGroupName = async () => {
     if (!group || group.name.trim() === originalGroupName) {
-      setIsEditingName(false); // No change or invalid name, just exit editing
+      setIsEditingName(false);
       return;
     }
     if (group.name.trim().length < 3) {
@@ -260,7 +259,6 @@ export default function GroupDetailScreen() {
         'Invalid Name',
         'Group name must be at least 3 characters long.',
       );
-      // Revert to original name if invalid
       setGroup((prev) => (prev ? { ...prev, name: originalGroupName } : prev));
       setIsEditingName(false);
       return;
@@ -269,11 +267,10 @@ export default function GroupDetailScreen() {
       await updateGroupName(groupId, group.name.trim());
       Alert.alert('Success', 'Group name updated!');
       setIsEditingName(false);
-      loadGroupDetails(); // Refresh details to ensure consistency
+      loadGroupDetails();
     } catch (error) {
       console.error('Failed to update group name:', error);
       Alert.alert('Error', 'Failed to update group name.');
-      // Revert to original name on error
       setGroup((prev) => (prev ? { ...prev, name: originalGroupName } : prev));
       setIsEditingName(false);
     }
@@ -309,7 +306,7 @@ export default function GroupDetailScreen() {
       try {
         const manipResult = await ImageManipulator.manipulateAsync(
           result.assets[0].uri,
-          [{ resize: { width: 200, height: 200 } }], // Resize for avatar
+          [{ resize: { width: 200, height: 200 } }],
           { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
         );
         const publicUrl = await uploadGroupAvatar(group.id, manipResult.uri);
@@ -339,15 +336,13 @@ export default function GroupDetailScreen() {
   ) => {
     if (!user?.id) return;
     if (currentUserRole !== 'owner' && currentUserRole !== 'admin') return;
-    if (member.user_id === user.id) return; // Prevent modifying self
+    if (member.user_id === user.id) return;
 
     const actions: {
       text: string;
       style?: 'cancel' | 'destructive';
       onPress: () => void;
     }[] = [];
-
-    // 1. Dynamic Promotion Boundaries
     if (member.role === 'member') {
       actions.push({
         text: 'Promote to Trusted',
@@ -366,7 +361,6 @@ export default function GroupDetailScreen() {
       actions.push({
         text: 'Promote to Admin',
         onPress: () => {
-          // Double Safety Confirmation
           Alert.alert(
             'Confirm Promotion',
             `Are you sure you want to make ${member.profiles?.username || member.user_id} an Admin?`,
@@ -389,7 +383,6 @@ export default function GroupDetailScreen() {
       });
     }
 
-    // 2. Dynamic Demotion Boundaries
     if (member.role === 'admin' || member.role === 'trusted') {
       actions.push({
         text: 'Demote to Member',
@@ -404,13 +397,11 @@ export default function GroupDetailScreen() {
       });
     }
 
-    // 3. Destructive Eviction Bound (Admins cannot kick owners)
     if (member.role !== 'owner') {
       actions.push({
         text: 'Kick from Group',
         style: 'destructive',
         onPress: () => {
-          // Double Safety Confirmation
           Alert.alert(
             'Confirm Kick',
             `Are you sure you want to remove ${member.profiles?.username || member.user_id} from the group?`,
@@ -589,7 +580,6 @@ export default function GroupDetailScreen() {
           </TouchableOpacity>
         );
       case 'member_item': {
-        // Safely handle both single object and array-wrapped profile data from joins
         const profileData = Array.isArray(item.member.profiles)
           ? item.member.profiles[0]
           : item.member.profiles;
@@ -601,7 +591,6 @@ export default function GroupDetailScreen() {
             onPress={() => handleMemberPress(item.member)}
           >
             <Avatar
-              // Handle both snake_case and potential camelCase from different query paths
               url={profileData?.avatar_url || profileData?.avatarUrl}
               name={displayName}
               size={40}
@@ -654,7 +643,6 @@ export default function GroupDetailScreen() {
                     <ActivityIndicator size="small" color={COLORS.primary} />
                   </View>
                 ) : (
-                  /* FIX: Render an anchor badge layout on the lower right instead of a full screen clobber */
                   isOwner && (
                     <View style={styles.avatarCameraBadge}>
                       <MaterialCommunityIcons
@@ -732,7 +720,6 @@ export default function GroupDetailScreen() {
                   <TouchableOpacity
                     style={styles.copyButton}
                     onPress={() => {
-                      // Implement copy to clipboard logic here
                       Alert.alert(
                         'Copied!',
                         'Invite code copied to clipboard.',
@@ -866,7 +853,6 @@ export default function GroupDetailScreen() {
                           </Text>
                         </View>
 
-                        {/* Quick Row sharing links for historic active invites */}
                         <View style={styles.inviteRowActions}>
                           <TouchableOpacity
                             style={styles.inviteRowActionButton}
@@ -1198,7 +1184,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     marginBottom: SIZES.base,
-    position: 'relative', // Context anchor for lower-right boundary placement
+    position: 'relative',
   },
   groupAvatar: {
     width: 80,
@@ -1257,7 +1243,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.text,
     textAlign: 'center',
-    paddingVertical: 0, // Reset default TextInput padding
+    paddingVertical: 0,
     paddingHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.primary,

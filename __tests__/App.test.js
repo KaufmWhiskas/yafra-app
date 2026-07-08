@@ -16,8 +16,13 @@ jest.mock('../src/hooks/useActiveGroupFilters', () => ({
 
 jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => cb());
 
-// Tell Jest to use the clean __mocks__ file we created earlier
 jest.mock('react-native-maps');
+
+jest.mock('expo-linking', () => ({
+  createURL: (path) => `yafra:///${path}`,
+  addEventListener: jest.fn(),
+  getInitialURL: jest.fn().mockResolvedValue(null),
+}));
 
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest
@@ -34,7 +39,6 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
 
-// Mock AuthContext without needing React inside the closure
 jest.mock('../src/context/AuthContext', () => ({
   AuthProvider: ({ children }) => children,
   useAuth: () => ({
@@ -85,7 +89,6 @@ describe('<App />', () => {
   it('renders the main tab navigator and initial screen', async () => {
     render(<App />);
 
-    // Wait for the main screen to finish loading by looking for a key element.
     const mapToggleBtn = await screen.findByText('Map View');
     expect(mapToggleBtn).toBeTruthy();
 

@@ -24,14 +24,11 @@ describe('ScoreSelector', () => {
 
     const input = getByTestId('score-input');
 
-    // Simulate typing text, then blurring
     fireEvent.changeText(input, '6.0');
     fireEvent(input, 'blur');
 
-    // Check that it clamped down to 5.0
     expect(handleChange).toHaveBeenCalledWith(5.0);
 
-    // Reset mock and try lower bound
     handleChange.mockClear();
     fireEvent.changeText(input, '0.5');
     fireEvent(input, 'blur');

@@ -40,14 +40,11 @@ export default function GroupsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const { activeGroupIds, toggleGroupFilter } = useActiveGroupFilters();
 
-  // Interaction Modal States
   const [isCreateVisible, setIsCreateVisible] = useState(false);
   const [isJoinVisible, setIsJoinVisible] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState('');
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Camera QR Scanner States
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanningQr, setIsScanningQr] = useState(false);
 
@@ -127,7 +124,6 @@ export default function GroupsScreen() {
     setIsScanningQr(false);
     if (data) {
       setJoinCodeInput(data);
-      // Automatically attempt to register membership using scanned code string parameters
       handleJoinGroup(data);
     }
   };
@@ -187,7 +183,6 @@ export default function GroupsScreen() {
             navigation.navigate('GroupDetailScreen', { groupId: group.id })
           }
         >
-          {/* FIX: Bind to true Avatar URL parameters instead of static icon wrappers */}
           <View style={styles.avatarListCardContainer}>
             <Avatar url={group.avatar_url} name={group.name} size={42} />
           </View>
@@ -276,7 +271,6 @@ export default function GroupsScreen() {
         }
       />
 
-      {/* FAB: Triggers navigation over to circle assembly fields */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setIsCreateVisible(true)}
@@ -285,7 +279,6 @@ export default function GroupsScreen() {
         <MaterialCommunityIcons name="plus" size={28} color="#fff" />
       </TouchableOpacity>
 
-      {/* Create Circle Modal */}
       <Modal
         visible={isCreateVisible}
         transparent
@@ -329,7 +322,6 @@ export default function GroupsScreen() {
         </View>
       </Modal>
 
-      {/* Join Circle Modal Container */}
       <Modal
         visible={isJoinVisible}
         transparent

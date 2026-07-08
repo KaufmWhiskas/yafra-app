@@ -200,7 +200,6 @@ export default function ScoreSelector({
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
       <View style={styles.wrapperAnchor}>
-        {/* Distributed dynamic spark elements layer */}
         {sparks.map((s) => (
           <Animated.View
             key={s.id}

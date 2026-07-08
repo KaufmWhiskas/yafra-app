@@ -7,6 +7,12 @@ jest.mock('../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('expo-linking', () => ({
+  createURL: (path: string) => `yafra:///${path}`,
+  addEventListener: jest.fn(),
+  getInitialURL: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock('../TabNavigator', () => {
   function MockTabNavigator() {
     return null;

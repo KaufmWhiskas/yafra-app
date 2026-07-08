@@ -57,10 +57,7 @@ jest.spyOn(Alert, 'alert');
 
 jest.mock('react-native', () => {
   const ActualReactNative = jest.requireActual('react-native');
-  const ReactActual = jest.requireActual('react'); // Safely retrieve React within scope
-
-  // Custom mock wrapper for KeyboardAvoidingView to preserve child node rendering pass-throughs
-  // Preserve child rendering passthrough without triggering variable hoisting issues
+  const ReactActual = jest.requireActual('react');
   const MockKAV = ({
     children,
     ...props
@@ -83,7 +80,6 @@ describe('ReviewScreen', () => {
     const { getByText, findByText } = render(<ReviewScreen />);
     expect(getByText(/Test Burger Joint/i)).toBeTruthy();
 
-    // Expand the advanced section to reveal the tags
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
 
     expect(await findByText('Hidden Gem')).toBeTruthy();
@@ -116,14 +112,11 @@ describe('ReviewScreen', () => {
     const { getByText, getAllByTestId, getByPlaceholderText, findByText } =
       render(<ReviewScreen />);
 
-    // Expand Advanced details section
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
 
-    // Add the optional value rating
     fireEvent.press(getByText('Add Optional Price / Value Rating'));
 
     const scoreInputs = getAllByTestId('score-input');
-    // The first score input is the main rating, the second is the value rating.
     fireEvent.changeText(scoreInputs[1], '3.5');
 
     fireEvent.press(getByText('Takeaway'));
@@ -131,7 +124,6 @@ describe('ReviewScreen', () => {
     const notesInput = getByPlaceholderText('What did you love or hate?');
     fireEvent.changeText(notesInput, 'Amazing burgers!');
 
-    // SIMULATE SELECTING A TAG (Using a tag known to be in DEFAULT_TAGS)
     fireEvent.press(await findByText('Hidden Gem'));
 
     fireEvent.press(getByText('Submit Review'));
@@ -139,7 +131,7 @@ describe('ReviewScreen', () => {
     await waitFor(() => {
       expect(submitReview).toHaveBeenCalledWith({
         restaurantId: 'rest_123',
-        rating: 3.0, // The main score input is the first one, which we didn't change
+        rating: 3.0,
         priceScore: 3.5,
         experienceType: 'takeaway',
         tags: ['Hidden Gem'],
@@ -174,7 +166,6 @@ describe('ReviewScreen', () => {
     const { getByTestId } = render(<ReviewScreen />);
     const keyboardAvoidingView = getByTestId('review-screen-kav');
 
-    // Assert that keyboard offsets are specified to account for platform layout constraints
     expect(keyboardAvoidingView.props.keyboardVerticalOffset).toBe(
       Platform.OS === 'ios' ? 88 : 80,
     );
@@ -186,12 +177,10 @@ describe('ReviewScreen', () => {
   it('enforces character limits on the detailed notes input field', async () => {
     const { getByText, getByPlaceholderText } = render(<ReviewScreen />);
 
-    // Expand advanced details section
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
 
     const notesInput = getByPlaceholderText('What did you love or hate?');
 
-    // Verify that maxLength attribute constraint is explicitly attached to the node
     expect(notesInput.props.maxLength).toBe(500);
   });
 
@@ -200,14 +189,11 @@ describe('ReviewScreen', () => {
       <ReviewScreen />,
     );
 
-    // Expand advanced details section
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
 
-    // Find and press the button to add a custom tag
     const addTagButton = getByTestId('add-custom-tag-button');
     fireEvent.press(addTagButton);
 
-    // Find the input, type a long tag, and submit
     const customTagInput = await findByPlaceholderText(
       'e.g. BYOB, Cash Only, Great Cocktails',
     );

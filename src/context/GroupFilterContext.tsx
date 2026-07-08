@@ -26,7 +26,6 @@ export function GroupFilterProvider({
   const [activeGroupIds, setActiveGroupIds] = useState<string[]>([]);
   const isInitialized = useRef(false);
 
-  // 1. Load persisted selection cache once on initial mount
   useEffect(() => {
     const loadPersistedFilters = async () => {
       try {
@@ -43,7 +42,6 @@ export function GroupFilterProvider({
     loadPersistedFilters();
   }, []);
 
-  // 2. Synchronize changes to disk purely whenever state alters, guarding the initial load pass
   useEffect(() => {
     if (!isInitialized.current) return;
 

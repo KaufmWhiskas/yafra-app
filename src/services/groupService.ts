@@ -25,10 +25,8 @@ function generateSecureInviteCode(length = 6): string {
   let result = '';
 
   while (result.length < length) {
-    // Get a single cryptographically secure random byte (0-255)
     const randomByte = Crypto.getRandomBytes(1)[0];
 
-    // 252 is the highest multiple of 36 under 256.
     // Discard values >= 252 to ensure perfectly even distribution.
     if (randomByte < 252) {
       result += chars[randomByte % chars.length];
@@ -213,7 +211,6 @@ export async function fetchGroupDetails(groupId: string): Promise<
     throw error;
   }
 
-  // The type from Supabase is generic for nested selects, so we cast it to our specific, known shape.
   // This is safer than casting to `any` and aligns with the consumer component's expectations.
   return data as unknown as Group & {
     members: (GroupMember & {
@@ -361,7 +358,6 @@ export async function uploadGroupAvatar(
   groupId: string,
   localUri: string,
 ): Promise<string> {
-  // 1. Construct a clean native file package from local string properties
   const formData = new FormData();
   const fileExtension = localUri.split('.').pop() || 'jpg';
   const fileName = `avatar-${Date.now()}.${fileExtension}`;
@@ -372,7 +368,6 @@ export async function uploadGroupAvatar(
     type: `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`,
   } as unknown as Blob);
 
-  // 2. Upload the file binary asset via Supabase storage engine routing rings
   const filePath = `${groupId}/${fileName}`;
   const { error: uploadError } = await supabase.storage
     .from('group-avatars')
@@ -383,7 +378,6 @@ export async function uploadGroupAvatar(
 
   if (uploadError) throw uploadError;
 
-  // 3. Retrieve public target access URL parameters
   const {
     data: { publicUrl },
   } = supabase.storage.from('group-avatars').getPublicUrl(filePath);
@@ -393,7 +387,6 @@ export async function uploadGroupAvatar(
       'Failed to resolve public reference parameters for avatar upload.',
     );
 
-  // 4. Update group database record metadata parameters
   const { error: patchError } = await supabase
     .from('groups')
     .update({ avatar_url: publicUrl })
@@ -602,7 +595,6 @@ export async function fetchActiveGroupsReviewsForRestaurantsBulk(
     return {};
   }
 
-  // 1. Get relevant user IDs from the active groups
   const { data: members, error: membersError } = await supabase
     .from('group_members')
     .select('user_id')
@@ -613,7 +605,6 @@ export async function fetchActiveGroupsReviewsForRestaurantsBulk(
   const userIds = Array.from(new Set((members || []).map((m) => m.user_id)));
   if (userIds.length === 0) return {};
 
-  // 2. Fetch all reviews for all restaurants in ONE network request
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
     .select('*, profiles(username, avatar_url)')
@@ -623,7 +614,6 @@ export async function fetchActiveGroupsReviewsForRestaurantsBulk(
 
   if (reviewsError) throw reviewsError;
 
-  // 3. Group them locally by restaurant ID
   const result: Record<string, GroupFeedReview[]> = {};
   for (const review of reviews as GroupFeedReview[]) {
     const rId = String(review.restaurant_id);

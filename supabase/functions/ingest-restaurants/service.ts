@@ -105,7 +105,6 @@ async function scanTileRecursively(
     return; // IMPORTANT: Do not mark the parent tile as scanned
   }
 
-  // Upsert restaurants from this tile
   if (restaurants.length > 0) {
     const { error: upsertError } = await supabase
       .from('restaurants')
@@ -113,7 +112,6 @@ async function scanTileRecursively(
     if (upsertError) throw upsertError;
   }
 
-  // Mark this tile (or sub-tile) as scanned in the history
   const { error: historyError } = await supabase
     .from('grid_history')
     .upsert(
@@ -133,10 +131,8 @@ export async function fetchAndStoreRestaurants(
   fetcher: RestaurantFetcher,
   userId: string,
 ): Promise<void> {
-  // 1. Map bounding box to intersecting tile keys (enforces the 25 max safety check)
   const tiles = getIntersectingTiles(bbox);
 
-  // 2. Filter down to tiles that actually need an external sync update
   const tilesToScan: string[] = [];
   for (const tileId of tiles) {
     const skip = await shouldSkipGridTile(tileId, supabase);
@@ -149,7 +145,6 @@ export async function fetchAndStoreRestaurants(
     return;
   }
 
-  // 3. Enforce user action limit gates only when a sync is required
   const { data: allowed, error: rpcError } = await supabase.rpc(
     'check_and_log_rate_limit',
     {
@@ -167,7 +162,6 @@ export async function fetchAndStoreRestaurants(
     throw err;
   }
 
-  // 4. Scan all needed tiles, allowing for recursive subdivision.
   await Promise.all(
     tilesToScan.map((tileId) =>
       scanTileRecursively(tileId, 0, supabase, fetcher),

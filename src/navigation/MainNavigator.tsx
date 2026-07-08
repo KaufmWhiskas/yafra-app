@@ -2,6 +2,7 @@ import {
   NavigationContainer,
   useNavigationContainerRef,
 } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { RootStackParamList } from '../types/navigation';
@@ -23,19 +24,30 @@ import UpdatePasswordScreen from '../screens/profile/UpdatePasswordScreen';
 import ProfileOtpScreen from '../screens/profile/ProfileOtpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
+const linkingConfiguration = {
+  prefixes: [Linking.createURL('/'), 'yafra://'],
+  config: {
+    screens: {
+      // Maps path indicators cleanly to prevent console warnings on redirects
+      Login: 'login',
+      Register: 'register',
+      UpdatePasswordScreen: 'auth/callback',
+    },
+  },
+};
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function MainNavigator() {
   const { session, isLoading, requiresPasswordReset } = useAuth();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
 
-  //Prevents flickering while Supabase checks session
   if (isLoading) {
-    return null; //Loading Screen soon:tm:
+    return null;
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} linking={linkingConfiguration}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {session ? (
           requiresPasswordReset ? (
