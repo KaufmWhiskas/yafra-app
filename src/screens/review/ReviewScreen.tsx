@@ -32,14 +32,14 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface ReviewState {
   rating: number;
-  priceScore: number;
+  priceScore: number | null; // FIX: Change from number to number | null
   experienceType: ExperienceType;
   description: string;
   visitDate: Date | null;
   isPrivate: boolean;
   selectedTags: string[];
   isAdvanced: boolean;
-  priceTier: number; // ADD THIS (Default: 2)
+  priceTier: number;
 }
 
 type ReviewAction =
@@ -101,7 +101,7 @@ export default function ReviewScreen() {
   const initialState: ReviewState = {
     rating: (existingReviewData?.rating as number | undefined) || 3.0,
     priceScore:
-      (existingReviewData?.price_value_rating as number | undefined) || 3.0,
+      (existingReviewData?.price_value_rating as number | null) || null, // Defaults to null
     experienceType:
       (metadata?.experience_type as ExperienceType | undefined) || 'eat-in',
     description: (existingReviewData?.review_text as string | undefined) || '',
@@ -161,7 +161,9 @@ export default function ReviewScreen() {
     if (
       rating < 1.0 ||
       rating > 5.0 ||
-      (isAdvanced && (priceScore < 1.0 || priceScore > 5.0))
+      (isAdvanced &&
+        priceScore !== null &&
+        (priceScore < 1.0 || priceScore > 5.0))
     ) {
       setError('Rating must be between 1.0 and 5.0.');
       return;
@@ -177,14 +179,14 @@ export default function ReviewScreen() {
       const payload = {
         restaurantId: restaurant.id.toString(),
         rating,
-        priceScore: isAdvanced ? priceScore : 0,
+        // Passes null directly to Postgres if unselected or if simple mode is active
+        priceScore: isAdvanced ? priceScore : null,
         experienceType,
         tags: isAdvanced ? selectedTags : [],
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
         isPrivate: isAdvanced ? isPrivate : false,
-        // Add price_tier to the post parameters. It will merge cleanly into your metadata column.
-        priceTier: isAdvanced ? priceTier : 2,
+        priceTier: priceTier, // Evaporates advanced restriction dependency completely
       };
 
       let result;
@@ -262,6 +264,14 @@ export default function ReviewScreen() {
           label="Overall Score"
         />
 
+        {/* FIX: Price Tier is now standard, top-level metadata directly in simple view */}
+        <PriceTierSelector
+          value={priceTier}
+          onChange={(val) =>
+            dispatch({ type: 'SET_FIELD', field: 'priceTier', value: val })
+          }
+        />
+
         <Text style={styles.sectionTitle}>When did you visit?</Text>
         <View style={styles.dateSelectorRow}>
           <TouchableOpacity
@@ -331,8 +341,8 @@ export default function ReviewScreen() {
         >
           <Text style={styles.advancedToggleText}>
             {isAdvanced
-              ? 'Show Simple Review'
-              : 'Add Advanced Details (Optional)'}
+              ? 'Hide Advanced Highlights'
+              : 'Add Detailed Highlights (Optional)'}
           </Text>
           <MaterialCommunityIcons
             name={isAdvanced ? 'chevron-up' : 'chevron-down'}
@@ -345,20 +355,57 @@ export default function ReviewScreen() {
           <View style={styles.advancedSection}>
             <View style={styles.divider} />
 
-            <PriceTierSelector
-              value={priceTier}
-              onChange={(val) =>
-                dispatch({ type: 'SET_FIELD', field: 'priceTier', value: val })
-              }
-            />
-
-            <ScoreSelector
-              value={priceScore}
-              onChange={(value) =>
-                dispatch({ type: 'SET_FIELD', field: 'priceScore', value })
-              }
-              label="Price / Value"
-            />
+            {/* If priceScore is null, present a prominent button card that initializes it to an average of 3.0 */}
+            {priceScore === null ? (
+              <TouchableOpacity
+                style={styles.addOptionalRatingButtonCard}
+                onPress={() =>
+                  dispatch({
+                    type: 'SET_FIELD',
+                    field: 'priceScore',
+                    value: 3.0,
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="plus-circle-outline"
+                  size={20}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.addOptionalRatingButtonText}>
+                  Add Optional Price / Value Rating
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              /* If initialized, render the original ScoreSelector with your clean native gradient array */
+              <View style={styles.optionalRatingHeaderRow}>
+                <ScoreSelector
+                  value={priceScore}
+                  onChange={(value) =>
+                    dispatch({ type: 'SET_FIELD', field: 'priceScore', value })
+                  }
+                  label="Price / Value"
+                />
+                <TouchableOpacity
+                  style={styles.clearRatingBadge}
+                  onPress={() =>
+                    dispatch({
+                      type: 'SET_FIELD',
+                      field: 'priceScore',
+                      value: null,
+                    })
+                  }
+                >
+                  <MaterialCommunityIcons
+                    name="close-circle"
+                    size={16}
+                    color={COLORS.textLight}
+                  />
+                  <Text style={styles.clearRatingText}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Replaced legacy headers with high-visibility contextual controls */}
             <View style={styles.tagsHeaderContainer}>
@@ -518,6 +565,42 @@ const styles = StyleSheet.create({
   unknownButtonText: {
     fontSize: 14,
     color: COLORS.textLight,
+    fontWeight: '600',
+  },
+  addOptionalRatingButtonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    borderRadius: SIZES.radius,
+    paddingVertical: 14,
+    marginVertical: SIZES.base,
+    gap: 8,
+  },
+  addOptionalRatingButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  optionalRatingHeaderRow: {
+    position: 'relative',
+    marginBottom: SIZES.base,
+  },
+  clearRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    right: SIZES.padding,
+    top: 0,
+    gap: 4,
+    padding: 6,
+  },
+  clearRatingText: {
+    color: COLORS.textLight,
+    fontSize: 12,
     fontWeight: '600',
   },
   tagsHeaderContainer: {

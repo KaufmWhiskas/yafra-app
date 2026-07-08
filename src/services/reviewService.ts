@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import { GroupFeedReview } from "../types";
+import { supabase } from './supabase';
+import { GroupFeedReview } from '../types';
 
 /**
  * Adds reviews to the Supabase database
@@ -8,34 +8,36 @@ import { GroupFeedReview } from "../types";
 export const submitReview = async (review: {
   restaurantId: string;
   rating: number;
-  priceScore: number;
-  experienceType: "eat-in" | "takeaway" | "order";
+  priceScore: number | null;
+  experienceType: 'eat-in' | 'takeaway' | 'order';
   tags: string[];
   description: string;
   visitDate?: string | null;
   isPrivate?: boolean;
+  priceTier: number;
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
 
   if (authError || !user) {
     throw new Error(
-      "Authentication required to submit a review. User not logged in",
+      'Authentication required to submit a review. User not logged in',
     );
   }
 
   const { data: insertData, error: insertError } = await supabase
-    .from("reviews")
+    .from('reviews')
     .insert([
       {
         restaurant_id: Number(review.restaurantId),
         rating: review.rating,
         price_value_rating: review.priceScore || null,
-        review_text: review.description || "",
+        review_text: review.description || '',
         visit_date: review.visitDate || null,
         metadata: {
           experience_type: review.experienceType,
           tags: review.tags || [],
+          price_tier: review.priceTier,
         },
         is_private: review.isPrivate || false,
         user_id: user.id,
@@ -57,13 +59,13 @@ export const fetchPersonalRating = async (
   restaurantId: string | number,
 ): Promise<{ rating: number; count: number } | null> => {
   const { data, error } = await supabase
-    .from("reviews")
-    .select("rating")
-    .eq("user_id", userId)
-    .eq("restaurant_id", restaurantId.toString());
+    .from('reviews')
+    .select('rating')
+    .eq('user_id', userId)
+    .eq('restaurant_id', restaurantId.toString());
 
   if (error) {
-    console.error("Error fetching personal rating:", error);
+    console.error('Error fetching personal rating:', error);
     return null;
   }
 
@@ -81,11 +83,11 @@ export const fetchPersonalRating = async (
  */
 export async function fetchUserReviewedRestaurants(userId: string) {
   const { data, error } = await supabase
-    .from("reviews")
-    .select("*, restaurant:restaurants(*)")
-    .eq("user_id", userId)
-    .order("visit_date", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .from('reviews')
+    .select('*, restaurant:restaurants(*)')
+    .eq('user_id', userId)
+    .order('visit_date', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
 
@@ -106,12 +108,16 @@ export async function fetchUserReviewedRestaurants(userId: string) {
         details,
         rating: google_rating
           ? parseFloat(google_rating as string)
-          : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
+          : parsedDetails?.rating
+            ? Number(parsedDetails.rating)
+            : undefined,
         app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
-        user_ratings_total: Number(
-          user_ratings_total || parsedDetails?.user_ratings_total ||
-            parsedDetails?.userRatingCount,
-        ) || 0,
+        user_ratings_total:
+          Number(
+            user_ratings_total ||
+              parsedDetails?.user_ratings_total ||
+              parsedDetails?.userRatingCount,
+          ) || 0,
       };
     }
     return mappedReview;
@@ -124,10 +130,7 @@ export async function fetchUserReviewedRestaurants(userId: string) {
  * @throws Will throw an error if the delete operation fails.
  */
 export async function deleteReview(reviewId: number): Promise<void> {
-  const { error } = await supabase
-    .from("reviews")
-    .delete()
-    .eq("id", reviewId);
+  const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
 
   if (error) throw error;
 }
@@ -137,20 +140,20 @@ export async function deleteReview(reviewId: number): Promise<void> {
  */
 export async function fetchUserTags(userId: string): Promise<string[]> {
   const { data, error } = await supabase
-    .from("reviews")
-    .select("metadata")
-    .eq("user_id", userId);
+    .from('reviews')
+    .select('metadata')
+    .eq('user_id', userId);
 
   if (error) {
-    console.error("Error fetching tags:", error);
+    console.error('Error fetching tags:', error);
     return [];
   }
 
   const tagCounts: Record<string, number> = {};
 
   data.forEach((row) => {
-    const tags = (row.metadata as Record<string, unknown>)?.tags as string[] ||
-      [];
+    const tags =
+      ((row.metadata as Record<string, unknown>)?.tags as string[]) || [];
     tags.forEach((tag: string) => {
       tagCounts[tag] = (tagCounts[tag] || 0) + 1;
     });
@@ -168,11 +171,11 @@ export async function fetchReviewsForRestaurant(
   currentUserId: string | null,
 ): Promise<GroupFeedReview[]> {
   let query = supabase
-    .from("reviews")
+    .from('reviews')
     .select(
       `*, profiles(username, avatar_url), restaurant:restaurants(id, name, cuisine)`,
     )
-    .eq("restaurant_id", restaurantId);
+    .eq('restaurant_id', restaurantId);
 
   if (currentUserId) {
     query = query.or(
@@ -182,10 +185,10 @@ export async function fetchReviewsForRestaurant(
     query = query.or(`is_private.eq.false,is_private.is.null`);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: false });
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
-    console.error("Supabase Error fetching restaurant reviews:", error);
+    console.error('Supabase Error fetching restaurant reviews:', error);
     // Force a standard Error object so the hook can read the message
     throw new Error(error.message);
   }
@@ -199,28 +202,30 @@ export const updateReview = async (
   reviewId: number | string,
   review: {
     rating: number;
-    priceScore: number;
-    experienceType: "eat-in" | "takeaway" | "order";
+    priceScore: number | null;
+    experienceType: 'eat-in' | 'takeaway' | 'order';
     tags: string[];
     description: string;
     visitDate?: string | null;
     isPrivate?: boolean;
+    priceTier: number;
   },
 ) => {
   const { data, error } = await supabase
-    .from("reviews")
+    .from('reviews')
     .update({
       rating: review.rating,
       price_value_rating: review.priceScore || null,
-      review_text: review.description || "",
+      review_text: review.description || '',
       visit_date: review.visitDate || null,
       metadata: {
         experience_type: review.experienceType,
         tags: review.tags || [],
+        price_tier: review.priceTier,
       },
       is_private: review.isPrivate || false,
     })
-    .eq("id", reviewId)
+    .eq('id', reviewId)
     .select();
 
   if (error) throw error;

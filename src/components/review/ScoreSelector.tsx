@@ -27,12 +27,9 @@ export default function ScoreSelector({
 
   const [inputValue, setInputValue] = useState(value.toFixed(1));
   const [isFocused, setIsFocused] = useState(false);
-
-  // Store the active value inside a mutable reference to prevent pan structural racing conditions
   const valueRef = useRef(value);
   valueRef.current = value;
 
-  // Only sync external value changes if the user is NOT actively typing
   useEffect(() => {
     if (!isFocused) {
       setInputValue(value.toFixed(1));
@@ -41,13 +38,14 @@ export default function ScoreSelector({
 
   const handleIncrement = () =>
     onChange(Math.min(5.0, Math.round((value + 0.1) * 10) / 10));
-  const handleDecrement = () =>
+
+  const handleDecrement = () => {
     onChange(Math.max(1.0, Math.round((value - 0.1) * 10) / 10));
+  };
 
   const handleChangeText = (text: string) => {
     setInputValue(text);
     const parsed = parseFloat(text);
-    // Instant feedback as they type, but only if it's currently a valid bound
     if (!isNaN(parsed) && parsed >= 1.0 && parsed <= 5.0) {
       onChange(Math.round(parsed * 10) / 10);
     }
@@ -69,17 +67,13 @@ export default function ScoreSelector({
     }
   };
 
-  // Build the horizontal scrubbing responder
   const panResponder = useRef(
     PanResponder.create({
-      // Do not capture on raw tap down; let buttons receive events first
       onStartShouldSetPanResponder: () => false,
-      // Capture only if the user crosses a horizontal drag movement gap
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dx) > 2;
       },
       onPanResponderMove: (_, gestureState) => {
-        // 15 pixels dragged horizontally translates to a smooth 0.1 score shift
         const scaleFactor = 15;
         const stepDelta = Math.round(gestureState.dx / scaleFactor);
 
@@ -92,7 +86,6 @@ export default function ScoreSelector({
 
           if (clampedValue !== valueRef.current) {
             onChange(clampedValue);
-            // Re-center the touch axis coordinate system dynamically to prevent runway momentum velocity acceleration
             gestureState.dx = 0;
           }
         }
