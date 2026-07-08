@@ -25,6 +25,7 @@ import ExperienceToggle, {
   ExperienceType,
 } from '../../components/review/ExperienceToggle';
 import { DEFAULT_TAGS } from '../../constants/tags';
+import PriceTierSelector from '../../components/review/PriceTierSelector';
 import { useAuth } from '../../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -38,6 +39,7 @@ interface ReviewState {
   isPrivate: boolean;
   selectedTags: string[];
   isAdvanced: boolean;
+  priceTier: number; // ADD THIS (Default: 2)
 }
 
 type ReviewAction =
@@ -106,6 +108,7 @@ export default function ReviewScreen() {
     isPrivate: (existingReviewData?.is_private as boolean | undefined) || false,
     selectedTags: initialTags,
     isAdvanced: initialAdvanced,
+    priceTier: (metadata?.price_tier as number | undefined) || 2,
     visitDate: (() => {
       if (isEditing) {
         return existingReviewData?.visit_date
@@ -126,6 +129,7 @@ export default function ReviewScreen() {
     isPrivate,
     selectedTags,
     isAdvanced,
+    priceTier,
   } = state;
 
   const scrollViewRef = useRef<ScrollView>(null);
@@ -179,6 +183,8 @@ export default function ReviewScreen() {
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
         isPrivate: isAdvanced ? isPrivate : false,
+        // Add price_tier to the post parameters. It will merge cleanly into your metadata column.
+        priceTier: isAdvanced ? priceTier : 2,
       };
 
       let result;
@@ -219,7 +225,10 @@ export default function ReviewScreen() {
 
   const handleAddCustomTag = (tag: string) => {
     if (tag.length > 25) {
-      Alert.alert('Tag Too Long', 'Custom tags cannot be more than 25 characters.');
+      Alert.alert(
+        'Tag Too Long',
+        'Custom tags cannot be more than 25 characters.',
+      );
       return;
     }
     if (!availableTags.includes(tag)) {
@@ -336,6 +345,13 @@ export default function ReviewScreen() {
           <View style={styles.advancedSection}>
             <View style={styles.divider} />
 
+            <PriceTierSelector
+              value={priceTier}
+              onChange={(val) =>
+                dispatch({ type: 'SET_FIELD', field: 'priceTier', value: val })
+              }
+            />
+
             <ScoreSelector
               value={priceScore}
               onChange={(value) =>
@@ -344,11 +360,24 @@ export default function ReviewScreen() {
               label="Price / Value"
             />
 
-            <View style={styles.tagsHeader}>
+            {/* Replaced legacy headers with high-visibility contextual controls */}
+            <View style={styles.tagsHeaderContainer}>
               <Text style={styles.sectionTitle}>Tags & Highlights</Text>
+
               {!showAllTags && (
-                <TouchableOpacity onPress={() => setShowAllTags(true)}>
-                  <Text style={styles.showMoreText}>Show All...</Text>
+                <TouchableOpacity
+                  style={styles.prominentShowAllButton}
+                  onPress={() => setShowAllTags(true)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name="tag-multiple-outline"
+                    size={16}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.prominentShowAllText}>
+                    Show All Available Tags ({availableTags.length})
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -491,11 +520,28 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontWeight: '600',
   },
-  tagsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  tagsHeaderContainer: {
     marginTop: SIZES.padding,
+    marginBottom: SIZES.base,
+  },
+  prominentShowAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary + '12', // Subtle matching background tint
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+    borderRadius: SIZES.radius,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: SIZES.base,
+    marginBottom: SIZES.base,
+    gap: 8,
+  },
+  prominentShowAllText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+    fontSize: 14,
   },
   privacyRow: {
     flexDirection: 'row',
@@ -513,11 +559,6 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: 4,
     paddingRight: 16,
-  },
-  showMoreText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginBottom: SIZES.base,
   },
   errorText: {
     color: COLORS.danger,
