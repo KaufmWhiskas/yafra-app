@@ -22,6 +22,7 @@ import {
   createGroup,
   joinGroupWithCode,
 } from '../../services/groupService';
+import { Avatar } from '../../components/Avatar';
 import { Group } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -186,15 +187,11 @@ export default function GroupsScreen() {
             navigation.navigate('GroupDetailScreen', { groupId: group.id })
           }
         >
-          <View
-            style={[styles.iconWrapper, isActive && styles.iconWrapperActive]}
-          >
-            <MaterialCommunityIcons
-              name={isActive ? 'compass' : 'account-group'}
-              size={22}
-              color={isActive ? COLORS.primary : COLORS.textLight}
-            />
+          {/* FIX: Bind to true Avatar URL parameters instead of static icon wrappers */}
+          <View style={styles.avatarListCardContainer}>
+            <Avatar url={group.avatar_url} name={group.name} size={42} />
           </View>
+
           <View style={styles.groupMeta}>
             <Text style={styles.groupName}>{group.name}</Text>
             <View style={styles.badgeRow}>
@@ -509,6 +506,11 @@ const styles = StyleSheet.create({
   },
   roleText: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
   ownerRoleText: { color: COLORS.primary },
+  avatarListCardContainer: {
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   toggleWrapper: { marginLeft: 12, justifyContent: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: {

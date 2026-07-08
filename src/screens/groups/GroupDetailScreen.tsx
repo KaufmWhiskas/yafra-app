@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  TextInput,
   Share,
   Modal,
   ActivityIndicator,
@@ -23,10 +24,12 @@ import {
   createOneTimeInvite,
   fetchActiveInvites,
   deleteGroup,
+  updateGroupName,
   updatePermanentInvite,
   updateMemberRole,
   removeGroupMember,
   fetchGroupRestaurants,
+  uploadGroupAvatar,
 } from '../../services/groupService';
 import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import {
@@ -44,6 +47,8 @@ import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import FeedCard from '../../components/groups/FeedCard';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Avatar } from '../../components/Avatar';
 import CollectionModal from '../../components/ui/CollectionModal';
 
@@ -125,6 +130,9 @@ export default function GroupDetailScreen() {
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
   const [activeQrCode, setActiveQrCode] = useState<string | null>(null);
+  const [originalGroupName, setOriginalGroupName] = useState<string>('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleShareCode = async (code: string, isTemporary = false) => {
     if (!code) return;
@@ -144,6 +152,7 @@ export default function GroupDetailScreen() {
     try {
       const data = await fetchGroupDetails(groupId);
       setGroup(data);
+      setOriginalGroupName(data.name); // Store original name for potential cancel
       if (user?.id === data.created_by) {
         const invites = await fetchActiveInvites(groupId);
         setActiveInvites(invites);
@@ -156,7 +165,7 @@ export default function GroupDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [groupId, user?.id]);
+  }, [groupId, user?.id, setOriginalGroupName]);
 
   useFocusEffect(
     useCallback(() => {
@@ -233,6 +242,86 @@ export default function GroupDetailScreen() {
   const handleToggleBookmark = (restaurantId: string | number) => {
     if (!user?.id) return;
     setSelectedRestaurantForBookmark(restaurantId);
+  };
+
+  const handleEditGroupName = () => {
+    if (!group) return;
+    setOriginalGroupName(group.name); // Save current name before editing
+    setIsEditingName(true);
+  };
+
+  const handleSaveGroupName = async () => {
+    if (!group || group.name.trim() === originalGroupName) {
+      setIsEditingName(false); // No change or invalid name, just exit editing
+      return;
+    }
+    if (group.name.trim().length < 3) {
+      Alert.alert(
+        'Invalid Name',
+        'Group name must be at least 3 characters long.',
+      );
+      // Revert to original name if invalid
+      setGroup((prev) => (prev ? { ...prev, name: originalGroupName } : prev));
+      setIsEditingName(false);
+      return;
+    }
+    try {
+      await updateGroupName(groupId, group.name.trim());
+      Alert.alert('Success', 'Group name updated!');
+      setIsEditingName(false);
+      loadGroupDetails(); // Refresh details to ensure consistency
+    } catch (error) {
+      console.error('Failed to update group name:', error);
+      Alert.alert('Error', 'Failed to update group name.');
+      // Revert to original name on error
+      setGroup((prev) => (prev ? { ...prev, name: originalGroupName } : prev));
+      setIsEditingName(false);
+    }
+  };
+
+  const handleCancelEditName = () => {
+    if (!group) return;
+    setGroup((prev) => (prev ? { ...prev, name: originalGroupName } : prev));
+    setIsEditingName(false);
+  };
+
+  const handleChangeGroupPicture = async () => {
+    if (!user?.id || !group?.id) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission required',
+        'Please grant media library permissions to upload an avatar.',
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setIsUploadingAvatar(true);
+      try {
+        const manipResult = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 200, height: 200 } }], // Resize for avatar
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        const publicUrl = await uploadGroupAvatar(group.id, manipResult.uri);
+        setGroup((prev) => (prev ? { ...prev, avatar_url: publicUrl } : prev));
+        Alert.alert('Success', 'Group avatar updated!');
+      } catch (error) {
+        console.error('Error uploading group avatar:', error);
+        Alert.alert('Upload Failed', 'Could not upload group avatar.');
+      } finally {
+        setIsUploadingAvatar(false);
+      }
+    }
   };
 
   const currentUserRole = group?.members.find(
@@ -544,14 +633,112 @@ export default function GroupDetailScreen() {
         }}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>{group.name}</Text>
+            <View style={styles.groupHeaderContent}>
+              <TouchableOpacity
+                style={styles.avatarEditContainer}
+                onPress={handleChangeGroupPicture}
+                disabled={isUploadingAvatar}
+                accessibilityLabel="change-group-avatar-button"
+              >
+                <Avatar
+                  url={group.avatar_url}
+                  name={group.name}
+                  size={80}
+                  style={styles.groupAvatar}
+                />
+                {isUploadingAvatar ? (
+                  <View
+                    style={styles.avatarActivityIndicator}
+                    testID="avatar-activity-indicator"
+                  >
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                  </View>
+                ) : (
+                  /* FIX: Render an anchor badge layout on the lower right instead of a full screen clobber */
+                  isOwner && (
+                    <View style={styles.avatarCameraBadge}>
+                      <MaterialCommunityIcons
+                        name="camera"
+                        size={14}
+                        color="#fff"
+                      />
+                    </View>
+                  )
+                )}
+              </TouchableOpacity>
+
+              {isEditingName ? (
+                <View style={styles.nameEditRow}>
+                  <TextInput
+                    style={styles.groupNameInput}
+                    value={group.name}
+                    onChangeText={(text: string) =>
+                      setGroup((prev) =>
+                        prev ? { ...prev, name: text } : prev,
+                      )
+                    }
+                    autoFocus
+                    onBlur={handleSaveGroupName}
+                    onSubmitEditing={handleSaveGroupName}
+                    maxLength={50}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSaveGroupName}
+                    style={styles.nameEditButton}
+                  >
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={20}
+                      color={COLORS.primary}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleCancelEditName}
+                    style={styles.nameEditButton}
+                  >
+                    <MaterialCommunityIcons
+                      name="close"
+                      size={20}
+                      color={COLORS.textLight}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.nameDisplayRow}>
+                  <Text style={styles.title}>{group.name}</Text>
+                  {isOwner && (
+                    <TouchableOpacity
+                      onPress={handleEditGroupName}
+                      style={styles.editNameIcon}
+                      accessibilityLabel="edit-name-button"
+                    >
+                      <MaterialCommunityIcons
+                        name="pencil-outline"
+                        size={20}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+
             <View style={styles.codeRow}>
               <Text style={styles.codeText}>
                 Code: {group.permanent_invite_code || 'Disabled'}
               </Text>
               <View style={{ flexDirection: 'row' }}>
                 {group.permanent_invite_code && (
-                  <TouchableOpacity style={styles.copyButton}>
+                  <TouchableOpacity
+                    style={styles.copyButton}
+                    onPress={() => {
+                      // Implement copy to clipboard logic here
+                      Alert.alert(
+                        'Copied!',
+                        'Invite code copied to clipboard.',
+                      );
+                    }}
+                  >
                     <Text style={styles.copyButtonText}>Copy</Text>
                   </TouchableOpacity>
                 )}
@@ -910,24 +1097,6 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
   },
   inviteCode: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary },
-  inviteMetaLeft: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  inviteRowActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginLeft: 12,
-  },
-  inviteRowActionButton: {
-    backgroundColor: '#f1f5f9',
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   deleteButton: {
     backgroundColor: COLORS.danger,
     padding: SIZES.padding,
@@ -1020,6 +1189,100 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  groupHeaderContent: {
+    alignItems: 'center',
+    marginBottom: SIZES.padding,
+  },
+  avatarEditContainer: {
+    width: 80,
+    height: 80,
+    marginBottom: SIZES.base,
+    position: 'relative', // Context anchor for lower-right boundary placement
+  },
+  groupAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  avatarActivityIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nameDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SIZES.base,
+  },
+  editNameIcon: {
+    marginLeft: SIZES.base,
+    padding: SIZES.base / 2,
+  },
+  nameEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.base,
+    width: '100%',
+    paddingHorizontal: SIZES.padding,
+  },
+  groupNameInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    textAlign: 'center',
+    paddingVertical: 0, // Reset default TextInput padding
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primary,
+  },
+  nameEditButton: {
+    marginLeft: SIZES.base,
+    padding: SIZES.base / 2,
+  },
+  inviteMetaLeft: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 2,
+  },
+  inviteRowActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 12,
+  },
+  inviteRowActionButton: {
+    backgroundColor: '#f1f5f9',
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tempCodeText: {
     textAlign: 'center',

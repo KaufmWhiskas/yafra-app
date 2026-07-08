@@ -27,6 +27,7 @@ export interface Group {
   name: string;
   created_by: string;
   is_global: boolean;
+  avatar_url?: string | null;
   permanent_invite_code: string;
   created_at: string; // ISO 8601 string
 }

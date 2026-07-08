@@ -333,6 +333,78 @@ export async function removeGroupMember(
 }
 
 /**
+ * Updates the name of a group.
+ * @param groupId The ID of the group to update.
+ * @param newName The new name for the group.
+ */
+export async function updateGroupName(
+  groupId: string,
+  newName: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('groups')
+    .update({ name: newName })
+    .eq('id', groupId);
+
+  if (error) throw error;
+}
+
+/**
+ * Uploads a compressed group avatar image to Supabase Storage and updates the group metadata.
+ * Saves the file under the path: group-avatars/{groupId}/avatar-{timestamp}.jpg
+ *
+ * @param groupId Unique target identifier for the circle entity.
+ * @param localUri Local runtime string path pointing to the compressed asset file cache.
+ * @returns The final public string URL to update application states.
+ */
+export async function uploadGroupAvatar(
+  groupId: string,
+  localUri: string,
+): Promise<string> {
+  // 1. Construct a clean native file package from local string properties
+  const formData = new FormData();
+  const fileExtension = localUri.split('.').pop() || 'jpg';
+  const fileName = `avatar-${Date.now()}.${fileExtension}`;
+
+  formData.append('file', {
+    uri: localUri,
+    name: fileName,
+    type: `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`,
+  } as unknown as Blob);
+
+  // 2. Upload the file binary asset via Supabase storage engine routing rings
+  const filePath = `${groupId}/${fileName}`;
+  const { error: uploadError } = await supabase.storage
+    .from('group-avatars')
+    .upload(filePath, formData, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+  if (uploadError) throw uploadError;
+
+  // 3. Retrieve public target access URL parameters
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from('group-avatars').getPublicUrl(filePath);
+
+  if (!publicUrl)
+    throw new Error(
+      'Failed to resolve public reference parameters for avatar upload.',
+    );
+
+  // 4. Update group database record metadata parameters
+  const { error: patchError } = await supabase
+    .from('groups')
+    .update({ avatar_url: publicUrl })
+    .eq('id', groupId);
+
+  if (patchError) throw patchError;
+
+  return publicUrl;
+}
+
+/**
  * Retrieves all unique restaurant IDs reviewed by any member of a specific group.
  * Utilizes PostgREST relational joins to traverse from group_members -> profiles -> reviews.
  */

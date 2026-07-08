@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import GroupDetailScreen from '../GroupDetailScreen';
 import {
@@ -10,9 +10,13 @@ import {
   updateMemberRole,
   removeGroupMember,
   fetchGroupRestaurants,
+  updateGroupName,
+  uploadGroupAvatar,
 } from '../../../services/groupService';
 import { useGroupFeed } from '../../../hooks/useGroupFeed';
 import { useAuth } from '../../../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -27,6 +31,8 @@ jest.mock('../../../services/groupService', () => ({
   updateMemberRole: jest.fn(),
   removeGroupMember: jest.fn(),
   fetchGroupRestaurants: jest.fn(),
+  updateGroupName: jest.fn(),
+  uploadGroupAvatar: jest.fn(),
 }));
 
 jest.mock('../../../services/bookmarkService', () => ({
@@ -38,6 +44,16 @@ jest.mock('../../../services/bookmarkService', () => ({
   toggleBookmarkInCollection: jest.fn(),
 }));
 
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(),
+  MediaTypeOptions: { Images: 'Images' },
+}));
+
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn(),
+  SaveFormat: { JPEG: 'jpeg' },
+}));
 const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
@@ -144,6 +160,139 @@ describe('GroupDetailScreen', () => {
     await flushMicrotasks();
 
     expect(queryByText('Delete Group')).toBeNull();
+  });
+
+  describe('Group Name Editing', () => {
+    it('Owner can see and trigger the name-editing icon/button', async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        session: { user: { id: 'owner_user' } },
+      });
+      (fetchGroupDetails as jest.Mock).mockResolvedValue({
+        id: 'group_1',
+        name: 'Original Name',
+        created_by: 'owner_user',
+        members: [],
+      });
+
+      const { getByText, getByLabelText, getByDisplayValue } = render(
+        <GroupDetailScreen />,
+      );
+      await flushMicrotasks();
+
+      expect(getByText('Original Name')).toBeTruthy();
+      const editButton = getByLabelText('edit-name-button'); // Assuming an accessibilityLabel
+      fireEvent.press(editButton);
+
+      expect(getByDisplayValue('Original Name')).toBeTruthy();
+    });
+
+    it('Non-owner cannot see the name-editing icon/button', async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        session: { user: { id: 'member_user' } },
+      });
+      (fetchGroupDetails as jest.Mock).mockResolvedValue({
+        id: 'group_1',
+        name: 'Original Name',
+        created_by: 'owner_user',
+        members: [{ user_id: 'member_user', role: 'member', profiles: {} }],
+      });
+
+      const { queryByLabelText } = render(<GroupDetailScreen />);
+      await flushMicrotasks();
+
+      expect(queryByLabelText('edit-name-button')).toBeNull();
+    });
+
+    it('Owner can edit and save the group name', async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        session: { user: { id: 'owner_user' } },
+      });
+      (fetchGroupDetails as jest.Mock).mockResolvedValue({
+        id: 'group_1',
+        name: 'Original Name',
+        created_by: 'owner_user',
+        members: [],
+      });
+      (updateGroupName as jest.Mock).mockResolvedValue(undefined);
+
+      const { getByLabelText, getByDisplayValue, queryByDisplayValue } = render(
+        <GroupDetailScreen />,
+      );
+      await flushMicrotasks();
+
+      const editButton = getByLabelText('edit-name-button');
+      fireEvent.press(editButton);
+
+      const nameInput = getByDisplayValue('Original Name');
+      fireEvent.changeText(nameInput, 'New Group Name');
+      fireEvent(nameInput, 'submitEditing');
+
+      await waitFor(() => {
+        expect(updateGroupName).toHaveBeenCalledWith(
+          'group_1',
+          'New Group Name',
+        );
+      });
+
+      expect(queryByDisplayValue('New Group Name')).toBeNull();
+      expect(fetchGroupDetails).toHaveBeenCalledTimes(2); // Initial load + reload after update
+    });
+  });
+
+  describe('Group Avatar Upload', () => {
+    it('Owner can change group picture and upload service fires', async () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        session: { user: { id: 'owner_user' } },
+      });
+      (fetchGroupDetails as jest.Mock).mockResolvedValue({
+        id: 'group_1',
+        name: 'Test Group',
+        created_by: 'owner_user',
+        members: [],
+      });
+      (
+        ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock
+      ).mockResolvedValue({ status: 'granted' });
+      (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://mock/image.jpg' }],
+      });
+      (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+        uri: 'file://mock/manipulated.jpg',
+      });
+
+      let resolveUpload: (value: string) => void;
+      (uploadGroupAvatar as jest.Mock).mockImplementation(
+        () =>
+          new Promise((res) => {
+            resolveUpload = res;
+          }),
+      );
+
+      const { getByLabelText, findByTestId, queryByTestId } = render(
+        <GroupDetailScreen />,
+      );
+      await flushMicrotasks();
+
+      const avatarButton = getByLabelText('change-group-avatar-button');
+      fireEvent.press(avatarButton);
+      await findByTestId('avatar-activity-indicator');
+
+      // Manually resolve the upload promise
+      await act(async () => {
+        resolveUpload('http://mock.url/avatar.jpg');
+      });
+
+      await waitFor(() => {
+        expect(queryByTestId('avatar-activity-indicator')).toBeNull();
+      });
+
+      // Now assert that the upload function was called
+      expect(uploadGroupAvatar).toHaveBeenCalledWith(
+        'group_1',
+        'file://mock/manipulated.jpg',
+      );
+    });
   });
 
   it('Owner can generate a one-time invite code', async () => {
