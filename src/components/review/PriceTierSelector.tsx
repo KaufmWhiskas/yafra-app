@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { hapticSelection } from '../../utils/haptics';
 import { COLORS, SIZES } from '../../constants/theme';
 
 interface PriceTierSelectorProps {
@@ -28,7 +29,10 @@ export default function PriceTierSelector({
             <TouchableOpacity
               key={t.level}
               style={[styles.tierButton, isActive && styles.tierButtonActive]}
-              onPress={() => onChange(t.level)}
+              onPress={() => {
+                hapticSelection();
+                onChange(t.level);
+              }}
             >
               <Text
                 style={[styles.tierText, isActive && styles.tierTextActive]}

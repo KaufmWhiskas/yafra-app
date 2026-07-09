@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import { Restaurant } from '../../types';
+import { hapticImpact } from '../../utils/haptics';
+import * as Haptics from 'expo-haptics';
 import RestaurantMarker from './RestaurantMarker';
 import {
   getVisibleRestaurants,
@@ -69,6 +71,11 @@ export default function RestaurantMap({
     a.id.toString().localeCompare(b.id.toString()),
   );
 
+  const handleMarkerPress = (restaurant: Restaurant) => {
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
+    onRestaurantSelect(restaurant);
+  };
+
   return (
     <View style={styles.container}>
       <MapView
@@ -99,7 +106,7 @@ export default function RestaurantMap({
               restaurant={restaurant}
               isBookmarked={isBookmarked}
               isSelected={false}
-              onPress={onRestaurantSelect}
+              onPress={handleMarkerPress}
             />
           );
         })}
@@ -111,7 +118,7 @@ export default function RestaurantMap({
             isBookmarked={bookmarkedIds?.has(selectedRestaurant.id.toString())}
             isSelected={true}
             isOverlay={true}
-            onPress={onRestaurantSelect}
+            onPress={handleMarkerPress}
           />
         )}
       </MapView>

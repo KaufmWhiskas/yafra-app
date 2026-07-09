@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { hapticSelection } from '../../utils/haptics';
 import { COLORS, SIZES } from '../../constants/theme';
 
 export type ExperienceType = 'eat-in' | 'takeaway' | 'order';
@@ -22,7 +23,10 @@ export default function ExperienceToggle({ value, onChange }: Props) {
         <TouchableOpacity
           key={opt.val}
           style={[styles.button, value === opt.val && styles.activeButton]}
-          onPress={() => onChange(opt.val)}
+          onPress={() => {
+            hapticSelection();
+            onChange(opt.val);
+          }}
         >
           <Text style={[styles.text, value === opt.val && styles.activeText]}>
             {opt.label}

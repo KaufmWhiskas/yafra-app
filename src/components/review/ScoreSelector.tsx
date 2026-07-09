@@ -52,6 +52,8 @@ export default function ScoreSelector({
   const crumbleScale = useRef(new Animated.Value(1)).current;
   const erosionAnim = useRef(new Animated.Value(0)).current;
 
+  const isFirstMount = useRef(true);
+
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -75,8 +77,12 @@ export default function ScoreSelector({
   // Triggers visual state transitions for both buttons and swipes
   const triggerVisualState = useCallback(
     (val: number) => {
+      const isInitialRender = isFirstMount.current;
+      isFirstMount.current = false;
+
       if (val === 5.0) {
-        hapticNotification(Haptics.NotificationFeedbackType.Success); // Bright, resolving vibration
+        if (!isInitialRender)
+          hapticNotification(Haptics.NotificationFeedbackType.Success); // Bright, resolving vibration
         Animated.timing(erosionAnim, {
           toValue: 0,
           duration: 200,
@@ -84,7 +90,7 @@ export default function ScoreSelector({
         }).start();
         triggerSpringScale();
       } else if (val === 1.0) {
-        hapticImpact(Haptics.ImpactFeedbackStyle.Heavy); // Heavy, dull thud for the structural break
+        if (!isInitialRender) hapticImpact(Haptics.ImpactFeedbackStyle.Heavy); // Heavy, dull thud for the structural break
         Animated.parallel([
           Animated.timing(erosionAnim, {
             toValue: 1,
@@ -123,7 +129,7 @@ export default function ScoreSelector({
         ]).start();
         triggerSpringScale();
       } else {
-        hapticSelection(); // The subtle mechanical "click" for every 0.1 step
+        if (!isInitialRender) hapticSelection(); // The subtle mechanical "click" for every 0.1 step
         Animated.timing(erosionAnim, {
           toValue: 0,
           duration: 200,

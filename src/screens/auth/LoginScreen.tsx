@@ -13,7 +13,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons'; // Used for social brand icons
 import { COLORS, SIZES } from '../../constants/theme';
+import { hapticNotification } from '../../utils/haptics';
 import { login, signInWithProvider } from '../../services/authService';
+import * as Haptics from 'expo-haptics';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 
@@ -31,6 +33,7 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
     } catch (error) {
+      hapticNotification(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         'Login Failed',
         error instanceof Error ? error.message : 'An error occurred',
@@ -43,6 +46,7 @@ export default function LoginScreen() {
       await signInWithProvider(provider);
       // The application session handles updating the root layout tree automatically
     } catch (error) {
+      hapticNotification(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         'Authentication Failed',
         error instanceof Error ? error.message : 'An error occurred',

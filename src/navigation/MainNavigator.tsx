@@ -24,6 +24,7 @@ import RestaurantReviewsScreen from '../screens/restaurant/RestaurantReviewsScre
 import UpdatePasswordScreen from '../screens/profile/UpdatePasswordScreen';
 import ProfileOtpScreen from '../screens/profile/ProfileOtpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import AccessibilitySettingsScreen from '../screens/profile/AccessibilitySettingsScreen';
 
 const linkingConfiguration = {
   prefixes: [Linking.createURL('/'), 'yafra://'],
@@ -114,6 +115,11 @@ export default function MainNavigator() {
                 name="RestaurantReviews"
                 component={RestaurantReviewsScreen}
                 options={{ headerShown: true }}
+              />
+              <Stack.Screen
+                name="AccessibilitySettingsScreen"
+                component={AccessibilitySettingsScreen}
+                options={{ headerShown: true, title: 'Settings' }}
               />
               <Stack.Screen
                 name="UpdatePasswordScreen"

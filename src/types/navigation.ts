@@ -21,6 +21,7 @@ export type RootStackParamList = {
   ProfileOtpScreen: { email: string };
   UpdatePasswordScreen: undefined;
   RestaurantReviews: { restaurantId: number; restaurantName: string };
+  AccessibilitySettingsScreen: undefined;
 };
 
 export type TabParamList = {

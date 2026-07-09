@@ -194,8 +194,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionItem, styles.disabledFeature]}
-            onPress={() => handlePlaceholder('Settings')}
+            style={styles.actionItem}
+            onPress={() => navigation.navigate('AccessibilitySettingsScreen')}
           >
             <MaterialCommunityIcons
               name="cog-outline"

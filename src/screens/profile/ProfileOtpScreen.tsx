@@ -10,6 +10,8 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { verifyResetOtp } from '../../services/authService';
+import { hapticNotification } from '../../utils/haptics';
+import * as Haptics from 'expo-haptics';
 import { COLORS, SIZES } from '../../constants/theme';
 import OtpInput from '../../components/ui/OtpInput';
 import { RootStackParamList } from '../../types/navigation';
@@ -36,6 +38,7 @@ export default function ProfileOtpScreen() {
       await verifyResetOtp(email, otp);
       navigation.navigate('UpdatePasswordScreen');
     } catch (err) {
+      hapticNotification(Haptics.NotificationFeedbackType.Error);
       const message =
         err instanceof Error ? err.message : 'Invalid or expired code.';
       setError(message);

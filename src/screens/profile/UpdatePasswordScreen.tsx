@@ -12,6 +12,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { updateUserPassword } from '../../services/authService';
 import { COLORS, SIZES } from '../../constants/theme';
+import { hapticNotification } from '../../utils/haptics';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
 
 export default function UpdatePasswordScreen() {
@@ -49,6 +51,7 @@ export default function UpdatePasswordScreen() {
         },
       ]);
     } catch (err) {
+      hapticNotification(Haptics.NotificationFeedbackType.Error);
       const message =
         err instanceof Error ? err.message : 'Failed to update password.';
       setError(message);

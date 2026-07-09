@@ -5,11 +5,11 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  LayoutAnimation,
 } from 'react-native';
 import { COLORS, SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TAG_CATEGORIES } from '../../constants/tags';
+import { hapticImpact, hapticSelection } from '../../utils/haptics';
 
 interface TagSelectorProps {
   tags: string[]; // Master list of loaded available tags
@@ -70,7 +70,7 @@ export default function TagSelector({
   };
 
   const toggleAdd = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    hapticImpact();
     setIsAdding(!isAdding);
   };
 
@@ -87,9 +87,7 @@ export default function TagSelector({
                 key={tag}
                 style={[styles.tag, isSelected && styles.tagSelected]}
                 onPress={() => {
-                  LayoutAnimation.configureNext(
-                    LayoutAnimation.Presets.easeInEaseOut,
-                  );
+                  hapticSelection(); // Crisp feedback on every tag tap
                   onToggle(tag);
                 }}
               >

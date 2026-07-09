@@ -9,6 +9,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { GroupFilterProvider } from './src/context/GroupFilterContext';
 import { checkVersionIsSupported } from './src/services/versionService';
 import { CURRENT_VERSION, COLORS, SIZES } from './src/constants/theme';
+import { initHapticsConfig } from './src/utils/haptics';
 
 function VersionLockView() {
   return (
@@ -29,6 +30,9 @@ export default function App() {
       const supported = await checkVersionIsSupported(CURRENT_VERSION);
       setIsSupported(supported);
     };
+
+    // Call the explicit initialization function for haptics
+    initHapticsConfig();
 
     checkVersion();
   }, []);
