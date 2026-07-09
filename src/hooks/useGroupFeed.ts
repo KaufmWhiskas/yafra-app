@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { fetchGroupFeed } from "../services/groupService";
-import { GroupFeedReview } from "../types";
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { fetchGroupFeed } from '../services/groupService';
+import { GroupFeedReview } from '../types';
 
 export function useGroupFeed(groupId: string) {
   const { session } = useAuth();
@@ -25,11 +25,16 @@ export function useGroupFeed(groupId: string) {
         groupId,
         session?.user?.id ?? null,
       );
-      setReviews(fetchedReviews);
+      // The type from fetchGroupFeed allows `restaurant` to be null, which is incompatible
+      // with the global GroupFeedReview type. We sanitize it here.
+      const sanitizedReviews = fetchedReviews.map((review) => ({
+        ...review,
+        restaurant: review.restaurant === null ? undefined : review.restaurant,
+      }));
+      setReviews(sanitizedReviews);
     } catch (err) {
-      const message = err instanceof Error
-        ? err.message
-        : "Failed to load group feed.";
+      const message =
+        err instanceof Error ? err.message : 'Failed to load group feed.';
       setError(message);
     } finally {
       setIsLoading(false);

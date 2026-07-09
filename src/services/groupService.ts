@@ -41,13 +41,32 @@ function generateSecureInviteCode(length = 6): string {
  * Relies on Row Level Security (RLS) to inherently filter results.
  */
 export async function fetchMyGroups(userId: string): Promise<Group[]> {
+  // We query group_members first so PostgREST immediately hits our new user_id index
   const { data, error } = await supabase
-    .from('groups')
-    .select('*, group_members!inner(user_id)')
-    .eq('group_members.user_id', userId);
+    .from('group_members')
+    .select(
+      `
+      groups!inner (
+        id,
+        name,
+        created_by,
+        is_global,
+        permanent_invite_code,
+        created_at,
+        avatar_url
+      )
+    `,
+    )
+    .eq('user_id', userId);
 
   if (error) throw error;
-  return data as Group[];
+
+  // Map the nested PostgREST response back into a clean flat array of Groups
+  // The Supabase client types may incorrectly infer `groups` as an array.
+  // We cast it to the correct shape, as a many-to-one join returns an object.
+  return (data || []).map(
+    (row) => (row as unknown as { groups: Group }).groups,
+  );
 }
 
 /**
