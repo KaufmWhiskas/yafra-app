@@ -103,7 +103,11 @@ export default function GroupDetailScreen() {
   const user = session?.user;
 
   const [group, setGroup] = useState<GroupWithMembers | null>(null);
+
+  // FIX: Separate loading states for the fast header vs the slow data
   const [isLoading, setIsLoading] = useState(true);
+  const [isRestaurantsLoading, setIsRestaurantsLoading] = useState(true);
+
   const [tempCode, setTempCode] = useState<string | null>(null);
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
   const [showInvites, setShowInvites] = useState(false);
@@ -120,7 +124,6 @@ export default function GroupDetailScreen() {
 
   const feedReviews = useMemo(() => {
     const reviews = feedReviewsFromHook as GroupFeedReviewWithPlaceId[];
-    // Sanitize data for components that may not expect `null` restaurant objects.
     return reviews.map((review) => ({
       ...review,
       restaurant: review.restaurant === null ? undefined : review.restaurant,
@@ -148,33 +151,48 @@ export default function GroupDetailScreen() {
     }
   };
 
+  // FIX: Only fetch the core group details and members here (extremely fast query)
   const loadGroupDetails = useCallback(async () => {
     try {
       const data = await fetchGroupDetails(groupId);
       setGroup(data);
-      if (user?.id === data.created_by) {
-        const invites = await fetchActiveInvites(groupId);
-        setActiveInvites(invites);
-      }
 
-      const restaurants = await fetchGroupRestaurants(groupId);
-      setGroupRestaurants(restaurants);
+      // Fire invites invisibly in the background without awaiting them
+      if (user?.id === data.created_by) {
+        fetchActiveInvites(groupId).then(setActiveInvites).catch(console.error);
+      }
     } catch (error) {
       console.error('Failed to load group details', error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Drop the main screen loader instantly
     }
-  }, [groupId, user?.id, setOriginalGroupName]);
+  }, [groupId, user?.id]);
+
+  // FIX: Isolate the heavy 3-step restaurant database join into its own background thread
+  const loadGroupRestaurants = useCallback(async () => {
+    setIsRestaurantsLoading(true);
+    try {
+      const restaurants = await fetchGroupRestaurants(groupId);
+      setGroupRestaurants(restaurants);
+    } catch (error) {
+      console.error('Failed to load group restaurants', error);
+    } finally {
+      setIsRestaurantsLoading(false);
+    }
+  }, [groupId]);
 
   useFocusEffect(
     useCallback(() => {
+      // Fire both independent data streams in parallel!
       loadGroupDetails();
+      loadGroupRestaurants();
+
       if (user?.id) {
         fetchUserBookmarkedRestaurantIds(user.id)
           .then(setBookmarkedIds)
           .catch(console.error);
       }
-    }, [loadGroupDetails, user?.id]),
+    }, [loadGroupDetails, loadGroupRestaurants, user?.id]),
   );
 
   const handleGenerateTempInvite = async () => {
@@ -437,7 +455,7 @@ export default function GroupDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <Text>Loading group details...</Text>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -452,13 +470,22 @@ export default function GroupDetailScreen() {
 
   const isOwner = user?.id === group.created_by;
 
-  const restaurantItems: ListItem[] =
-    groupRestaurants.length > 0
-      ? [
-          { type: 'section_title', title: "Group's Rated Restaurants" },
-          { type: 'restaurants', data: groupRestaurants },
-        ]
-      : [];
+  const restaurantItems: ListItem[] = [];
+
+  // FIX: Inject the isolated restaurant loading spinner into the FlatList sequence
+  if (isRestaurantsLoading) {
+    restaurantItems.push({
+      type: 'section_title',
+      title: "Group's Rated Restaurants",
+    });
+    restaurantItems.push({ type: 'loader', key: 'restaurants-loader' });
+  } else if (groupRestaurants.length > 0) {
+    restaurantItems.push({
+      type: 'section_title',
+      title: "Group's Rated Restaurants",
+    });
+    restaurantItems.push({ type: 'restaurants', data: groupRestaurants });
+  }
 
   const feedItems: ListItem[] = [];
   if (isFeedLoading) {
