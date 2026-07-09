@@ -1,7 +1,11 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
 import MapScreen from '../MapScreen';
-import { fetchRestaurants } from '../../../services/restaurantService';
+import {
+  fetchMapRestaurants,
+  triggerIngest,
+  fetchRestaurantDetails,
+} from '../../../services/restaurantService';
 import { requestForegroundPermissionsAsync } from 'expo-location';
 import { useMapScanner } from '../../../hooks/useMapScanner';
 import { Restaurant } from '../../../types';
@@ -15,25 +19,15 @@ jest.mock('../../../hooks/useActiveGroupFilters', () => ({
   }),
 }));
 
+jest.mock('../../../hooks/useStaggeredList', () => ({
+  useStaggeredList: (items: Restaurant[]) => items,
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock('../../../services/restaurantService', () => ({
-  fetchRestaurants: jest.fn().mockResolvedValue([
-    {
-      id: '1',
-      name: 'Test Burger',
-      cuisine: 'American',
-      latitude: 49.465,
-      longitude: 8.425,
-      google_place_id: 'place_123',
-      rating: 4.5,
-    },
-  ] as Restaurant[]),
-  triggerIngest: jest.fn().mockResolvedValue(undefined),
-  fetchRestaurantDetails: jest.fn().mockResolvedValue({}),
-}));
+jest.mock('../../../services/restaurantService');
 
 jest.mock('../../../services/groupService', () => ({
   fetchGroupReviewedRestaurantIds: jest.fn().mockResolvedValue(new Set()),
@@ -149,26 +143,26 @@ const flushMicrotasks = async (): Promise<void> => {
 };
 
 describe('MapScreen Toggle Feature', () => {
-  beforeAll(() => {
-    (
-      globalThis as typeof globalThis & {
-        requestAnimationFrame: typeof requestAnimationFrame;
-      }
-    ).requestAnimationFrame = (callback: FrameRequestCallback) => {
-      callback(0);
-      return 0;
-    };
-  });
-
   beforeEach(() => {
-    mockNavigate.mockClear();
-    jest.clearAllMocks();
+    (fetchMapRestaurants as jest.Mock).mockResolvedValue([
+      {
+        id: '1',
+        name: 'Test Burger',
+        cuisine: 'American',
+        latitude: 49.465,
+        longitude: 8.425,
+        google_place_id: 'place_123',
+        rating: 4.5,
+      },
+    ] as Restaurant[]);
+    (triggerIngest as jest.Mock).mockResolvedValue(undefined);
+    (fetchRestaurantDetails as jest.Mock).mockResolvedValue({});
   });
 
-  it('calls fetchRestaurants when the component mounts', async () => {
+  it('calls fetchMapRestaurants when the component mounts', async () => {
     render(<MapScreen />);
     await flushMicrotasks();
-    expect(fetchRestaurants).toHaveBeenCalled();
+    expect(fetchMapRestaurants).toHaveBeenCalled();
   });
 
   it('renders the map by default after loading', async () => {
@@ -195,26 +189,25 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('sorts restaurants by distance in list view', async () => {
-    (fetchRestaurants as jest.Mock).mockResolvedValue([
+    (fetchMapRestaurants as jest.Mock).mockResolvedValue([
       { id: '1', name: 'Far Restaurant', latitude: 49.5, longitude: 8.5 }, // ~7km away
       { id: '2', name: 'Close Restaurant', latitude: 49.461, longitude: 8.421 }, // close
     ] as Restaurant[]);
 
-    // useLocation is mocked to return { latitude: 49.46, longitude: 8.42 }
-
     const { getByText, findByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
-    await flushMicrotasks();
 
-    fireEvent.press(getByText('List View'));
-    await flushMicrotasks();
-
-    const listView = await findByTestId('list-view');
-    const restaurantData = listView.props.data;
-
-    expect(restaurantData.length).toBe(2);
-    expect(restaurantData[0].name).toBe('Close Restaurant');
-    expect(restaurantData[1].name).toBe('Far Restaurant');
+    // Wait for the component to stabilize after effects
+    await waitFor(async () => {
+      const listButton = getByText('List View');
+      fireEvent.press(listButton);
+      const listView = await findByTestId('list-view');
+      const restaurantData = listView.props.data;
+      // The userLocation mock is { latitude: 49.46, longitude: 8.42 }
+      // The component should sort 'Close Restaurant' first.
+      expect(restaurantData.length).toBe(2);
+      expect(restaurantData[0].name).toBe('Close Restaurant');
+      expect(restaurantData[1].name).toBe('Far Restaurant');
+    });
   });
 
   it('opens the CollectionModal when the bookmark icon is pressed in List View', async () => {
@@ -232,15 +225,14 @@ describe('MapScreen Toggle Feature', () => {
   });
 
   it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
-    const { getAllByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
-    await flushMicrotasks(); // Advance frame queues to allow stagger hooks to drain
-    const markers = getAllByTestId('restaurant-marker');
-    expect(markers.length).toBeGreaterThan(0);
+    const { findAllByTestId } = render(<MapScreen />);
+    expect((await findAllByTestId('restaurant-marker')).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('applying a cuisine filter restricts rendered restaurant markers', async () => {
-    (fetchRestaurants as jest.Mock).mockResolvedValueOnce([
+    (fetchMapRestaurants as jest.Mock).mockResolvedValue([
       {
         id: '1',
         name: 'Test Burger',
@@ -258,18 +250,20 @@ describe('MapScreen Toggle Feature', () => {
     ] as Restaurant[]);
 
     const { getByText, getAllByTestId, getByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
+
+    await waitFor(() =>
+      expect(getAllByTestId('restaurant-marker')).toHaveLength(2),
+    );
 
     fireEvent.press(getByTestId('filter-button'));
-    await flushMicrotasks();
 
     fireEvent.press(getByText('Pizza & Italian'));
 
     fireEvent.press(getByText('Apply Filters'));
-    await flushMicrotasks();
 
-    const markers = getAllByTestId('restaurant-marker');
-    expect(markers.length).toBe(1);
+    await waitFor(() =>
+      expect(getAllByTestId('restaurant-marker')).toHaveLength(1),
+    );
   });
 
   it('requests location permissions', async () => {
@@ -282,8 +276,9 @@ describe('MapScreen Toggle Feature', () => {
     const { getAllByTestId, getByTestId, queryAllByTestId } = render(
       <MapScreen />,
     );
-    await flushMicrotasks();
-    await flushMicrotasks();
+    await waitFor(() =>
+      expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
+    );
 
     const markers = getAllByTestId('restaurant-marker');
     fireEvent.press(markers[0]);
@@ -299,8 +294,9 @@ describe('MapScreen Toggle Feature', () => {
 
   it('passes bookmark toggle down to the floating preview card and opens CollectionModal', async () => {
     const { getAllByTestId, findByText } = render(<MapScreen />);
-    await flushMicrotasks();
-    await flushMicrotasks();
+    await waitFor(() =>
+      expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
+    );
 
     const markers = getAllByTestId('restaurant-marker');
     fireEvent.press(markers[0]);
@@ -317,8 +313,9 @@ describe('MapScreen Toggle Feature', () => {
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {
     const { getAllByTestId, getAllByText } = render(<MapScreen />);
-    await flushMicrotasks();
-    await flushMicrotasks();
+    await waitFor(() =>
+      expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
+    );
 
     const markers = getAllByTestId('restaurant-marker');
     fireEvent.press(markers[0]);
@@ -368,12 +365,12 @@ describe('MapScreen Toggle Feature', () => {
 
     it('passes the map region coordinates to SearchBar as userLocation', async () => {
       const { getByTestId } = render(<MapScreen />);
-      await flushMicrotasks();
 
-      const searchBar = getByTestId('mock-search-bar');
-      expect(searchBar.props.userLocation).toEqual(
-        expect.objectContaining({ latitude: 49.46 }),
-      );
+      await waitFor(() => {
+        const searchBar = getByTestId('mock-search-bar');
+        // This should pass after the useEffect snaps the map to the mocked user location
+        expect(searchBar.props.userLocation?.latitude).toBeCloseTo(49.46);
+      });
     });
   });
 

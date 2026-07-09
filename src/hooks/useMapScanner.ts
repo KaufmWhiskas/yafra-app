@@ -89,28 +89,27 @@ export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
 
       // Wrapper handler function to execute database load queries safely
       const executeScanLifecycle = async () => {
-        lastLoadedLocation.current = currentCoord;
-
-        if (!isTightZoom && !forceManualSearch) {
-          await loadData(bbox);
-          return;
-        }
-
-        if (apiDistance < 0.5 && !forceManualSearch) {
-          await loadData(bbox);
-          return;
-        }
-
-        setIsScanning(true);
-        lastScannedLocation.current = currentCoord;
         try {
+          // STEP 1: Fire off the database select pass immediately.
           await loadData(bbox);
-          await triggerIngest(bbox);
-          await loadData(bbox);
+          lastLoadedLocation.current = currentCoord;
+
+          const shouldIngest = willAutoScanExecute || forceManualSearch;
+          if (!shouldIngest) return;
+
+          // STEP 2: Fire the heavy edge function ingestion completely in the background.
+          setIsScanning(true);
+          lastScannedLocation.current = currentCoord;
+          triggerIngest(bbox)
+            .then(() => loadData(bbox))
+            .catch((err) =>
+              console.error('Background ingest sync failed:', err),
+            )
+            .finally(() => {
+              setIsScanning(false);
+            });
         } catch (error) {
-          console.error('Failed to update viewport registry:', error);
-        } finally {
-          setIsScanning(false);
+          console.error('Map loading error:', error);
         }
       };
 

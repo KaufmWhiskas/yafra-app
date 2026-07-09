@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import { Restaurant } from "../types";
+import { supabase } from './supabase';
+import { Restaurant } from '../types';
 
 /**
  * Represents a geographic bounding box for map-based queries.
@@ -22,12 +22,12 @@ export async function fetchRestaurants(
   bbox: BoundingBox,
 ): Promise<Restaurant[]> {
   const { data, error } = await supabase
-    .from("restaurants")
-    .select("*, reviews(id)")
-    .gte("latitude", bbox.minLat)
-    .lte("latitude", bbox.maxLat)
-    .gte("longitude", bbox.minLon)
-    .lte("longitude", bbox.maxLon);
+    .from('restaurants')
+    .select('*, reviews(id)')
+    .gte('latitude', bbox.minLat)
+    .lte('latitude', bbox.maxLat)
+    .gte('longitude', bbox.minLon)
+    .lte('longitude', bbox.maxLon);
 
   if (error) {
     throw error;
@@ -49,13 +49,17 @@ export async function fetchRestaurants(
       details,
       rating: google_rating
         ? parseFloat(google_rating as string)
-        : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
+        : parsedDetails?.rating
+          ? Number(parsedDetails.rating)
+          : undefined,
       app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
       app_review_count: reviews ? (reviews as unknown[]).length : 0,
-      user_ratings_total: Number(
-        user_ratings_total || parsedDetails?.user_ratings_total ||
-          parsedDetails?.userRatingCount,
-      ) || 0,
+      user_ratings_total:
+        Number(
+          user_ratings_total ||
+            parsedDetails?.user_ratings_total ||
+            parsedDetails?.userRatingCount,
+        ) || 0,
     };
   }) as unknown as Restaurant[];
 }
@@ -73,13 +77,13 @@ export async function fetchRestaurantDetails(
   googlePlaceId: string,
 ): Promise<Partial<Restaurant> | null> {
   const { data: localData, error: dbError } = await supabase
-    .from("restaurants")
-    .select("id, app_rating, google_rating, details, details_updated_at")
-    .eq("google_place_id", googlePlaceId)
+    .from('restaurants')
+    .select('id, app_rating, google_rating, details, details_updated_at')
+    .eq('google_place_id', googlePlaceId)
     .maybeSingle();
 
   if (dbError) {
-    console.error("DB Fetch Error:", dbError);
+    console.error('DB Fetch Error:', dbError);
   }
 
   let localId = localData?.id;
@@ -88,15 +92,15 @@ export async function fetchRestaurantDetails(
 
   if (localId) {
     const { data: reviews } = await supabase
-      .from("reviews")
-      .select("rating")
-      .eq("restaurant_id", localId.toString());
+      .from('reviews')
+      .select('rating')
+      .eq('restaurant_id', localId.toString());
 
     if (reviews) {
       appReviewCount = reviews.length;
       if (reviews.length > 0) {
-        appRating = reviews.reduce((sum, r) => sum + r.rating, 0) /
-          reviews.length;
+        appRating =
+          reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
       } else {
         appRating = undefined;
       }
@@ -107,8 +111,8 @@ export async function fetchRestaurantDetails(
   let isCacheValid = false;
 
   if (localData?.details && localData.details_updated_at) {
-    const cacheAgeMs = Date.now() -
-      new Date(localData.details_updated_at).getTime();
+    const cacheAgeMs =
+      Date.now() - new Date(localData.details_updated_at).getTime();
     if (cacheAgeMs < FOURTEEN_DAYS_MS) {
       isCacheValid = true;
     }
@@ -121,24 +125,22 @@ export async function fetchRestaurantDetails(
       id: localId,
       rating: cachedDetails.rating
         ? Number(cachedDetails.rating)
-        : (localData.google_rating
+        : localData.google_rating
           ? parseFloat(localData.google_rating as string)
-          : undefined),
-      user_ratings_total: Number(
-        cachedDetails.user_ratings_total ||
-          cachedDetails.userRatingCount,
-      ) || 0,
+          : undefined,
+      user_ratings_total:
+        Number(
+          cachedDetails.user_ratings_total || cachedDetails.userRatingCount,
+        ) || 0,
       app_rating: appRating != null ? Number(appRating) : undefined,
       app_review_count: appReviewCount,
       opening_hours: cachedDetails.opening_hours || undefined,
     } as Partial<Restaurant>;
   }
 
-  const { data: freshData, error: fetchError } = await supabase.functions
-    .invoke<
-      Record<string, unknown>
-    >(
-      "fetch-place-details",
+  const { data: freshData, error: fetchError } =
+    await supabase.functions.invoke<Record<string, unknown>>(
+      'fetch-place-details',
       {
         body: { googlePlaceId },
       },
@@ -149,36 +151,36 @@ export async function fetchRestaurantDetails(
 
   if (!localData) {
     const { data: newRest, error: insertError } = await supabase
-      .from("restaurants")
+      .from('restaurants')
       .upsert(
         {
           google_place_id: googlePlaceId,
-          name: freshData.name || "Unknown",
-          cuisine: freshData.cuisine || "restaurant",
+          name: freshData.name || 'Unknown',
+          cuisine: freshData.cuisine || 'restaurant',
           location: `POINT(${freshData.longitude ?? 0} ${
             freshData.latitude ?? 0
           })`,
           details: freshData,
           details_updated_at: new Date().toISOString(),
         },
-        { onConflict: "google_place_id" },
+        { onConflict: 'google_place_id' },
       )
-      .select("id")
+      .select('id')
       .maybeSingle();
 
     if (insertError) {
-      console.error("[fetchRestaurantDetails] Auto-ingest Error:", insertError);
+      console.error('[fetchRestaurantDetails] Auto-ingest Error:', insertError);
     } else if (newRest) {
       localId = newRest.id;
     }
   } else {
     await supabase
-      .from("restaurants")
+      .from('restaurants')
       .update({
         details: freshData,
         details_updated_at: new Date().toISOString(),
       })
-      .eq("id", localId);
+      .eq('id', localId);
   }
 
   return {
@@ -186,17 +188,18 @@ export async function fetchRestaurantDetails(
     id: localId,
     rating: freshData.rating
       ? Number(freshData.rating)
-      : (localData?.google_rating
+      : localData?.google_rating
         ? Number(localData.google_rating)
-        : undefined),
-    user_ratings_total: Number(
-      freshData.user_ratings_total ||
-        freshData.userRatingCount ||
-        (localData?.details as Record<string, unknown> | undefined)
-          ?.user_ratings_total ||
-        (localData?.details as Record<string, unknown> | undefined)
-          ?.userRatingCount,
-    ) || 0,
+        : undefined,
+    user_ratings_total:
+      Number(
+        freshData.user_ratings_total ||
+          freshData.userRatingCount ||
+          (localData?.details as Record<string, unknown> | undefined)
+            ?.user_ratings_total ||
+          (localData?.details as Record<string, unknown> | undefined)
+            ?.userRatingCount,
+      ) || 0,
     app_rating: appRating != null ? Number(appRating) : undefined,
     app_review_count: appReviewCount,
     opening_hours: freshData.opening_hours || undefined,
@@ -210,7 +213,7 @@ export async function fetchRestaurantDetails(
  */
 export async function triggerIngest(bbox: BoundingBox): Promise<unknown> {
   const { data, error } = await supabase.functions.invoke<unknown>(
-    "ingest-restaurants",
+    'ingest-restaurants',
     {
       body: { bbox },
     },
@@ -221,4 +224,107 @@ export async function triggerIngest(bbox: BoundingBox): Promise<unknown> {
   }
 
   return data;
+}
+
+export async function fetchMapRestaurants(
+  latitude: number,
+  longitude: number,
+  latitudeDelta: number,
+  longitudeDelta: number,
+  groupIds: string[] = [],
+) {
+  const minLat = latitude - latitudeDelta / 2;
+  const maxLat = latitude + latitudeDelta / 2;
+  const minLon = longitude - longitudeDelta / 2;
+  const maxLon = longitude + longitudeDelta / 2;
+
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select(
+      `
+      id,
+      name,
+      cuisine,
+      latitude,
+      longitude,
+      google_place_id,
+      app_rating,
+      google_rating,
+      app_review_count,
+      details
+    `,
+    )
+    .gte('latitude', minLat)
+    .lte('latitude', maxLat)
+    .gte('longitude', minLon)
+    .lte('longitude', maxLon);
+
+  if (error) {
+    console.error('Error fetching map markers:', error);
+    return [];
+  }
+
+  type RawRestaurantData = {
+    id: string | number;
+    name: string;
+    cuisine: string;
+    latitude: number;
+    longitude: number;
+    google_place_id: string | null;
+    app_rating: string | null;
+    google_rating: string | null;
+    app_review_count: number | null;
+    details: Record<string, unknown> | null;
+  };
+
+  return ((data as RawRestaurantData[]) || []).map((r) => {
+    const { google_rating, details, ...rest } = r;
+    const parsedDetails = details;
+    return {
+      ...rest,
+      rating: google_rating
+        ? parseFloat(google_rating)
+        : parsedDetails?.rating
+          ? Number(parsedDetails.rating)
+          : undefined,
+      app_rating: r.app_rating ? parseFloat(r.app_rating) : undefined,
+      app_review_count: r.app_review_count || 0,
+      user_ratings_total:
+        Number(
+          parsedDetails?.user_ratings_total || parsedDetails?.userRatingCount,
+        ) || 0,
+    } as Restaurant;
+  });
+}
+
+export async function fetchRestaurantGroupDetails(
+  restaurantId: string,
+  groupIds: string[],
+) {
+  if (!groupIds || groupIds.length === 0) return [];
+
+  const { data: members, error: membersError } = await supabase
+    .from('group_members')
+    .select('user_id')
+    .in('group_id', groupIds);
+
+  if (membersError) throw membersError;
+  const userIds = Array.from(new Set((members || []).map((m) => m.user_id)));
+  if (userIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(
+      `
+      id, rating, price_value_rating, review_text, visit_date, metadata, profiles (id, username, avatar_url)
+    `,
+    )
+    .eq('restaurant_id', restaurantId)
+    .in('user_id', userIds);
+
+  if (error) {
+    console.error('Error fetching restaurant group details:', error);
+    return [];
+  }
+  return data || [];
 }

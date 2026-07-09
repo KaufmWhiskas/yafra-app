@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ADDED
 import {
-  fetchRestaurants,
+  fetchMapRestaurants,
   fetchRestaurantDetails,
 } from '../../services/restaurantService';
 import { COLORS, SIZES } from '../../constants/theme';
@@ -35,7 +36,6 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
   BoundingBox,
   getRegionBBox,
-  filterWithinRadius,
   calculateDistance,
   getClosestRestaurants,
 } from '../../utils/geo';
@@ -51,11 +51,12 @@ type RestaurantWithDistance = Restaurant & {
   sortingDistance: number;
 };
 
+const LAST_REGION_CACHE_KEY = '@yafra_last_map_region'; // ADDED
+
 export default function MapScreen() {
   const isFocused = useIsFocused();
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('map');
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
@@ -125,10 +126,8 @@ export default function MapScreen() {
 
       if (activeGroupIds.length > 0 && restaurants.length > 0) {
         try {
-          // Extract all IDs for the bulk query
           const restaurantIds = restaurants.map((r) => r.id.toString());
 
-          // ONE network request instead of hundreds
           const bulkReviews = await fetchActiveGroupsReviewsForRestaurantsBulk(
             restaurantIds,
             activeGroupIds,
@@ -157,32 +156,25 @@ export default function MapScreen() {
     applyGroupScores();
   }, [restaurants, activeGroupIds, isGroupFilterLoading]);
 
-  const loadData = useCallback(async (bbox?: BoundingBox) => {
-    try {
-      if (!bbox) return;
-      const data = await fetchRestaurants(bbox);
+  const loadData = useCallback(
+    async (bbox?: BoundingBox) => {
+      try {
+        if (!mapRegionRef.current) return;
+        const data = await fetchMapRestaurants(
+          mapRegionRef.current.latitude,
+          mapRegionRef.current.longitude,
+          mapRegionRef.current.latitudeDelta,
+          mapRegionRef.current.longitudeDelta,
+          activeGroupIds,
+        );
+        setRestaurants(data);
+      } catch (error) {
+        console.error('Failed to fetch restaurants:', error);
+      }
+    },
+    [activeGroupIds],
+  );
 
-      setRestaurants((prev) => {
-        const merged = new Map<string, Restaurant>();
-
-        [...prev, ...(data || [])].forEach((r) => {
-          merged.set(r.id.toString(), r);
-        });
-
-        const scanCenter = {
-          latitude: (bbox.minLat + bbox.maxLat) / 2,
-          longitude: (bbox.minLon + bbox.maxLon) / 2,
-        };
-
-        return filterWithinRadius(Array.from(merged.values()), scanCenter, 15);
-      });
-    } catch (error) {
-      console.error('Failed to fetch restaurants:', error);
-    }
-  }, []);
-
-  // Memoize the list of restaurants with their distances calculated.
-  // This only re-runs when the base restaurant list or the user/map location changes.
   const restaurantsWithDistance: RestaurantWithDistance[] = useMemo(() => {
     const center = mapRegion
       ? { latitude: mapRegion.latitude, longitude: mapRegion.longitude }
@@ -211,8 +203,6 @@ export default function MapScreen() {
     });
   }, [restaurantsWithGroupScores, mapRegion, userLocation]);
 
-  // Memoize the final filtered and sorted list.
-  // This re-runs when filters change, but it doesn't need to recalculate distances.
   const filteredRestaurants = useMemo(() => {
     let list = filterRestaurants(restaurantsWithDistance, {
       cuisine: filters.cuisine,
@@ -228,9 +218,58 @@ export default function MapScreen() {
       list = list.filter((r) => groupRestaurantIds.has(r.id.toString()));
     }
 
-    // Sort the already-annotated list
     return list.sort((a, b) => a.sortingDistance - b.sortingDistance);
   }, [restaurantsWithDistance, filters, bookmarkedIds, groupRestaurantIds]);
+
+  // ADDED: Initialize from Cache Instantly
+  useEffect(() => {
+    const loadCachedRegion = async () => {
+      try {
+        const cached = await AsyncStorage.getItem(LAST_REGION_CACHE_KEY);
+        if (cached && !mapRegionRef.current) {
+          const region = JSON.parse(cached);
+          setMapRegion(region);
+          mapRegionRef.current = region;
+          loadData(getRegionBBox(region));
+        } else if (!cached && !mapRegionRef.current) {
+          // Absolute fallback if it is a brand new install so the map mounts instantly
+          const fallbackRegion = {
+            latitude: 49.4816, // Default Ludwigshafen fallback
+            longitude: 8.465,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          };
+          setMapRegion(fallbackRegion);
+          mapRegionRef.current = fallbackRegion;
+          loadData(getRegionBBox(fallbackRegion));
+        }
+      } catch (e) {
+        console.error('Failed to load cached map region', e);
+      }
+    };
+    loadCachedRegion();
+  }, [loadData]);
+
+  // CHANGED: Wait for GPS, then smoothly fly to it
+  const [hasSnappedToGPS, setHasSnappedToGPS] = useState(false);
+
+  useEffect(() => {
+    if (userLocation && !hasSnappedToGPS) {
+      const initialRegion = {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.04,
+        longitudeDelta: 0.02,
+      };
+
+      mapRef.current?.animateToRegion(initialRegion, 1000);
+      setMapRegion(initialRegion);
+
+      mapRegionRef.current = initialRegion;
+      setHasSnappedToGPS(true);
+      loadData(getRegionBBox(initialRegion));
+    }
+  }, [userLocation, hasSnappedToGPS, loadData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -311,10 +350,9 @@ export default function MapScreen() {
   );
 
   const handleSearchSelect = async (place: Prediction) => {
-    if (isScanning) return; // Prevent double-triggering if an ingest block is active
+    if (isScanning) return;
 
     try {
-      // 1. Fetch exact geographic coordinates from cache/edge functions
       const details = await fetchRestaurantDetails(place.placeId);
 
       if (!details || details.latitude == null || details.longitude == null) {
@@ -324,7 +362,6 @@ export default function MapScreen() {
         return;
       }
 
-      // 2. Identify the target viewport zoom framework based on Google's type classifications
       const isEstablishment = place.types?.some((t) =>
         [
           'restaurant',
@@ -348,15 +385,14 @@ export default function MapScreen() {
         ].includes(t),
       );
 
-      // Determine responsive camera frame spans based on context
-      let latDelta = 0.01; // Safe mid-range zoom level for specific street addresses
+      let latDelta = 0.01;
       let lonDelta = 0.01;
 
       if (isEstablishment) {
-        latDelta = 0.003; // Tight high-resolution focus directly over the venue
+        latDelta = 0.003;
         lonDelta = 0.003;
       } else if (isCityOrRegion) {
-        latDelta = 0.04; // Broad context view for matching entire city bounds
+        latDelta = 0.04;
         lonDelta = 0.02;
       }
 
@@ -367,13 +403,11 @@ export default function MapScreen() {
         longitudeDelta: lonDelta,
       };
 
-      // 3. Acquire UI Lock & pan camera smoothly to destination coordinates
       setIsCameraTransit(true);
       setMapRegion(targetRegion);
       mapRegionRef.current = targetRegion;
       mapRef.current?.animateToRegion(targetRegion, 800);
 
-      // 4. Construct presentation state parameters
       if (isEstablishment) {
         const restaurantName = place.description.split(',')[0];
 
@@ -391,14 +425,11 @@ export default function MapScreen() {
           opening_hours: details.opening_hours,
         };
 
-        // Open the bottom preview card layout floating on top of the map view!
         setSelectedRestaurant(parsedRestaurant);
       } else {
-        // Clear any previous restaurant selection cards if a city or wide region is chosen
         setSelectedRestaurant(null);
       }
 
-      // 5. Release UI lock cleanly after the 800ms animation has concluded
       setTimeout(() => {
         setIsCameraTransit(false);
       }, 850);
@@ -416,7 +447,6 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (userLocation) {
-      // Keep a rolling cache alive around the user's feet while they walk or navigate
       scanUserRadius(userLocation);
     }
   }, [userLocation, scanUserRadius]);
@@ -426,12 +456,16 @@ export default function MapScreen() {
     mapRegionRef.current = region;
     scanRegion(region);
 
+    // ADDED: Write the last looked-at region to cache silently in the background
+    AsyncStorage.setItem(LAST_REGION_CACHE_KEY, JSON.stringify(region)).catch(
+      () => {},
+    );
+
     if (mapRef.current) {
       try {
         const camera = await mapRef.current.getCamera();
         setMapHeading(camera.heading);
       } catch (error) {
-        // Suppress transient map camera unmount rejections safely
         console.debug(
           '[MapScreen] Camera detached during region change complete:',
           error,
@@ -449,7 +483,6 @@ export default function MapScreen() {
           return prev;
         });
       } catch (error) {
-        // Suppress transient map camera unmount rejections safely
         console.debug(
           '[MapScreen] Camera detached during live region change:',
           error,
@@ -457,24 +490,6 @@ export default function MapScreen() {
       }
     }
   };
-
-  const [hasSetInitialLocation, setHasSetInitialLocation] = useState(false);
-
-  useEffect(() => {
-    if (userLocation && !hasSetInitialLocation) {
-      const initialRegion = {
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.02,
-      };
-      setMapRegion(initialRegion);
-      mapRef.current?.animateToRegion(initialRegion, 1000);
-      setHasSetInitialLocation(true);
-
-      loadData(getRegionBBox(initialRegion)).finally(() => setIsLoading(false));
-    }
-  }, [userLocation, hasSetInitialLocation, loadData]);
 
   const handleToggleBookmark = (restaurantId: string | number) => {
     if (!user?.id) return;
@@ -520,14 +535,6 @@ export default function MapScreen() {
     mapRef.current?.animateCamera({ heading: 0 }, { duration: 400 });
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <Text>Loading restaurants from database...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View
@@ -549,7 +556,6 @@ export default function MapScreen() {
             />
           </View>
         </View>
-        {/* Add a spacer here to push the toggle down */}
         <View style={{ height: 16 }} />
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
@@ -565,7 +571,7 @@ export default function MapScreen() {
           <TouchableOpacity
             style={[styles.scanButton, isScanning && styles.disabledButton]}
             activeOpacity={0.85}
-            disabled={isScanning} // Freeze interactions
+            disabled={isScanning}
             onPress={() => {
               if (mapRegionRef.current) {
                 scanRegion(mapRegionRef.current, true);
@@ -586,11 +592,7 @@ export default function MapScreen() {
             restaurants={filteredRestaurants}
             selectedRestaurant={selectedRestaurant}
             onRestaurantSelect={handleRestaurantSelect}
-            onMapPress={() => {
-              requestAnimationFrame(() => {
-                setSelectedRestaurant(null);
-              });
-            }}
+            onMapPress={() => setSelectedRestaurant(null)}
             region={mapRegion}
             testID="mock-map"
             onRegionChangeComplete={handleRegionChangeComplete}
@@ -727,7 +729,6 @@ export default function MapScreen() {
         }}
       />
 
-      {/* Absolute fullscreen touch barrier active only during camera movements */}
       {isCameraAnimating && (
         <View
           style={[
@@ -750,7 +751,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    zIndex: 100, // Ensure search dropdown overlays the map
+    zIndex: 100,
   },
   floatingButtonContainer: {
     position: 'absolute',
@@ -758,7 +759,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 102, // Layer above FAB items to ensure interaction focus
+    zIndex: 102,
   },
   scanButton: {
     backgroundColor: '#FFFFFF',
@@ -806,7 +807,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 3,
-    zIndex: 101, // Force FABs above the floatingHeader (zIndex: 100)
+    zIndex: 101,
   },
   invertedFab: {
     backgroundColor: COLORS.surface,
@@ -815,11 +816,11 @@ const styles = StyleSheet.create({
     top: 130,
     width: 44,
     height: 44,
-    borderRadius: 22, // Matches smallFab circle radius perfectly
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surface, // Gives identical material contrast background
-    elevation: 4, // Aligns dropshadow depth with filterFab elevation rules
+    backgroundColor: COLORS.surface,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -833,7 +834,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterFab: {
-    top: 184, // Suspends button precisely below the aligned compass wrapper
+    top: 184,
   },
   floatingCardContainer: {
     position: 'absolute',

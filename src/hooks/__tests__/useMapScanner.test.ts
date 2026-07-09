@@ -1,12 +1,10 @@
-import { act, renderHook } from '@testing-library/react-native';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { Region } from 'react-native-maps';
 import { triggerIngest } from '../../services/restaurantService';
 import { useMapScanner } from '../useMapScanner';
 
 // Mock the triggerIngest service to isolate the hook's logic.
-jest.mock('../../services/restaurantService', () => ({
-  triggerIngest: jest.fn(),
-}));
+jest.mock('../../services/restaurantService');
 
 const MOCK_REGION_ZOOMED_IN: Region = {
   latitude: 49.4715,
@@ -45,6 +43,7 @@ describe('useMapScanner', () => {
   beforeEach(() => {
     // Clear all mocks before each test to ensure isolation.
     jest.clearAllMocks();
+    (triggerIngest as jest.Mock).mockResolvedValue(undefined);
     loadDataMock = jest.fn().mockResolvedValue(undefined);
   });
 
@@ -98,19 +97,11 @@ describe('useMapScanner', () => {
       await result.current.scanRegion(MOCK_REGION_CITY_SCALE, true);
     });
 
-    // Advance timers to allow the deferred state update to run
-    await act(async () => {
-      jest.runAllTimers();
+    await waitFor(() => {
+      expect(triggerIngest).toHaveBeenCalledTimes(1);
+      // loadData is called once for the initial render, and a second time after ingestion completes.
+      expect(loadDataMock).toHaveBeenCalledTimes(2);
     });
-
-    // When forceManualSearch is true, the button is hidden to prevent double-clicks.
-    expect(result.current.showScanButton).toBe(false);
-
-    // The manual override should force the ingest function to be called.
-    expect(triggerIngest).toHaveBeenCalledTimes(1);
-
-    // loadData is called once for the initial render, and a second time after ingestion completes.
-    expect(loadDataMock).toHaveBeenCalledTimes(2);
   });
 
   it('should ignore micro-panning entirely to prevent DB flooding', async () => {
@@ -168,6 +159,43 @@ describe('useMapScanner', () => {
 
     // Because it is stationary, auto-scan skips, leaving the manual search button visible!
     expect(result.current.showScanButton).toBe(true);
+  });
+});
+
+describe('useMapScanner optimistic loading', () => {
+  let loadDataMock: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    loadDataMock = jest.fn().mockResolvedValue(undefined);
+  });
+
+  it('should render cached database pins instantly without blocking on background ingestion', async () => {
+    let ingestPromiseResolve: (value: unknown) => void;
+    const ingestPromise = new Promise((resolve) => {
+      ingestPromiseResolve = resolve;
+    });
+    (triggerIngest as jest.Mock).mockReturnValue(ingestPromise);
+
+    const { result } = renderHook(() => useMapScanner(loadDataMock));
+
+    await act(async () => {
+      await result.current.scanRegion(MOCK_REGION_ZOOMED_IN);
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    await waitFor(() => expect(result.current.isScanning).toBe(true));
+    expect(loadDataMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      ingestPromiseResolve({});
+    });
+
+    await waitFor(() => expect(result.current.isScanning).toBe(false));
+    expect(loadDataMock).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -57,6 +57,15 @@ jest.mock('../src/services/restaurantService', () => ({
       longitude: 8.425,
     },
   ]),
+  fetchMapRestaurants: jest.fn().mockResolvedValue([
+    {
+      id: '1',
+      name: 'Test Burger',
+      cuisine: 'American',
+      latitude: 49.465,
+      longitude: 8.425,
+    },
+  ]),
   fetchRestaurantDetails: jest.fn().mockResolvedValue({}),
   triggerIngest: jest.fn().mockResolvedValue(undefined),
 }));
