@@ -12,9 +12,7 @@ import {
 // Define a more specific type for the feed review to include the google_place_id
 // This avoids having to modify the global types file, which might be out of scope.
 type GroupFeedReviewWithPlaceId = Omit<GroupFeedReview, 'restaurant'> & {
-  restaurant:
-    | (GroupFeedReview['restaurant'] & { google_place_id?: string })
-    | null;
+  restaurant: GroupFeedReview['restaurant'] | null;
 };
 
 /**

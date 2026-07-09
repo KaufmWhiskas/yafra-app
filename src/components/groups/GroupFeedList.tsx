@@ -5,10 +5,14 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS, SIZES } from '../../constants/theme';
 import { useGroupFeed } from '../../hooks/useGroupFeed';
 import FeedCard from './FeedCard';
+import { RootStackParamList } from '../../types/navigation';
 
 interface GroupFeedListProps {
   groupId: string;
@@ -16,6 +20,8 @@ interface GroupFeedListProps {
 
 export default function GroupFeedList({ groupId }: GroupFeedListProps) {
   const { reviews, isLoading, error } = useGroupFeed(groupId);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   if (isLoading) {
     return (
@@ -45,7 +51,21 @@ export default function GroupFeedList({ groupId }: GroupFeedListProps) {
     <FlatList
       data={reviews}
       keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => <FeedCard review={item} />}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => {
+            if (item.restaurant?.google_place_id) {
+              navigation.navigate('RestaurantDetail', {
+                restaurantId: item.restaurant.google_place_id,
+                restaurantName: item.restaurant.name || 'Restaurant Details',
+              });
+            }
+          }}
+        >
+          <FeedCard review={item} />
+        </TouchableOpacity>
+      )}
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
     />

@@ -75,6 +75,7 @@ export interface GroupFeedReview extends Review {
     id?: string | number;
     name?: string;
     cuisine?: string;
+    google_place_id?: string;
   };
 }
 

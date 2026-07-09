@@ -65,14 +65,6 @@ type GroupWithMembers = Group & {
   })[];
 };
 
-type GroupFeedReviewWithPlaceId = Omit<GroupFeedReview, 'restaurant'> & {
-  restaurant:
-    | (NonNullable<GroupFeedReview['restaurant']> & {
-        google_place_id?: string;
-      })
-    | undefined;
-};
-
 type ListItem =
   | { type: 'section_title'; title: string }
   | {
@@ -84,7 +76,7 @@ type ListItem =
   | { type: 'error'; message: string; key: string }
   | { type: 'empty'; message: string; key: string }
   | { type: 'feed_action_button'; key: string }
-  | { type: 'feed_item'; review: GroupFeedReviewWithPlaceId }
+  | { type: 'feed_item'; review: GroupFeedReview }
   | {
       type: 'member_item';
       member: GroupMember & {
@@ -117,18 +109,10 @@ export default function GroupDetailScreen() {
   const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]); // Still needed for scoreDistribution
 
   const {
-    reviews: feedReviewsFromHook,
+    reviews: feedReviews,
     isLoading: isFeedLoading,
     error: feedError,
   } = useGroupFeed(groupId);
-
-  const feedReviews = useMemo(() => {
-    const reviews = feedReviewsFromHook as GroupFeedReviewWithPlaceId[];
-    return reviews.map((review) => ({
-      ...review,
-      restaurant: review.restaurant === null ? undefined : review.restaurant,
-    }));
-  }, [feedReviewsFromHook]);
 
   const scoreDistribution = useMemo(
     () => calculateScoreDistribution(groupRestaurants),
