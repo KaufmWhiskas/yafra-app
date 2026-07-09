@@ -28,6 +28,12 @@ import { DEFAULT_TAGS } from '../../constants/tags';
 import PriceTierSelector from '../../components/review/PriceTierSelector';
 import { useAuth } from '../../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  hapticNotification,
+  hapticImpact,
+  hapticSelection,
+} from '../../utils/haptics';
+import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface ReviewState {
@@ -196,6 +202,7 @@ export default function ReviewScreen() {
       }
 
       if (result.success) {
+        hapticNotification(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
           'Success',
           `Your review has been ${isEditing ? 'updated' : 'submitted'}!`,
@@ -221,6 +228,7 @@ export default function ReviewScreen() {
   };
 
   const handleToggleTag = (tag: string) => {
+    hapticSelection(); // Crisp feedback on chip activation
     dispatch({ type: 'TOGGLE_TAG', tag });
   };
 
@@ -335,7 +343,10 @@ export default function ReviewScreen() {
 
         <TouchableOpacity
           style={styles.advancedToggle}
-          onPress={() => dispatch({ type: 'TOGGLE_ADVANCED' })}
+          onPress={() => {
+            hapticImpact(Haptics.ImpactFeedbackStyle.Light); // Adds physical toggle response
+            dispatch({ type: 'TOGGLE_ADVANCED' });
+          }}
         >
           <Text style={styles.advancedToggleText}>
             {isAdvanced
@@ -443,9 +454,10 @@ export default function ReviewScreen() {
               </View>
               <Switch
                 value={isPrivate}
-                onValueChange={(value) =>
-                  dispatch({ type: 'SET_FIELD', field: 'isPrivate', value })
-                }
+                onValueChange={(value) => {
+                  hapticImpact(Haptics.ImpactFeedbackStyle.Medium); // Heavier snap for privacy adjustments
+                  dispatch({ type: 'SET_FIELD', field: 'isPrivate', value });
+                }}
                 trackColor={{ false: '#ccc', true: COLORS.primary }}
                 thumbColor={'#fff'}
               />

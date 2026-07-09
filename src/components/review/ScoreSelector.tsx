@@ -11,6 +11,12 @@ import {
 } from 'react-native';
 import { getScoreColor, getScoreDescriptor } from '../../utils/scoreEngine';
 import { SIZES } from '../../constants/theme';
+import {
+  hapticSelection,
+  hapticImpact,
+  hapticNotification,
+} from '../../utils/haptics';
+import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ScoreSelectorProps {
@@ -70,6 +76,7 @@ export default function ScoreSelector({
   const triggerVisualState = useCallback(
     (val: number) => {
       if (val === 5.0) {
+        hapticNotification(Haptics.NotificationFeedbackType.Success); // Bright, resolving vibration
         Animated.timing(erosionAnim, {
           toValue: 0,
           duration: 200,
@@ -77,6 +84,7 @@ export default function ScoreSelector({
         }).start();
         triggerSpringScale();
       } else if (val === 1.0) {
+        hapticImpact(Haptics.ImpactFeedbackStyle.Heavy); // Heavy, dull thud for the structural break
         Animated.parallel([
           Animated.timing(erosionAnim, {
             toValue: 1,
@@ -115,6 +123,7 @@ export default function ScoreSelector({
         ]).start();
         triggerSpringScale();
       } else {
+        hapticSelection(); // The subtle mechanical "click" for every 0.1 step
         Animated.timing(erosionAnim, {
           toValue: 0,
           duration: 200,
