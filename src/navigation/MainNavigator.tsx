@@ -14,6 +14,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
 import GroupFeedScreen from '../screens/groups/GroupFeedScreen';
+import GroupRestaurantsScreen from '../screens/groups/GroupRestaurantsScreen';
 import WantToVisitScreen from '../screens/profile/WantToVisitScreen';
 import CollectionDetailScreen from '../screens/profile/CollectionDetailScreen';
 import RestaurantDetailScreen from '../screens/map/RestaurantDetailScreen';
@@ -73,6 +74,14 @@ export default function MainNavigator() {
                 name="GroupFeedScreen"
                 component={GroupFeedScreen}
                 options={{ headerShown: true }}
+              />
+              <Stack.Screen
+                name="GroupRestaurantsScreen"
+                component={GroupRestaurantsScreen}
+                options={({ route }) => ({
+                  headerShown: true,
+                  title: route.params.groupName,
+                })}
               />
               <Stack.Screen
                 name="WantToVisitScreen"

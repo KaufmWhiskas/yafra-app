@@ -43,26 +43,21 @@ describe('Group Service', () => {
 
   it('fetchMyGroups returns a list of groups the user belongs to', async () => {
     // @ts-expect-error: custom mock property not on root client
-    (supabase.select as jest.Mock).mockReturnValueOnce(supabase);
-    // @ts-expect-error: custom mock property not on root client
     (supabase.eq as jest.Mock).mockResolvedValueOnce({
-      data: [{ id: '1', name: 'Test Group' }],
+      data: [{ groups: { id: '1', name: 'Test Group' } }],
       error: null,
     });
 
     const result = await fetchMyGroups('user_123');
 
     expect(result).toEqual([{ id: '1', name: 'Test Group' }]);
-    expect(supabase.from).toHaveBeenCalledWith('groups');
+    expect(supabase.from).toHaveBeenCalledWith('group_members');
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.select).toHaveBeenCalledWith(
-      '*, group_members!inner(user_id)',
+      expect.stringContaining('groups!inner'),
     );
     // @ts-expect-error: custom mock property not on root client
-    expect(supabase.eq).toHaveBeenCalledWith(
-      'group_members.user_id',
-      'user_123',
-    );
+    expect(supabase.eq).toHaveBeenCalledWith('user_id', 'user_123');
   });
 
   it('createGroup inserts a new group and returns the created record', async () => {

@@ -1,5 +1,9 @@
-import { calculateGroupAverage, calculateGroupMapScore } from '../groupMath';
-import { GroupFeedReview, GroupMember, Review } from '../../types';
+import {
+  calculateGroupAverage,
+  calculateGroupMapScore,
+  calculateScoreDistribution,
+} from '../groupMath';
+import { GroupFeedReview, GroupMember, Restaurant, Review } from '../../types';
 
 describe('Group Math Aggregation', () => {
   describe('calculateGroupAverage', () => {
@@ -134,5 +138,78 @@ describe('Group Math Aggregation', () => {
       const score = calculateGroupMapScore(activeGroupReviews);
       expect(score).toBe(4.0);
     });
+  });
+});
+
+describe('calculateScoreDistribution', () => {
+  it('should correctly bucket restaurants by app_rating or fallback to rating', () => {
+    const restaurants: Partial<Restaurant>[] = [
+      { app_rating: 5.0 },
+      { app_rating: 4.8 }, // -> 5.0 bucket
+      { app_rating: 4.6 }, // -> 4.5 bucket
+      { app_rating: 4.5 },
+      { app_rating: 4.4 }, // -> 4.5 bucket
+      { app_rating: 3.9 }, // -> 4.0 bucket
+      { app_rating: 2.1 }, // -> 2.0 bucket
+      { app_rating: 2.3 }, // -> 2.5 bucket
+      { rating: 4.2 }, // -> 4.0 bucket (fallback to google rating)
+      { rating: 4.9 }, // -> 5.0 bucket
+      {}, // no rating, should be ignored
+    ];
+
+    const distribution = calculateScoreDistribution(
+      restaurants as Restaurant[],
+    );
+    const buckets = distribution.buckets;
+
+    expect(buckets.find((b) => b.score === 5.0)?.count).toBe(3);
+    expect(buckets.find((b) => b.score === 4.5)?.count).toBe(3);
+    expect(buckets.find((b) => b.score === 4.0)?.count).toBe(2);
+    expect(buckets.find((b) => b.score === 3.5)?.count).toBe(0);
+    expect(buckets.find((b) => b.score === 3.0)?.count).toBe(0);
+    expect(buckets.find((b) => b.score === 2.5)?.count).toBe(1);
+    expect(buckets.find((b) => b.score === 2.0)?.count).toBe(1);
+    expect(buckets.find((b) => b.score === 1.5)?.count).toBe(0);
+    expect(buckets.find((b) => b.score === 1.0)?.count).toBe(0);
+    expect(buckets.length).toBe(9);
+  });
+
+  it('should calculate correct percentage heights based on max count', () => {
+    const restaurants: Partial<Restaurant>[] = [
+      { app_rating: 5.0 },
+      { app_rating: 5.0 },
+      { app_rating: 5.0 },
+      { app_rating: 5.0 }, // 4 in 5.0 bucket
+      { app_rating: 4.5 },
+      { app_rating: 4.5 }, // 2 in 4.5 bucket
+      { app_rating: 4.0 }, // 1 in 4.0 bucket
+    ];
+
+    const distribution = calculateScoreDistribution(
+      restaurants as Restaurant[],
+    );
+    const buckets = distribution.buckets;
+
+    expect(distribution.maxCount).toBe(4);
+    expect(buckets.find((b) => b.score === 5.0)?.percentage).toBe(100);
+    expect(buckets.find((b) => b.score === 4.5)?.percentage).toBe(50);
+    expect(buckets.find((b) => b.score === 4.0)?.percentage).toBe(25);
+  });
+
+  it('should return an empty array for empty restaurant input', () => {
+    const distribution = calculateScoreDistribution([]);
+    expect(distribution.buckets).toEqual([]);
+    expect(distribution.maxCount).toBe(0);
+  });
+
+  it('should handle restaurants with undefined or null ratings gracefully', () => {
+    const restaurants: Partial<Restaurant>[] = [
+      { rating: undefined },
+      {}, // `rating` is `number | undefined`, so we test with an empty object
+    ];
+    const distribution = calculateScoreDistribution(
+      restaurants as Restaurant[],
+    );
+    expect(distribution.buckets).toEqual([]);
   });
 });

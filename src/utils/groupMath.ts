@@ -1,4 +1,15 @@
-import { GroupFeedReview, GroupMember, Review } from '../types';
+import { GroupFeedReview, GroupMember, Restaurant, Review } from '../types';
+
+export interface ScoreBucket {
+  score: number;
+  count: number;
+  percentage: number;
+}
+
+export interface ScoreDistribution {
+  buckets: ScoreBucket[];
+  maxCount: number;
+}
 
 /**
  * Calculates the weighted average rating for a specific restaurant based on
@@ -46,4 +57,59 @@ export function calculateGroupMapScore(reviews: GroupFeedReview[]): number {
   const average = total / reviews.length;
 
   return Math.round(average * 10) / 10;
+}
+
+/**
+ * Groups restaurants into 0.5-increment score buckets for bar chart visualization.
+ * Ensures all buckets from 1.0 to 5.0 exist for a uniform X-axis.
+ * @param restaurants The list of restaurants to analyze.
+ * @returns An object containing the buckets and the max count for percentage calculation.
+ */
+export function calculateScoreDistribution(
+  restaurants: Restaurant[],
+): ScoreDistribution {
+  // Pre-fill all valid increments so the chart layout remains fixed and uniform
+  const buckets: Record<string, number> = {
+    '5.0': 0,
+    '4.5': 0,
+    '4.0': 0,
+    '3.5': 0,
+    '3.0': 0,
+    '2.5': 0,
+    '2.0': 0,
+    '1.5': 0,
+    '1.0': 0,
+  };
+
+  let validRestaurantsCount = 0;
+
+  for (const restaurant of restaurants) {
+    const rating = restaurant.app_rating ?? restaurant.rating;
+    if (rating === undefined || rating === null) continue;
+
+    validRestaurantsCount++;
+    const clampedRating = Math.max(1.0, Math.min(5.0, rating));
+    // Round to nearest 0.5
+    const bucketKey = (Math.round(clampedRating * 2) / 2).toFixed(1);
+
+    if (buckets[bucketKey] !== undefined) {
+      buckets[bucketKey] += 1;
+    }
+  }
+
+  if (validRestaurantsCount === 0) {
+    return { buckets: [], maxCount: 0 };
+  }
+
+  const maxCount = Math.max(...Object.values(buckets));
+
+  const scoreBuckets: ScoreBucket[] = Object.entries(buckets)
+    .map(([scoreStr, count]) => ({
+      score: parseFloat(scoreStr),
+      count,
+      percentage: maxCount > 0 ? (count / maxCount) * 100 : 0,
+    }))
+    .sort((a, b) => b.score - a.score); // Sort from highest score to lowest
+
+  return { buckets: scoreBuckets, maxCount };
 }

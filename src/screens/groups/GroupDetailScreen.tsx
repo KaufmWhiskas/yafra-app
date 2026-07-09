@@ -31,7 +31,6 @@ import {
   fetchGroupRestaurants,
   uploadGroupAvatar,
 } from '../../services/groupService';
-import { fetchUserBookmarkedRestaurantIds } from '../../services/bookmarkService';
 import {
   Group,
   GroupMember,
@@ -40,17 +39,17 @@ import {
   GroupFeedReview,
 } from '../../types';
 import { useGroupFeed } from '../../hooks/useGroupFeed';
-import RestaurantCard from '../../components/ui/RestaurantCard';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
+import ScoreDistributionChart from '../../components/groups/ScoreDistributionChart';
+import { calculateScoreDistribution } from '../../utils/groupMath';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import FeedCard from '../../components/groups/FeedCard';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Avatar } from '../../components/Avatar';
-import CollectionModal from '../../components/ui/CollectionModal';
 
 type GroupDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -76,7 +75,11 @@ type GroupFeedReviewWithPlaceId = Omit<GroupFeedReview, 'restaurant'> & {
 
 type ListItem =
   | { type: 'section_title'; title: string }
-  | { type: 'restaurants'; data: Restaurant[] }
+  | {
+      type: 'score_chart';
+      distribution: ReturnType<typeof calculateScoreDistribution>;
+      totalCount: number;
+    }
   | { type: 'loader'; key: string }
   | { type: 'error'; message: string; key: string }
   | { type: 'empty'; message: string; key: string }
@@ -111,10 +114,7 @@ export default function GroupDetailScreen() {
   const [tempCode, setTempCode] = useState<string | null>(null);
   const [activeInvites, setActiveInvites] = useState<GroupInvite[]>([]);
   const [showInvites, setShowInvites] = useState(false);
-  const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]);
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
-  const [selectedRestaurantForBookmark, setSelectedRestaurantForBookmark] =
-    useState<string | number | null>(null);
+  const [groupRestaurants, setGroupRestaurants] = useState<Restaurant[]>([]); // Still needed for scoreDistribution
 
   const {
     reviews: feedReviewsFromHook,
@@ -129,6 +129,11 @@ export default function GroupDetailScreen() {
       restaurant: review.restaurant === null ? undefined : review.restaurant,
     }));
   }, [feedReviewsFromHook]);
+
+  const scoreDistribution = useMemo(
+    () => calculateScoreDistribution(groupRestaurants),
+    [groupRestaurants],
+  );
 
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
@@ -186,13 +191,7 @@ export default function GroupDetailScreen() {
       // Fire both independent data streams in parallel!
       loadGroupDetails();
       loadGroupRestaurants();
-
-      if (user?.id) {
-        fetchUserBookmarkedRestaurantIds(user.id)
-          .then(setBookmarkedIds)
-          .catch(console.error);
-      }
-    }, [loadGroupDetails, loadGroupRestaurants, user?.id]),
+    }, [loadGroupDetails, loadGroupRestaurants]),
   );
 
   const handleGenerateTempInvite = async () => {
@@ -245,20 +244,6 @@ export default function GroupDetailScreen() {
     } catch (error) {
       console.error('Failed to toggle code', error);
     }
-  };
-
-  const handleRestaurantCardPress = (restaurant: Restaurant) => {
-    if (restaurant.google_place_id) {
-      navigation.navigate('RestaurantDetail', {
-        restaurantId: restaurant.google_place_id,
-        restaurantName: restaurant.name,
-      });
-    }
-  };
-
-  const handleToggleBookmark = (restaurantId: string | number) => {
-    if (!user?.id) return;
-    setSelectedRestaurantForBookmark(restaurantId);
   };
 
   const handleEditGroupName = () => {
@@ -484,7 +469,11 @@ export default function GroupDetailScreen() {
       type: 'section_title',
       title: "Group's Rated Restaurants",
     });
-    restaurantItems.push({ type: 'restaurants', data: groupRestaurants });
+    restaurantItems.push({
+      type: 'score_chart',
+      distribution: scoreDistribution,
+      totalCount: groupRestaurants.length,
+    });
   }
 
   const feedItems: ListItem[] = [];
@@ -521,9 +510,9 @@ export default function GroupDetailScreen() {
         ];
 
   const listData: ListItem[] = [
-    ...restaurantItems,
     { type: 'section_title', title: 'Group Feed' },
     ...feedItems,
+    ...restaurantItems,
     { type: 'section_title', title: 'Members' },
     ...memberItems,
   ];
@@ -532,27 +521,17 @@ export default function GroupDetailScreen() {
     switch (item.type) {
       case 'section_title':
         return <Text style={styles.sectionTitle}>{item.title}</Text>;
-      case 'restaurants':
+      case 'score_chart':
         return (
-          <FlatList
-            data={item.data}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(r) => r.id.toString()}
-            renderItem={({ item: restaurant }) => (
-              <View style={{ width: 280, marginRight: SIZES.padding }}>
-                <RestaurantCard
-                  item={restaurant}
-                  onPress={handleRestaurantCardPress}
-                  onPressReview={() =>
-                    navigation.navigate('ReviewScreen', { restaurant })
-                  }
-                  isBookmarked={bookmarkedIds.has(restaurant.id.toString())}
-                  onToggleBookmark={() => handleToggleBookmark(restaurant.id)}
-                />
-              </View>
-            )}
-            contentContainerStyle={{ paddingBottom: SIZES.padding }}
+          <ScoreDistributionChart
+            buckets={item.distribution.buckets}
+            totalCount={item.totalCount}
+            onPress={() =>
+              navigation.navigate('GroupRestaurantsScreen', {
+                groupId,
+                groupName: group.name,
+              })
+            }
           />
         );
       case 'loader':
@@ -924,21 +903,6 @@ export default function GroupDetailScreen() {
           paddingHorizontal: SIZES.padding,
           paddingTop: Math.max(insets.top, 16),
           paddingBottom: Math.max(insets.bottom, 16) + 24,
-        }}
-      />
-
-      <CollectionModal
-        visible={!!selectedRestaurantForBookmark}
-        restaurantId={selectedRestaurantForBookmark}
-        userId={user?.id}
-        onClose={() => {
-          setSelectedRestaurantForBookmark(null);
-          // Refresh bookmark state after modal closes
-          if (user?.id) {
-            fetchUserBookmarkedRestaurantIds(user.id)
-              .then(setBookmarkedIds)
-              .catch(console.error);
-          }
         }}
       />
 
