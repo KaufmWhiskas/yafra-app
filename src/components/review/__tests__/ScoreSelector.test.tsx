@@ -1,10 +1,18 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import ScoreSelector from '../ScoreSelector';
 
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
+
+beforeAll(() => {
+  jest.useFakeTimers();
+});
+
+afterAll(() => {
+  jest.useRealTimers();
+});
 
 describe('ScoreSelector', () => {
   it('renders initial value and descriptor', () => {
@@ -16,34 +24,30 @@ describe('ScoreSelector', () => {
     expect(getByText('Great')).toBeTruthy();
   });
 
-  it('rejects numbers > 5.0 and < 1.0 on blur', () => {
-    const handleChange = jest.fn();
-    const { getByTestId } = render(
-      <ScoreSelector value={4.6} onChange={handleChange} />,
-    );
-
-    const input = getByTestId('score-input');
-
-    fireEvent.changeText(input, '6.0');
-    fireEvent(input, 'blur');
-
-    expect(handleChange).toHaveBeenCalledWith(5.0);
-
-    handleChange.mockClear();
-    fireEvent.changeText(input, '0.5');
-    fireEvent(input, 'blur');
-    expect(handleChange).toHaveBeenCalledWith(1.0);
-  });
-
   it('quick-increment and decrement buttons update values seamlessly', () => {
     const handleChange = jest.fn();
     const { getByTestId } = render(
       <ScoreSelector value={4.6} onChange={handleChange} />,
     );
 
-    fireEvent.press(getByTestId('increment-btn'));
+    act(() => {
+      fireEvent.press(getByTestId('increment-btn'));
+    });
     expect(handleChange).toHaveBeenCalledWith(4.7);
-    fireEvent.press(getByTestId('decrement-btn'));
+
+    act(() => {
+      fireEvent.press(getByTestId('decrement-btn'));
+    });
     expect(handleChange).toHaveBeenCalledWith(4.5);
+  });
+
+  it('should format the descriptor with impact emojis when hitting 1.0 minimum score', () => {
+    const mockOnChange = jest.fn();
+    const { getByTestId } = render(
+      <ScoreSelector value={1.0} onChange={mockOnChange} label="Rating" />,
+    );
+
+    const descriptor = getByTestId('score-descriptor');
+    expect(descriptor.props.children).toContain('☣️');
   });
 });

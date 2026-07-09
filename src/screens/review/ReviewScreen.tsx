@@ -382,6 +382,7 @@ export default function ReviewScreen() {
                     dispatch({ type: 'SET_FIELD', field: 'priceScore', value })
                   }
                   label="Price / Value"
+                  testID="score-selector-Price / Value"
                 />
                 <TouchableOpacity
                   style={styles.clearRatingBadge}

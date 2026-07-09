@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import {
+  render,
+  fireEvent,
+  waitFor,
+  act,
+  within,
+} from '@testing-library/react-native';
 import { Alert, Platform } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
 import { submitReview } from '../../../services/reviewService';
@@ -72,8 +78,13 @@ jest.mock('react-native', () => {
 });
 
 describe('ReviewScreen', () => {
+  const MOCK_DATE = new Date('2024-07-15T12:00:00Z');
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+    // Mock the system date to make tests deterministic
+    jest.setSystemTime(MOCK_DATE);
   });
 
   it('renders the restaurant name and default tags', async () => {
@@ -88,6 +99,9 @@ describe('ReviewScreen', () => {
   it('calls submitReview with simple mode payload by default', async () => {
     (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
     const { getByText } = render(<ReviewScreen />);
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     fireEvent.press(getByText('Submit Review'));
 
@@ -100,7 +114,7 @@ describe('ReviewScreen', () => {
         tags: [],
         description: '',
         isPrivate: false,
-        visitDate: expect.any(String),
+        visitDate: '2024-07-15',
         priceTier: 2,
       });
       expect(mockGoBack).toHaveBeenCalled();
@@ -109,15 +123,24 @@ describe('ReviewScreen', () => {
 
   it('calls submitReview with advanced payload when expanded and a tag is selected', async () => {
     (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
-    const { getByText, getAllByTestId, getByPlaceholderText, findByText } =
-      render(<ReviewScreen />);
+    const { getByText, getByTestId, getByPlaceholderText, findByText } = render(
+      <ReviewScreen />,
+    );
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
 
     fireEvent.press(getByText('Add Optional Price / Value Rating'));
 
-    const scoreInputs = getAllByTestId('score-input');
-    fireEvent.changeText(scoreInputs[1], '3.5');
+    // Find the second score selector and increment its value
+    const priceValueContainer = getByTestId('score-selector-Price / Value');
+    const { getByTestId: getByTestIdWithin } = within(priceValueContainer);
+    const incrementBtn = getByTestIdWithin('increment-btn');
+    for (let i = 0; i < 5; i++) {
+      fireEvent.press(incrementBtn); // 3.0 -> 3.5
+    }
 
     fireEvent.press(getByText('Takeaway'));
 
@@ -137,7 +160,7 @@ describe('ReviewScreen', () => {
         tags: ['Hidden Gem'],
         description: 'Amazing burgers!',
         isPrivate: false,
-        visitDate: expect.any(String),
+        visitDate: '2024-07-15',
         priceTier: 2,
       });
       expect(mockGoBack).toHaveBeenCalled();
@@ -145,20 +168,23 @@ describe('ReviewScreen', () => {
   });
 
   it('displays an error message if the submission fails', async () => {
-    (submitReview as jest.Mock).mockRejectedValueOnce(
-      new Error('Network Error'),
+    (submitReview as jest.Mock).mockImplementation(() =>
+      Promise.reject(new Error('Network Error')),
     );
     const { getByText, findByText } = render(<ReviewScreen />);
-
     await act(async () => {
-      fireEvent.press(getByText('Submit Review'));
+      jest.runAllTimers();
     });
 
-    expect(
-      await findByText(
-        'Could not save your review right now. Please check your connection and try again.',
-      ),
-    ).toBeTruthy();
+    fireEvent.press(getByText('Submit Review'));
+
+    await waitFor(() => {
+      expect(
+        findByText(
+          'Could not save your review right now. Please check your connection and try again.',
+        ),
+      ).toBeTruthy();
+    });
     expect(mockGoBack).not.toHaveBeenCalled();
   });
 

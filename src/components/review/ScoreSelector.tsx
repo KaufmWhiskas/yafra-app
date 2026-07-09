@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Svg, { Path } from 'react-native-svg';
 import {
   View,
   Text,
@@ -9,13 +10,14 @@ import {
   Animated,
 } from 'react-native';
 import { getScoreColor, getScoreDescriptor } from '../../utils/scoreEngine';
-import { COLORS, SIZES } from '../../constants/theme';
+import { SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface ScoreSelectorProps {
   value: number;
   onChange: (score: number) => void;
   label?: string;
+  testID?: string;
 }
 
 interface ActiveSpark {
@@ -32,50 +34,122 @@ export default function ScoreSelector({
   value,
   onChange,
   label = 'Rating',
+  testID,
 }: ScoreSelectorProps) {
   const scoreColor = getScoreColor(value);
   const descriptor = getScoreDescriptor(value);
 
-  const [inputValue, setInputValue] = useState(value.toFixed(1));
-  const [isFocused, setIsFocused] = useState(false);
   const [sparks, setSparks] = useState<ActiveSpark[]>([]);
 
   const delighterScale = useRef(new Animated.Value(1)).current;
-  const loopActiveRef = useRef(false);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const crumbleScale = useRef(new Animated.Value(1)).current;
+  const erosionAnim = useRef(new Animated.Value(0)).current;
 
   const valueRef = useRef(value);
   valueRef.current = value;
 
+  const triggerSpringScale = useCallback(() => {
+    // This is for the descriptor text, not the crumble effect
+    Animated.sequence([
+      Animated.timing(delighterScale, {
+        toValue: 1.1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(delighterScale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [delighterScale]);
+
+  // Triggers visual state transitions for both buttons and swipes
+  const triggerVisualState = useCallback(
+    (val: number) => {
+      if (val === 5.0) {
+        Animated.timing(erosionAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+        triggerSpringScale();
+      } else if (val === 1.0) {
+        Animated.parallel([
+          Animated.timing(erosionAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: false,
+          }),
+          // Animate the crumble scale and shake
+          Animated.sequence([
+            Animated.timing(crumbleScale, {
+              toValue: 0.97,
+              duration: 80,
+              useNativeDriver: true,
+            }),
+            Animated.spring(crumbleScale, {
+              toValue: 1,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(shakeAnim, {
+              toValue: 8,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: -8,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: 0,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
+        triggerSpringScale();
+      } else {
+        Animated.timing(erosionAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      }
+    },
+    [shakeAnim, erosionAnim, triggerSpringScale, crumbleScale],
+  );
+
+  useEffect(() => {
+    triggerVisualState(value);
+  }, [value, triggerVisualState]);
+
   const spawnSparkInstance = useCallback(() => {
-    // Spawns randomly across the full 240px x 54px control bar canvas frame
     const startX = Math.random() * 240 - 120;
     const startY = Math.random() * 54 - 27;
-
     const spark: ActiveSpark = {
       id: Math.random() + Date.now(),
       startX,
       startY,
-      animX: new Animated.Value(0),
-      animY: new Animated.Value(0),
+      animX: new Animated.Value(startX),
+      animY: new Animated.Value(startY),
       opacity: new Animated.Value(1),
       size: Math.random() * 3.5 + 2.5,
     };
-
     setSparks((prev) => [...prev, spark]);
-
-    const angle = Math.random() * Math.PI * 2;
-    const distance = Math.random() * 40 + 25;
-    const targetX = Math.cos(angle) * distance;
-    const targetY = Math.sin(angle) * distance + 20;
-
     Animated.parallel([
       Animated.timing(spark.animX, {
-        toValue: targetX,
+        toValue: startX + (Math.random() - 0.5) * 40,
         duration: 750,
         useNativeDriver: true,
       }),
       Animated.timing(spark.animY, {
-        toValue: targetY,
+        toValue: startY + (Math.random() - 0.5) * 40,
         duration: 750,
         useNativeDriver: true,
       }),
@@ -84,59 +158,28 @@ export default function ScoreSelector({
         duration: 750,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      setSparks((prev) => prev.filter((s) => s.id !== spark.id));
-    });
+    ]).start(() => setSparks((prev) => prev.filter((s) => s.id !== spark.id)));
   }, []);
 
   useEffect(() => {
     let frameId: number;
     let lastSpawnTime = 0;
-
     const tick = (timestamp: number) => {
-      if (!loopActiveRef.current) return;
-
-      if (timestamp - lastSpawnTime > 50) {
-        spawnSparkInstance();
-        lastSpawnTime = timestamp;
-      }
-      frameId = requestAnimationFrame(tick);
-    };
-
-    if (value === 5.0) {
-      if (!loopActiveRef.current) {
-        loopActiveRef.current = true;
+      if (value === 5.0) {
+        if (timestamp - lastSpawnTime > 33) {
+          spawnSparkInstance();
+          lastSpawnTime = timestamp;
+        }
         frameId = requestAnimationFrame(tick);
-
-        Animated.sequence([
-          Animated.timing(delighterScale, {
-            toValue: 1.15,
-            duration: 100,
-            useNativeDriver: true,
-          }),
-          Animated.spring(delighterScale, {
-            toValue: 1,
-            friction: 3,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-        ]).start();
       }
-    } else {
-      loopActiveRef.current = false;
-      setSparks([]);
-    }
-
-    return () => {
-      cancelAnimationFrame(frameId);
     };
-  }, [value, spawnSparkInstance, delighterScale]);
-
-  useEffect(() => {
-    if (!isFocused) {
-      setInputValue(value.toFixed(1));
+    if (value === 5.0) {
+      frameId = requestAnimationFrame(tick);
+    } else {
+      setSparks([]); // Clear immediately when leaving 5.0
     }
-  }, [value, isFocused]);
+    return () => cancelAnimationFrame(frameId);
+  }, [value, spawnSparkInstance]);
 
   const handleIncrement = () =>
     onChange(Math.min(5.0, Math.round((value + 0.1) * 10) / 10));
@@ -144,100 +187,98 @@ export default function ScoreSelector({
   const handleDecrement = () =>
     onChange(Math.max(1.0, Math.round((value - 0.1) * 10) / 10));
 
-  const handleChangeText = (text: string) => {
-    setInputValue(text);
-    const parsed = parseFloat(text);
-    if (!isNaN(parsed) && parsed >= 1.0 && parsed <= 5.0) {
-      onChange(Math.round(parsed * 10) / 10);
-    }
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-    const parsed = parseFloat(inputValue);
-    if (isNaN(parsed) || parsed < 1.0) {
-      onChange(1.0);
-      setInputValue('1.0');
-    } else if (parsed > 5.0) {
-      onChange(5.0);
-      setInputValue('5.0');
-    } else {
-      const clamped = Math.round(parsed * 10) / 10;
-      onChange(clamped);
-      setInputValue(clamped.toFixed(1));
-    }
-  };
-
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 2;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const scaleFactor = 15;
-        const stepDelta = Math.round(gestureState.dx / scaleFactor);
-
-        if (stepDelta !== 0) {
-          const nextValue = valueRef.current + stepDelta * 0.1;
-          const clampedValue = Math.min(
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 5,
+      onPanResponderMove: (_, gesture) => {
+        // Normalizing: 30 pixels equals exactly one 0.1 increment
+        const step = Math.round(gesture.dx / 15);
+        if (step !== 0) {
+          const nextValue = Math.min(
             5.0,
-            Math.max(1.0, Math.round(nextValue * 10) / 10),
+            Math.max(1.0, valueRef.current + step * 0.1),
           );
-
-          if (clampedValue !== valueRef.current) {
-            onChange(clampedValue);
-            gestureState.dx = 0;
-          }
+          onChange(Math.round(nextValue * 10) / 10);
+          gesture.dx = 0; // Reset allows the next "step" to be calculated from here
         }
       },
-      onPanResponderRelease: () => {},
     }),
   ).current;
 
+  // Define SVG paths for the different states
+  const normalPath = `M12,0 L228,0 A12,12 0 0 1 240,12 L240,42 A12,12 0 0 1 228,54 L12,54 A12,12 0 0 1 0,42 L0,12 A12,12 0 0 1 12,0 Z`;
+  const brokenPath = `M12,0 L80,2 L100,5 L160,3 L220,8 L230,4 L235,15 L238,35 L232,48 L220,52 L160,50 L100,54 L40,50 L10,54 A12,12 0 0 1 0,42 L0,12 A12,12 0 0 1 12,0 Z`;
+
+  const crackPaths = [
+    { d: 'M120,10 L140,30 L135,45', highlight: 'M121,10 L141,30 L136,45' },
+    { d: 'M150,5 L160,30', highlight: 'M151,5 L161,30' },
+    { d: 'M80,54 L90,30 L100,35', highlight: 'M81,54 L91,30 L101,35' },
+    { d: 'M90,30 L85,15', highlight: 'M91,30 L86,15' },
+  ];
+
+  const crackOpacity = erosionAnim;
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID={testID}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
       <View style={styles.wrapperAnchor}>
-        {sparks.map((s) => (
-          <Animated.View
-            key={s.id}
-            style={[
-              styles.sparkElement,
-              {
-                width: s.size,
-                height: s.size,
-                borderRadius: s.size / 2,
-                opacity: s.opacity,
-                transform: [
-                  { translateX: s.startX },
-                  { translateY: s.startY },
-                  { translateX: s.animX },
-                  { translateY: s.animY },
-                ],
-              },
-            ]}
-          />
-        ))}
-
-        <View
-          {...panResponder.panHandlers}
-          style={[styles.controlRow, { backgroundColor: scoreColor }]}
+        <Animated.View
+          style={[
+            styles.controlRow,
+            {
+              transform: [{ translateX: shakeAnim }, { scale: crumbleScale }],
+            },
+          ]}
         >
+          <Animated.View
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              transform: [],
+            }}
+          >
+            <Svg width="240" height="54" style={StyleSheet.absoluteFill}>
+              <Path
+                d={value === 1.0 ? brokenPath : normalPath}
+                fill={scoreColor}
+              />
+            </Svg>
+
+            <Animated.View
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                opacity: crackOpacity,
+              }}
+            >
+              <Svg width="240" height="54">
+                {crackPaths.map((p, i) => (
+                  <React.Fragment key={i}>
+                    <Path
+                      d={p.d}
+                      stroke="rgba(0,0,0,0.35)"
+                      strokeWidth={2}
+                      fill="none"
+                    />
+                    <Path
+                      d={p.highlight}
+                      stroke="rgba(255,255,255,0.18)"
+                      strokeWidth={1}
+                      fill="none"
+                    />
+                  </React.Fragment>
+                ))}
+              </Svg>
+            </Animated.View>
+          </Animated.View>
+
           <TouchableOpacity
             testID="decrement-btn"
             onPress={handleDecrement}
             style={styles.button}
           >
-            <MaterialCommunityIcons
-              name="minus"
-              size={24}
-              color={COLORS.surface}
-            />
+            <MaterialCommunityIcons name="minus" size={24} color="white" />
           </TouchableOpacity>
-
-          <View style={styles.swipeContainer}>
+          <View {...panResponder.panHandlers} style={styles.swipeContainer}>
             <MaterialCommunityIcons
               name="chevron-left"
               size={18}
@@ -246,13 +287,8 @@ export default function ScoreSelector({
             <TextInput
               testID="score-input"
               style={styles.input}
-              value={inputValue}
-              onChangeText={handleChangeText}
-              onFocus={() => setIsFocused(true)}
-              onBlur={handleBlur}
-              keyboardType="numeric"
-              maxLength={3}
-              underlineColorAndroid="transparent"
+              value={value.toFixed(1)}
+              editable={false}
             />
             <MaterialCommunityIcons
               name="chevron-right"
@@ -260,94 +296,76 @@ export default function ScoreSelector({
               color="rgba(255,255,255,0.6)"
             />
           </View>
-
           <TouchableOpacity
             testID="increment-btn"
             onPress={handleIncrement}
             style={styles.button}
           >
-            <MaterialCommunityIcons
-              name="plus"
-              size={24}
-              color={COLORS.surface}
-            />
+            <MaterialCommunityIcons name="plus" size={24} color="white" />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
+
+        {sparks.map((s) => (
+          <Animated.View
+            key={s.id}
+            style={[
+              styles.particleElement,
+              {
+                left: '50%', // Position in the center of the anchor
+                top: '50%',
+                opacity: s.opacity,
+                transform: [{ translateX: s.animX }, { translateY: s.animY }],
+              },
+            ]}
+          />
+        ))}
       </View>
 
       <Animated.Text
         testID="score-descriptor"
-        style={[
-          styles.descriptor,
-          {
-            color: scoreColor,
-            transform: [{ scale: delighterScale }],
-          },
-        ]}
+        style={[styles.descriptor, { transform: [{ scale: delighterScale }] }]}
       >
-        {value === 5.0 ? `✨ ${descriptor} ✨` : descriptor}
+        {value === 1.0
+          ? `☣️ ${descriptor} ☣️`
+          : value === 5.0
+            ? `✨ ${descriptor} ✨`
+            : descriptor}
       </Animated.Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: SIZES.base,
-    alignItems: 'center',
-    width: '100%',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: SIZES.base,
-  },
-  wrapperAnchor: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 240,
-    height: 54,
-  },
-  sparkElement: {
-    position: 'absolute',
-    backgroundColor: '#86efac',
-    zIndex: 15,
-  },
+  container: { marginVertical: SIZES.base, alignItems: 'center' },
+  label: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
+  wrapperAnchor: { width: 240, height: 54, justifyContent: 'center' },
   controlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: SIZES.radius,
-    paddingHorizontal: SIZES.base,
     width: 240,
     height: 54,
-    justifyContent: 'space-between',
-    zIndex: 10,
   },
-  button: {
-    padding: SIZES.base,
-    zIndex: 11,
+  particleElement: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#86efac',
   },
+  input: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    textAlign: 'center',
+    minWidth: 56,
+    marginHorizontal: 4,
+  },
+  button: { padding: 16 },
+  descriptor: { marginTop: 8, fontSize: 16, fontWeight: '600' },
   swipeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-  },
-  input: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.surface,
-    textAlign: 'center',
-    minWidth: 56,
-    marginHorizontal: 4,
-    padding: 0,
-    height: '100%',
-  },
-  descriptor: {
-    marginTop: SIZES.base,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
