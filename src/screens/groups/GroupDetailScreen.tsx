@@ -180,7 +180,7 @@ export default function GroupDetailScreen() {
       const restaurants = await fetchGroupRestaurants(groupId);
       setGroupRestaurants(restaurants);
     } catch (error) {
-      console.error('Failed to load group restaurants', error);
+      console.error('Failed to load group restaurants:', error);
     } finally {
       setIsRestaurantsLoading(false);
     }

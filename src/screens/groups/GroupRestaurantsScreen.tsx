@@ -1,5 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+} from 'react-native';
 import {
   useRoute,
   RouteProp,
@@ -16,11 +22,14 @@ import { COLORS, SIZES } from '../../constants/theme';
 import RestaurantCard from '../../components/ui/RestaurantCard';
 import { ActivityIndicator } from 'react-native';
 import CollectionModal from '../../components/ui/CollectionModal';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type GroupRestaurantsScreenRouteProp = RouteProp<
   RootStackParamList,
   'GroupRestaurantsScreen'
 >;
+
+type SortOption = 'highest_rated' | 'most_reviewed' | 'alphabetical';
 
 export default function GroupRestaurantsScreen() {
   const route = useRoute<GroupRestaurantsScreenRouteProp>();
@@ -35,9 +44,8 @@ export default function GroupRestaurantsScreen() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [selectedRestaurantForBookmark, setSelectedRestaurantForBookmark] =
     useState<string | number | null>(null);
-
-  // NOTE: Local sort/filter state can be added here later if needed.
-  // For now, we default to sorting by highest rating.
+  const [sortOption, setSortOption] = useState<SortOption>('highest_rated');
+  const [showSortOptions, setShowSortOptions] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -64,11 +72,27 @@ export default function GroupRestaurantsScreen() {
   );
 
   const sortedRestaurants = useMemo(() => {
-    return [...restaurants].sort(
-      (a, b) =>
-        (b.app_rating ?? b.rating ?? 0) - (a.app_rating ?? a.rating ?? 0),
-    );
-  }, [restaurants]);
+    const sorted = [...restaurants];
+    switch (sortOption) {
+      case 'highest_rated':
+        sorted.sort(
+          (a, b) =>
+            (b.app_rating ?? b.rating ?? 0) - (a.app_rating ?? a.rating ?? 0),
+        );
+        break;
+      case 'most_reviewed':
+        sorted.sort(
+          (a, b) =>
+            (b.app_review_count ?? b.user_ratings_total ?? 0) -
+            (a.app_review_count ?? a.user_ratings_total ?? 0),
+        );
+        break;
+      case 'alphabetical':
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+    }
+    return sorted;
+  }, [restaurants, sortOption]);
 
   const handleRestaurantPress = (restaurant: Restaurant) => {
     if (restaurant.google_place_id) {
@@ -93,6 +117,52 @@ export default function GroupRestaurantsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.sortFilterContainer}>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={() => setShowSortOptions(!showSortOptions)}
+        >
+          <MaterialCommunityIcons name="sort" size={20} color={COLORS.text} />
+          <Text style={styles.sortButtonText}>Sort by</Text>
+          <MaterialCommunityIcons
+            name={showSortOptions ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={COLORS.text}
+          />
+        </TouchableOpacity>
+        {showSortOptions && (
+          <View style={styles.sortOptionsDropdown}>
+            <TouchableOpacity
+              style={styles.sortOption}
+              onPress={() => {
+                setSortOption('highest_rated');
+                setShowSortOptions(false);
+              }}
+            >
+              <Text style={styles.sortOptionText}>Highest Rated</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sortOption}
+              onPress={() => {
+                setSortOption('most_reviewed');
+                setShowSortOptions(false);
+              }}
+            >
+              <Text style={styles.sortOptionText}>Most Reviewed</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sortOption}
+              onPress={() => {
+                setSortOption('alphabetical');
+                setShowSortOptions(false);
+              }}
+            >
+              <Text style={styles.sortOptionText}>Alphabetical</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
       <FlatList
         data={sortedRestaurants}
         keyExtractor={(item) => item.id.toString()}
@@ -142,5 +212,51 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SIZES.padding,
+  },
+  sortFilterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.base,
+    zIndex: 1, // Ensure dropdown is above FlatList content
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: SIZES.radius,
+    gap: 4,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  sortButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sortOptionsDropdown: {
+    position: 'absolute',
+    top: 45, // Adjust based on sortButton height
+    right: SIZES.padding,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sortOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+  },
+  sortOptionText: {
+    fontSize: 14,
+    color: COLORS.text,
   },
 });

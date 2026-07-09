@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../../constants/theme';
 import { GroupFeedReview } from '../../types';
@@ -19,10 +19,12 @@ export default function FeedCard({ review }: FeedCardProps) {
     : new Date(date).toLocaleDateString();
   const avatarUrl = review.profiles?.avatar_url;
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const canExpand = review.review_text && review.review_text.length > 120;
+
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        {/* Swapped raw Image element for custom Avatar component to enforce cache-busting */}
         <Avatar url={avatarUrl} name={author} size={42} />
 
         <View style={styles.headingText}>
@@ -39,9 +41,28 @@ export default function FeedCard({ review }: FeedCardProps) {
       <Text style={styles.dateText}>{displayDate}</Text>
 
       {review.review_text ? (
-        <Text style={styles.description} numberOfLines={3}>
-          {review.review_text}
-        </Text>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={(e) => {
+            if (canExpand) {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+          disabled={!canExpand}
+        >
+          <Text
+            style={styles.description}
+            numberOfLines={isExpanded ? undefined : 3}
+          >
+            {review.review_text}
+          </Text>
+          {canExpand && (
+            <Text style={styles.readMoreText}>
+              {isExpanded ? 'Show less' : 'Read more'}
+            </Text>
+          )}
+        </TouchableOpacity>
       ) : null}
 
       <View style={styles.tagRow}>
@@ -74,7 +95,7 @@ const styles = StyleSheet.create({
   },
   headingText: {
     flex: 1,
-    marginLeft: SIZES.base, // Added to account for space after Avatar component removal of margin
+    marginLeft: SIZES.base,
   },
   authorText: {
     fontSize: 16,
@@ -110,6 +131,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: SIZES.base,
     lineHeight: 20,
+  },
+  readMoreText: {
+    color: COLORS.primary,
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '600',
   },
   tagRow: {
     flexDirection: 'row',
