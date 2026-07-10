@@ -92,3 +92,30 @@ export interface SearchRequest {
   latitude?: number;
   longitude?: number;
 }
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export type FriendStatus = 'pending' | 'accepted' | 'blocked';
+
+export interface UserRelationship {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: FriendStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRelationshipWithProfiles extends UserRelationship {
+  requester: UserProfile;
+  addressee: UserProfile;
+}
+
+export interface FriendProfile extends UserProfile {
+  relationshipId: string;
+}
