@@ -8,6 +8,7 @@ import MainNavigator from './src/navigation/MainNavigator';
 import { AuthProvider } from './src/context/AuthContext';
 import { GroupFilterProvider } from './src/context/GroupFilterContext';
 import { checkVersionIsSupported } from './src/services/versionService';
+import { FriendsProvider } from './src/context/FriendsContext';
 import { CURRENT_VERSION, COLORS, SIZES } from './src/constants/theme';
 import { initHapticsConfig } from './src/utils/haptics';
 
@@ -54,14 +55,12 @@ export default function App() {
       <SafeAreaProvider>
         <AuthProvider>
           <GroupFilterProvider>
-            {
-              /* Keep your existing AuthProvider, Navigators, etc. inside here */ <View
-                style={styles.container}
-              >
+            <FriendsProvider>
+              <View style={styles.container}>
                 <MainNavigator />
                 <StatusBar style="auto" />
               </View>
-            }
+            </FriendsProvider>
           </GroupFilterProvider>
         </AuthProvider>
       </SafeAreaProvider>

@@ -25,6 +25,7 @@ import UpdatePasswordScreen from '../screens/profile/UpdatePasswordScreen';
 import ProfileOtpScreen from '../screens/profile/ProfileOtpScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import AccessibilitySettingsScreen from '../screens/profile/AccessibilitySettingsScreen';
+import FriendsHubScreen from '../screens/profile/FriendsHubScreen';
 
 const linkingConfiguration = {
   prefixes: [Linking.createURL('/'), 'yafra://'],
@@ -34,6 +35,7 @@ const linkingConfiguration = {
       Login: 'login',
       Register: 'register',
       UpdatePasswordScreen: 'auth/callback',
+      FriendsHubScreen: 'friend/invite',
     },
   },
 };
@@ -130,6 +132,11 @@ export default function MainNavigator() {
                 name="ProfileOtpScreen"
                 component={ProfileOtpScreen}
                 options={{ headerShown: true, title: 'Verify Code' }}
+              />
+              <Stack.Screen
+                name="FriendsHubScreen"
+                component={FriendsHubScreen}
+                options={{ headerShown: true, title: 'Social Hub' }}
               />
             </Stack.Group>
           )

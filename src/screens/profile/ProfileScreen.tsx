@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Lucide from '@react-native-vector-icons/lucide';
 import { Avatar } from '../../components/Avatar';
 import FeedbackModal from '../../components/ui/FeedbackModal';
 
@@ -186,6 +187,19 @@ export default function ProfileScreen() {
               color={COLORS.text}
             />
             <Text style={styles.actionText}>Profile Edit</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textLight}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => navigation.navigate('FriendsHubScreen')}
+          >
+            <Lucide name="users" size={24} color={COLORS.text} />
+            <Text style={styles.actionText}>My Friends & Social Hub</Text>
             <MaterialCommunityIcons
               name="chevron-right"
               size={24}

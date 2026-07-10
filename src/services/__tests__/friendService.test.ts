@@ -3,6 +3,7 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
   getFriends,
+  searchUsersByUsername,
 } from '../friendService';
 import { supabase } from '../supabase';
 
@@ -21,6 +22,7 @@ describe('friendService', () => {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     or: jest.fn().mockResolvedValue({ data: [], error: null }),
+    ilike: jest.fn().mockResolvedValue({ data: [], error: null }),
   };
 
   beforeEach(() => {
@@ -29,6 +31,7 @@ describe('friendService', () => {
     (mockedSupabase.from as jest.Mock).mockReturnValue(mockImplementation);
     // Restore the chaining behavior for .eq() before each test
     mockImplementation.eq.mockReturnThis();
+    mockImplementation.ilike.mockResolvedValue({ data: [], error: null });
   });
 
   describe('sendFriendRequest', () => {
@@ -108,8 +111,8 @@ describe('friendService', () => {
       // Enforce specific profile key extraction rather than broad wildcards
       expect(mockImplementation.select).toHaveBeenCalledWith(`
       *,
-      requester:profiles!requester_id(id, username, display_name, avatar_url),
-      addressee:profiles!addressee_id(id, username, display_name, avatar_url)
+      requester:profiles!requester_id(id, username, avatar_url),
+      addressee:profiles!addressee_id(id, username, avatar_url)
     `);
 
       expect(mockImplementation.eq).toHaveBeenCalledWith('status', 'accepted');
@@ -123,6 +126,32 @@ describe('friendService', () => {
       mockImplementation.or.mockResolvedValue({ data: null, error: dbError });
 
       await expect(getFriends('user-me')).rejects.toThrow(dbError);
+    });
+  });
+
+  describe('searchUsersByUsername', () => {
+    it('should call select with an ilike filter on the profiles table', async () => {
+      const searchQuery = 'test';
+      await searchUsersByUsername(searchQuery);
+
+      expect(mockedSupabase.from).toHaveBeenCalledWith('profiles');
+      expect(mockImplementation.select).toHaveBeenCalledWith(
+        'id, username, avatar_url',
+      );
+      expect(mockImplementation.ilike).toHaveBeenCalledWith(
+        'username',
+        `%${searchQuery}%`,
+      );
+    });
+
+    it('should throw an error if supabase select with ilike fails', async () => {
+      const dbError = new Error('DB search failed');
+      mockImplementation.ilike.mockResolvedValueOnce({
+        data: null,
+        error: dbError,
+      });
+
+      await expect(searchUsersByUsername('test')).rejects.toThrow(dbError);
     });
   });
 });

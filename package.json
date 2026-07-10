@@ -27,6 +27,7 @@
     "expo": "~55.0.26",
     "expo-auth-session": "~55.0.17",
     "expo-camera": "~55.0.19",
+    "expo-clipboard": "~55.0.14",
     "expo-crypto": "~55.0.15",
     "expo-dev-client": "~55.0.35",
     "expo-haptics": "~55.0.15",

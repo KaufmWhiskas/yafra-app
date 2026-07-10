@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { UserRelationshipWithProfiles } from '../types';
+import { UserProfile, UserRelationshipWithProfiles } from '../types';
 
 /**
  * Sends a friend request from one user to another.
@@ -79,8 +79,8 @@ export async function getFriends(
     .select(
       `
       *,
-      requester:profiles!requester_id(id, username, display_name, avatar_url),
-      addressee:profiles!addressee_id(id, username, display_name, avatar_url)
+      requester:profiles!requester_id(id, username, avatar_url),
+      addressee:profiles!addressee_id(id, username, avatar_url)
     `,
     )
     .eq('status', 'accepted')
@@ -92,4 +92,27 @@ export async function getFriends(
   }
 
   return (data as unknown as UserRelationshipWithProfiles[]) || [];
+}
+
+/**
+ * Searches for users by their username.
+ *
+ * @param query The search query for the username.
+ * @returns A promise that resolves to an array of UserProfile objects.
+ * @throws Will throw an error if the database operation fails.
+ */
+export async function searchUsersByUsername(
+  query: string,
+): Promise<UserProfile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .ilike('username', `%${query}%`);
+
+  if (error) {
+    console.error('Error searching users:', error);
+    throw error;
+  }
+
+  return data || [];
 }

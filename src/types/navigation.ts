@@ -22,6 +22,7 @@ export type RootStackParamList = {
   UpdatePasswordScreen: undefined;
   RestaurantReviews: { restaurantId: number; restaurantName: string };
   AccessibilitySettingsScreen: undefined;
+  FriendsHubScreen: undefined;
 };
 
 export type TabParamList = {
