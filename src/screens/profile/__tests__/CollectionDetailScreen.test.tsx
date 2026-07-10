@@ -18,7 +18,9 @@ jest.mock('../../../context/AuthContext', () => ({
 }));
 
 jest.mock('../../../constants/categories', () => ({
+  // Mock both functions used by RestaurantCard to prevent type errors in the test environment.
   getCategoryDisplayName: (key: string) => key,
+  getCategoryIcon: jest.fn(() => 'utensils'),
 }));
 
 const mockNavigate = jest.fn();

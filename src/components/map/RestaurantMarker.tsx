@@ -1,10 +1,11 @@
 import React, { useState, useEffect, memo, useRef } from 'react';
 import { StyleSheet, View, Text, Animated } from 'react-native';
 import { Marker } from 'react-native-maps';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Lucide from '@react-native-vector-icons/lucide';
 import { Restaurant } from '../../types';
 import { COLORS } from '../../constants/theme';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
+import { getCategoryIcon } from '../../constants/categories';
 import { useIsFocused } from '@react-navigation/native';
 
 /**
@@ -21,22 +22,6 @@ interface RestaurantMarkerProps {
   isOverlay?: boolean;
   onPress: (restaurant: Restaurant) => void;
 }
-
-/**
- * Maps a given cuisine type to a corresponding MaterialCommunityIcons icon name.
- * Defaults to a generic silverware icon if no match is found.
- */
-const getIconForCuisine = (
-  cuisine?: string,
-): keyof typeof MaterialCommunityIcons.glyphMap => {
-  if (!cuisine) return 'silverware-fork-knife';
-  const c = cuisine.toLowerCase();
-  if (c.includes('pizza')) return 'pizza';
-  if (c.includes('burger') || c.includes('hamburger')) return 'hamburger';
-  if (c.includes('cafe') || c.includes('coffee')) return 'coffee';
-  if (c.includes('sushi')) return 'food-variant';
-  return 'silverware-fork-knife';
-};
 
 /**
  * Component representing an individual restaurant marker on the map view.
@@ -62,7 +47,7 @@ function RestaurantMarker({
         friction: 6,
         tension: 250,
         overshootClamping: true,
-        useNativeDriver: false, // Required false for layout frame rendering in Android Map SDK.
+        useNativeDriver: false,
       }).start();
     }
 
@@ -88,7 +73,7 @@ function RestaurantMarker({
       : '#fff';
   const textColor = displayState.isHollow ? displayState.color : '#fff';
 
-  const iconName = getIconForCuisine(restaurant.cuisine);
+  const iconName = getCategoryIcon(restaurant.cuisine || '');
 
   const width = isSelected ? 56 : 42;
   const height = isSelected ? 36 : 28;
@@ -146,11 +131,7 @@ function RestaurantMarker({
               testID="marker-inner"
             >
               {displayState.display === 'unrated-icon' ? (
-                <MaterialCommunityIcons
-                  name={iconName}
-                  size={14}
-                  color={textColor}
-                />
+                <Lucide name={iconName} size={14} color={textColor} />
               ) : (
                 <Text style={[styles.markerText, { color: textColor }]}>
                   {displayState.display}

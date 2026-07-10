@@ -1,10 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Lucide from '@react-native-vector-icons/lucide';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
-import { getCategoryDisplayName } from '../../constants/categories';
+import {
+  getCategoryDisplayName,
+  getCategoryIcon,
+} from '../../constants/categories';
 
 interface RestaurantCardProps {
   item: Restaurant;
@@ -17,18 +21,6 @@ interface RestaurantCardProps {
   hideRatings?: boolean;
   hideReviewButton?: boolean;
 }
-
-const getIconForCuisine = (
-  cuisine?: string,
-): keyof typeof MaterialCommunityIcons.glyphMap => {
-  if (!cuisine) return 'silverware-fork-knife';
-  const c = cuisine.toLowerCase();
-  if (c.includes('pizza')) return 'pizza';
-  if (c.includes('burger') || c.includes('hamburger')) return 'hamburger';
-  if (c.includes('cafe') || c.includes('coffee')) return 'coffee';
-  if (c.includes('sushi')) return 'food-variant';
-  return 'silverware-fork-knife';
-};
 
 /**
  * Displays summarized restaurant information.
@@ -44,6 +36,7 @@ export default function RestaurantCard({
   hideReviewButton,
 }: RestaurantCardProps) {
   const displayState = resolveRestaurantDisplay(item, isBookmarked);
+  const infoIconName = getCategoryIcon(item.cuisine || '');
 
   return (
     <TouchableOpacity
@@ -72,8 +65,8 @@ export default function RestaurantCard({
                 color={displayState.isHollow ? displayState.color : '#fff'}
               />
             ) : displayState.display === 'unrated-icon' ? (
-              <MaterialCommunityIcons
-                name={getIconForCuisine(item.cuisine)}
+              <Lucide
+                name={infoIconName}
                 size={12}
                 color={displayState.isHollow ? displayState.color : '#fff'}
               />
@@ -109,11 +102,7 @@ export default function RestaurantCard({
       </View>
 
       <View style={styles.row}>
-        <MaterialCommunityIcons
-          name={getIconForCuisine(item.cuisine)}
-          size={16}
-          color={COLORS.text}
-        />
+        <Lucide name={infoIconName} size={16} color={COLORS.text} />
         <Text style={styles.cuisineText}>
           {getCategoryDisplayName(item.cuisine || '')}
         </Text>
