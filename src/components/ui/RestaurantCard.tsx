@@ -1,14 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Lucide from '@react-native-vector-icons/lucide';
 import { COLORS, SIZES } from '../../constants/theme';
 import { Restaurant } from '../../types';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
-import {
-  getCategoryDisplayName,
-  getCategoryIcon,
-} from '../../constants/categories';
+import { getCategoryDisplayName } from '../../constants/categories';
+import CategoryIcon from './CategoryIcon';
 
 interface RestaurantCardProps {
   item: Restaurant;
@@ -36,7 +33,6 @@ export default function RestaurantCard({
   hideReviewButton,
 }: RestaurantCardProps) {
   const displayState = resolveRestaurantDisplay(item, isBookmarked);
-  const infoIconName = getCategoryIcon(item.cuisine || '');
 
   return (
     <TouchableOpacity
@@ -59,14 +55,14 @@ export default function RestaurantCard({
             ]}
           >
             {displayState.display === 'bookmark-icon' ? (
-              <MaterialCommunityIcons
+              <Lucide
                 name="bookmark"
                 size={12}
                 color={displayState.isHollow ? displayState.color : '#fff'}
               />
             ) : displayState.display === 'unrated-icon' ? (
-              <Lucide
-                name={infoIconName}
+              <CategoryIcon
+                cuisine={item.cuisine || ''}
                 size={12}
                 color={displayState.isHollow ? displayState.color : '#fff'}
               />
@@ -92,17 +88,21 @@ export default function RestaurantCard({
             testID="bookmark-button"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MaterialCommunityIcons
-              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            <Lucide
+              name="bookmark"
               size={24}
-              color={isBookmarked ? COLORS.bookmark : COLORS.text}
+              color={isBookmarked ? COLORS.bookmark : COLORS.textLight}
             />
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.row}>
-        <Lucide name={infoIconName} size={16} color={COLORS.text} />
+        <CategoryIcon
+          cuisine={item.cuisine || ''}
+          size={16}
+          color={COLORS.text}
+        />
         <Text style={styles.cuisineText}>
           {getCategoryDisplayName(item.cuisine || '')}
         </Text>

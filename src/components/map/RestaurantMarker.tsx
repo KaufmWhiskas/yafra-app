@@ -1,11 +1,10 @@
 import React, { useState, useEffect, memo, useRef } from 'react';
 import { StyleSheet, View, Text, Animated } from 'react-native';
 import { Marker } from 'react-native-maps';
-import Lucide from '@react-native-vector-icons/lucide';
 import { Restaurant } from '../../types';
 import { COLORS } from '../../constants/theme';
 import { resolveRestaurantDisplay } from '../../utils/displayState';
-import { getCategoryIcon } from '../../constants/categories';
+import CategoryIcon from '../ui/CategoryIcon';
 import { useIsFocused } from '@react-navigation/native';
 
 /**
@@ -73,8 +72,6 @@ function RestaurantMarker({
       : '#fff';
   const textColor = displayState.isHollow ? displayState.color : '#fff';
 
-  const iconName = getCategoryIcon(restaurant.cuisine || '');
-
   const width = isSelected ? 56 : 42;
   const height = isSelected ? 36 : 28;
   const borderRadius = isSelected ? 18 : 14;
@@ -131,7 +128,11 @@ function RestaurantMarker({
               testID="marker-inner"
             >
               {displayState.display === 'unrated-icon' ? (
-                <Lucide name={iconName} size={14} color={textColor} />
+                <CategoryIcon
+                  cuisine={restaurant.cuisine || ''}
+                  size={14}
+                  color={textColor}
+                />
               ) : (
                 <Text style={[styles.markerText, { color: textColor }]}>
                   {displayState.display}

@@ -18,9 +18,11 @@ jest.mock('../../../context/AuthContext', () => ({
 }));
 
 jest.mock('../../../constants/categories', () => ({
-  // Mock both functions used by RestaurantCard to prevent type errors in the test environment.
   getCategoryDisplayName: (key: string) => key,
-  getCategoryIcon: jest.fn(() => 'utensils'),
+  getCategoryIconConfig: jest.fn(() => ({
+    provider: 'Lucide',
+    name: 'utensils',
+  })),
 }));
 
 const mockNavigate = jest.fn();
@@ -42,7 +44,11 @@ jest.mock('@react-navigation/native', () => {
 // Avoid warning regarding vector icons
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
+  MaterialIcons: 'MaterialIcons',
+  FontAwesome5: 'FontAwesome5',
+  FontAwesome6: 'FontAwesome6',
 }));
+jest.mock('@react-native-vector-icons/lucide', () => 'Lucide');
 
 jest.spyOn(Alert, 'alert');
 

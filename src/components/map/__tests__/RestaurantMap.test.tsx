@@ -7,7 +7,11 @@ jest.mock('react-native-maps');
 
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
+  MaterialIcons: 'MaterialIcons',
+  FontAwesome5: 'FontAwesome5',
+  FontAwesome6: 'FontAwesome6',
 }));
+jest.mock('@react-native-vector-icons/lucide', () => 'Lucide');
 
 jest.mock('@react-navigation/native', () => ({
   useIsFocused: jest.fn().mockReturnValue(true),

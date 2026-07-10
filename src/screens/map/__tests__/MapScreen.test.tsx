@@ -48,7 +48,11 @@ jest.mock('../../../context/AuthContext', () => ({
 
 jest.mock('@expo/vector-icons', () => ({
   MaterialCommunityIcons: 'MaterialCommunityIcons',
+  MaterialIcons: 'MaterialIcons',
+  FontAwesome5: 'FontAwesome5',
+  FontAwesome6: 'FontAwesome6',
 }));
+jest.mock('@react-native-vector-icons/lucide', () => 'Lucide');
 
 jest.mock('../../../hooks/useMapScanner', () => ({
   useMapScanner: jest.fn(() => ({
@@ -161,19 +165,16 @@ describe('MapScreen Toggle Feature', () => {
 
   it('calls fetchMapRestaurants when the component mounts', async () => {
     render(<MapScreen />);
-    await flushMicrotasks();
-    expect(fetchMapRestaurants).toHaveBeenCalled();
+    await waitFor(() => expect(fetchMapRestaurants).toHaveBeenCalled());
   });
 
   it('renders the map by default after loading', async () => {
-    const { getByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
-    expect(getByTestId('mock-map')).toBeTruthy();
+    const { findByTestId } = render(<MapScreen />);
+    expect(await findByTestId('mock-map')).toBeTruthy();
   });
 
   it('toggles between Map and List view when buttons are pressed', async () => {
     const { getByText, getByTestId, queryByTestId } = render(<MapScreen />);
-    await flushMicrotasks();
 
     fireEvent.press(getByText('List View'));
     await flushMicrotasks();
@@ -268,8 +269,9 @@ describe('MapScreen Toggle Feature', () => {
 
   it('requests location permissions', async () => {
     render(<MapScreen />);
-    await flushMicrotasks();
-    expect(requestForegroundPermissionsAsync).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(requestForegroundPermissionsAsync).toHaveBeenCalled(),
+    );
   });
 
   it('floating ui card appears on press', async () => {

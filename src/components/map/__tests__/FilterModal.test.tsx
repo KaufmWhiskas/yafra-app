@@ -4,6 +4,8 @@ import FilterModal from '../FilterModal';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchMyGroups } from '../../../services/groupService';
 
+const mockGroups = [{ id: 'group1', name: 'Test Group' }];
+
 jest.mock('../../../context/AuthContext');
 jest.mock('../../../services/groupService');
 
@@ -23,9 +25,7 @@ describe('FilterModal', () => {
     (useAuth as jest.Mock).mockReturnValue({
       session: { user: { id: 'user1' } },
     });
-    (fetchMyGroups as jest.Mock).mockResolvedValue([
-      { id: 'group1', name: 'Test Group' },
-    ]);
+    (fetchMyGroups as jest.Mock).mockResolvedValue(mockGroups);
   });
 
   it('renders correctly and displays initial filters when visible', async () => {
@@ -42,7 +42,7 @@ describe('FilterModal', () => {
     expect(await findByText('Cuisine')).toBeTruthy();
     expect(await findByText('All')).toBeTruthy();
     expect(await findByText('Any')).toBeTruthy();
-    expect(await findByText('Test Group')).toBeTruthy();
+    expect(await findByText(mockGroups[0].name)).toBeTruthy();
   });
 
   it('calls onApply with updated filters when "Apply Filters" is pressed', async () => {

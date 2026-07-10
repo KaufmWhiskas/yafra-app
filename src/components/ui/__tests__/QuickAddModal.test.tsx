@@ -21,6 +21,22 @@ const mockRestaurants: Restaurant[] = [
   { id: '3', name: 'Third Place', cuisine: 'Sushi', latitude: 0, longitude: 0 },
 ];
 
+jest.mock('../../../constants/categories', () => ({
+  getCategoryDisplayName: (key: string) => key,
+  getCategoryIconConfig: jest.fn(() => ({
+    provider: 'Lucide',
+    name: 'utensils',
+  })),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+  MaterialIcons: 'MaterialIcons',
+  FontAwesome5: 'FontAwesome5',
+  FontAwesome6: 'FontAwesome6',
+}));
+jest.mock('@react-native-vector-icons/lucide', () => 'Lucide');
+
 describe('QuickAddModal', () => {
   const mockOnSelect = jest.fn();
   const mockOnClose = jest.fn();
