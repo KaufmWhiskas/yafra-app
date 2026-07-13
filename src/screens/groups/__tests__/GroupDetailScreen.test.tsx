@@ -453,11 +453,11 @@ describe('GroupDetailScreen', () => {
       ],
     });
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { getByTestId } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    const targetMember = getByText(/target_user/);
-    fireEvent.press(targetMember);
+    const manageButton = getByTestId('manage-member-button-target_user');
+    fireEvent.press(manageButton);
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Manage Member',
@@ -499,11 +499,11 @@ describe('GroupDetailScreen', () => {
       ],
     });
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { getByTestId } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    const targetMember = getByText(/target_admin/);
-    fireEvent.press(targetMember);
+    const manageButton = getByTestId('manage-member-button-target_admin');
+    fireEvent.press(manageButton);
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Manage Member',
@@ -553,13 +553,11 @@ describe('GroupDetailScreen', () => {
       ],
     });
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { queryByTestId } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    const targetMember = getByText(/target_user/);
-    fireEvent.press(targetMember);
-
-    expect(Alert.alert).not.toHaveBeenCalled();
+    const manageButton = queryByTestId('manage-member-button-target_user');
+    expect(manageButton).toBeNull();
   });
 
   it('triggers updateMemberRole when Promote to Admin is pressed', async () => {
@@ -585,10 +583,10 @@ describe('GroupDetailScreen', () => {
       ],
     });
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { getByTestId } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    fireEvent.press(getByText(/target_user/));
+    fireEvent.press(getByTestId('manage-member-button-target_user'));
 
     // 1. Capture the exact buttons array passed to Alert.alert
     const alertCalls = (Alert.alert as jest.Mock).mock.calls;
@@ -647,10 +645,10 @@ describe('GroupDetailScreen', () => {
       ],
     });
 
-    const { getByText } = render(<GroupDetailScreen />);
+    const { getByTestId } = render(<GroupDetailScreen />);
     await flushMicrotasks();
 
-    fireEvent.press(getByText(/target_user/));
+    fireEvent.press(getByTestId('manage-member-button-target_user'));
 
     const alertCalls = (Alert.alert as jest.Mock).mock.calls;
     const buttons = alertCalls[0][2];

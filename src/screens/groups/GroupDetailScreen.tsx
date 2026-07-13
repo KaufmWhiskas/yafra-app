@@ -617,21 +617,27 @@ export default function GroupDetailScreen() {
         const displayName = profileData?.username || 'Unknown Member';
 
         return (
-          <TouchableOpacity
-            style={styles.memberCard}
-            onPress={() => handleMemberPress(item.member)}
-          >
-            <Avatar
-              url={profileData?.avatar_url || profileData?.avatarUrl}
-              name={displayName}
-              size={40}
-            />
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberText}>{displayName}</Text>
-              <Text style={styles.memberRole}>
-                Role: {item.member.role} (Weight: {item.member.weight})
-              </Text>
-            </View>
+          <View style={styles.memberCard}>
+            <TouchableOpacity
+              style={styles.memberInfoContainer}
+              onPress={() =>
+                navigation.navigate('PublicProfileScreen', {
+                  userId: item.member.user_id,
+                })
+              }
+            >
+              <Avatar
+                url={profileData?.avatar_url || profileData?.avatarUrl}
+                name={displayName}
+                size={40}
+              />
+              <View style={styles.memberInfo}>
+                <Text style={styles.memberText}>{displayName}</Text>
+                <Text style={styles.memberRole}>
+                  Role: {item.member.role} (Weight: {item.member.weight})
+                </Text>
+              </View>
+            </TouchableOpacity>
             <View style={styles.memberActions}>
               {user && user.id !== item.member.user_id && (
                 <>
@@ -661,8 +667,18 @@ export default function GroupDetailScreen() {
                   ) : null}
                 </>
               )}
+              {(currentUserRole === 'owner' || currentUserRole === 'admin') &&
+              user?.id !== item.member.user_id ? (
+                <TouchableOpacity
+                  onPress={() => handleMemberPress(item.member)}
+                  style={styles.manageMemberButton}
+                  testID={`manage-member-button-${item.member.user_id}`}
+                >
+                  <MaterialCommunityIcons name="dots-vertical" size={24} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-          </TouchableOpacity>
+          </View>
         );
       }
       default:
@@ -1057,13 +1073,23 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.base,
   },
   memberInfo: {
+    flex: 1,
     marginLeft: SIZES.padding,
   },
   memberActions: {
     marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingLeft: SIZES.padding,
   },
   memberText: { fontSize: 16, fontWeight: 'bold' },
+  memberInfoContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: SIZES.base,
+  },
+  manageMemberButton: { paddingLeft: SIZES.base },
   memberRole: { fontSize: 14, color: COLORS.textLight },
   errorText: {
     color: COLORS.danger,

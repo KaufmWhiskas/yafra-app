@@ -1,5 +1,9 @@
 import { supabase } from './supabase';
-import { UserProfile, UserRelationshipWithProfiles } from '../types';
+import {
+  GroupFeedReview,
+  UserProfile,
+  UserRelationshipWithProfiles,
+} from '../types';
 
 /**
  * Sends a friend request from one user to another.
@@ -115,4 +119,46 @@ export async function searchUsersByUsername(
   }
 
   return data || [];
+}
+
+/**
+ * Fetches a chronological feed of public reviews from a user's accepted friends.
+ *
+ * @param currentUserId The ID of the user whose friend feed is being requested.
+ * @returns A promise that resolves to an array of review objects.
+ */
+export async function fetchFriendTimeline(
+  currentUserId: string,
+): Promise<GroupFeedReview[]> {
+  const friends = await getFriends(currentUserId);
+  const friendIds = friends.map((friendship) =>
+    friendship.requester_id === currentUserId
+      ? friendship.addressee_id
+      : friendship.requester_id,
+  );
+
+  if (friendIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(
+      `
+      *,
+      profiles!user_id(username, avatar_url),
+      restaurant:restaurants(id, name, cuisine, google_place_id)
+    `,
+    )
+    .in('user_id', friendIds)
+    .eq('is_private', false)
+    .order('created_at', { ascending: false })
+    .limit(50); // Add a limit for performance
+
+  if (error) {
+    console.error('Error fetching friend timeline:', error);
+    throw error;
+  }
+
+  return (data as unknown as GroupFeedReview[]) || [];
 }

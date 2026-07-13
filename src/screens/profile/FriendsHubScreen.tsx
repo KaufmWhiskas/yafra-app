@@ -12,6 +12,8 @@ import {
   Modal,
   SafeAreaView,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFriends } from '../../context/FriendsContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -22,6 +24,7 @@ import {
 } from '../../services/friendService';
 import { useDebounce } from '../../hooks/useDebounce';
 import { FriendProfile, UserProfile } from '../../types';
+import { RootStackParamList } from '../../types/navigation';
 import { Avatar } from '../../components/Avatar';
 import { COLORS, SIZES } from '../../constants/theme';
 import FriendQRGenerator from '../../components/friends/FriendQRGenerator';
@@ -32,19 +35,31 @@ type ActiveTab = 'friends' | 'requests' | 'find';
 
 const UserRow: React.FC<{
   user: {
+    id: string;
     avatar_url: string | null;
     username: string | null;
   };
   children?: React.ReactNode;
-}> = ({ user, children }) => (
-  <View style={styles.row}>
-    <Avatar url={user.avatar_url} size={40} />
-    <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
-      {user.username || '...'}
-    </Text>
-    <View style={styles.actionsContainer}>{children}</View>
-  </View>
-);
+}> = ({ user, children }) => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  return (
+    <View style={styles.row}>
+      <TouchableOpacity
+        style={styles.userInfoContainer}
+        onPress={() =>
+          navigation.navigate('PublicProfileScreen', { userId: user.id })
+        }
+      >
+        <Avatar url={user.avatar_url} size={40} />
+        <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+          {user.username || '...'}
+        </Text>
+      </TouchableOpacity>
+      <View style={styles.actionsContainer}>{children}</View>
+    </View>
+  );
+};
 
 const MyFriendsList = () => {
   const { friends, refetch } = useFriends();
@@ -427,6 +442,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  userInfoContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   name: {
     flex: 1,
