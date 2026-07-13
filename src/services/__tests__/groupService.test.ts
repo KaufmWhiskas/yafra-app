@@ -212,7 +212,7 @@ describe('Group Service', () => {
       *, 
       members:group_members(
         *,
-        profiles(username, avatar_url)
+        profiles!user_id(username, avatar_url)
       )
     `);
     // @ts-expect-error: custom mock property not on root client

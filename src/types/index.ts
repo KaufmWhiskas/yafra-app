@@ -1,3 +1,6 @@
+/**
+ * Represents a restaurant entity, combining data from the local database and Google Places.
+ */
 export interface Restaurant {
   id: string | number;
   name: string;
@@ -12,6 +15,7 @@ export interface Restaurant {
   opening_hours?: string[];
   group_rating?: number;
   address?: string;
+  /** Raw review data sourced directly from the Google Places API. */
   google_reviews?: {
     author_name: string;
     rating: number;
@@ -20,8 +24,12 @@ export interface Restaurant {
   }[];
 }
 
+/** Defines the permission levels for a user within a group. */
 export type GroupRole = 'owner' | 'admin' | 'trusted' | 'member';
 
+/**
+ * Represents a user-created group or "circle".
+ */
 export interface Group {
   id: string;
   name: string;
@@ -29,18 +37,25 @@ export interface Group {
   is_global: boolean;
   avatar_url?: string | null;
   permanent_invite_code: string;
-  created_at: string; // ISO 8601 string
+  created_at: string;
 }
 
+/**
+ * Represents the junction table record linking a user to a group.
+ * Includes metadata about their membership.
+ */
 export interface GroupMember {
   group_id: string;
   user_id: string;
   role: GroupRole;
   weight: number;
   is_active_filter: boolean;
-  joined_at: string; // ISO 8601 string
+  joined_at: string;
 }
 
+/**
+ * Represents a temporary, single-use or limited-use invite code for a group.
+ */
 export interface GroupInvite {
   id: string;
   group_id: string;
@@ -53,6 +68,9 @@ export interface GroupInvite {
   profiles?: { username: string };
 }
 
+/**
+ * Represents a single review submitted by a user for a restaurant.
+ */
 export interface Review {
   id: string | number;
   restaurant_id: string;
@@ -66,6 +84,10 @@ export interface Review {
   created_at?: string;
 }
 
+/**
+ * An extended review type used in group feeds, which includes nested profile
+ * and restaurant information for display.
+ */
 export interface GroupFeedReview extends Review {
   profiles?: {
     username?: string;
@@ -77,23 +99,33 @@ export interface GroupFeedReview extends Review {
     cuisine?: string;
     google_place_id?: string;
   };
+  /** An array of user profiles for friends who were tagged in this review. */
   tagged_friends?: UserProfile[];
 }
 
+/**
+ * Represents a single autocomplete prediction from the Google Places API.
+ */
 export interface Prediction {
   description: string;
   placeId: string;
   types?: string[];
-  distance?: string; // e.g., "1.2 km"
-  rating?: number; // Autocomplete API doesn't provide this, but useful for future expansion
+  distance?: string;
+  rating?: number;
 }
 
+/**
+ * Defines the payload for a search request to the place predictions service.
+ */
 export interface SearchRequest {
   query: string;
   latitude?: number;
   longitude?: number;
 }
 
+/**
+ * Represents the public-facing profile of a user.
+ */
 export interface UserProfile {
   id: string;
   username: string;

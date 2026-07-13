@@ -8,8 +8,12 @@ type ReviewWithNestedTaggedUsers = Omit<GroupFeedReview, 'tagged_friends'> & {
 };
 
 /**
- * Adds reviews to the Supabase database
- * Note: Requires user to be authenticated
+ * Submits a new review to the database and handles tagging users.
+ * This function requires an authenticated user session.
+ *
+ * @param review The review data payload.
+ * @returns A promise that resolves with the success status and the created review data.
+ * @throws Will throw an error if the user is not authenticated or if the database insert fails.
  */
 export const submitReview = async (review: {
   restaurantId: string;
@@ -79,6 +83,10 @@ export const submitReview = async (review: {
 
 /**
  * Fetches the current user's latest rating for a specific restaurant.
+ *
+ * @param userId The ID of the user.
+ * @param restaurantId The ID of the restaurant.
+ * @returns A promise resolving to an object with the average rating and review count, or null if no reviews exist.
  */
 export const fetchPersonalRating = async (
   userId: string,
@@ -106,6 +114,10 @@ export const fetchPersonalRating = async (
 
 /**
  * Fetches all reviews made by a specific user, including the joined restaurant data.
+ *
+ * @param userId The ID of the user whose reviews are to be fetched.
+ * @returns A promise resolving to an array of the user's reviews with nested restaurant data.
+ * @throws Will throw an error if the database query fails.
  */
 export async function fetchUserReviewedRestaurants(userId: string) {
   const { data, error } = await supabase
@@ -120,6 +132,9 @@ export async function fetchUserReviewedRestaurants(userId: string) {
   return (data || []).map((review: Record<string, unknown>) => {
     const mappedReview = { ...review };
     if (mappedReview.restaurant) {
+      // This block normalizes the restaurant data shape. The database might store
+      // ratings as strings, and details from Google Places can have varying property names.
+      // We consolidate these into a consistent `Restaurant` object structure for the app.
       const {
         google_rating,
         app_rating,
@@ -163,6 +178,9 @@ export async function deleteReview(reviewId: number): Promise<void> {
 
 /**
  * Fetches and sorts all tags previously used by the user, ordered by frequency.
+ *
+ * @param userId The ID of the user whose tags are to be fetched.
+ * @returns A promise resolving to an array of unique tags, sorted by usage frequency.
  */
 export async function fetchUserTags(userId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -191,6 +209,11 @@ export async function fetchUserTags(userId: string): Promise<string[]> {
 /**
  * Fetches all relevant reviews for a restaurant.
  * This includes all public reviews, plus all of the current user's own reviews (even private ones).
+ *
+ * @param restaurantId The ID of the restaurant.
+ * @param currentUserId The ID of the current user, to include their private reviews.
+ * @returns A promise resolving to an array of `GroupFeedReview` objects.
+ * @throws Will throw an error if the database query fails.
  */
 export async function fetchReviewsForRestaurant(
   restaurantId: string | number,
@@ -200,9 +223,9 @@ export async function fetchReviewsForRestaurant(
     .from('reviews')
     .select(
       `*,
-       profiles(username, avatar_url),
+       profiles!user_id(username, avatar_url),
        restaurant:restaurants(id, name, cuisine),
-       review_tagged_users(profiles(id, username, avatar_url))`,
+       review_tagged_users(profiles!user_id(id, username, avatar_url))`,
     )
     .eq('restaurant_id', restaurantId);
 
@@ -235,6 +258,12 @@ export async function fetchReviewsForRestaurant(
 
 /**
  * Updates an existing review in the Supabase database.
+ * It also clears and re-inserts tagged user relationships for the review.
+ *
+ * @param reviewId The ID of the review to update.
+ * @param review The new review data payload.
+ * @returns A promise that resolves with a success status.
+ * @throws Will throw an error if the update operation fails.
  */
 export const updateReview = async (
   reviewId: number | string,

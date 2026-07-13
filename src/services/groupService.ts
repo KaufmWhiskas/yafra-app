@@ -216,7 +216,7 @@ export async function fetchGroupDetails(groupId: string): Promise<
       *, 
       members:group_members(
         *,
-        profiles(username, avatar_url)
+        profiles!user_id(username, avatar_url)
       )
     `,
     )
@@ -417,6 +417,9 @@ export async function uploadGroupAvatar(
 /**
  * Retrieves all unique restaurant IDs reviewed by any member of a specific group.
  * Utilizes PostgREST relational joins to traverse from group_members -> profiles -> reviews.
+ *
+ * @param groupId The ID of the group to scan.
+ * @returns A promise that resolves to a `Set` of unique restaurant IDs.
  */
 export async function fetchGroupReviewedRestaurantIds(
   groupId: string,
@@ -497,8 +500,8 @@ export async function fetchGroupFeed(
     .from('reviews')
     .select(
       `
-      *, 
-      profiles(username, avatar_url), 
+      *,
+      profiles!user_id(username, avatar_url),
       restaurant:restaurants(id, name, cuisine, google_place_id)
     `,
     )
@@ -569,6 +572,10 @@ export async function fetchSharedGroupMemberIds(
 /**
  * Fetches reviews for a given restaurant written exclusively by members
  * belonging to a specific set of active groups.
+ *
+ * @param restaurantId The ID of the restaurant.
+ * @param activeGroupIds An array of group IDs to filter members by.
+ * @returns A promise resolving to an array of `GroupFeedReview` objects.
  */
 export async function fetchActiveGroupsReviewsForRestaurant(
   restaurantId: string,
@@ -587,7 +594,7 @@ export async function fetchActiveGroupsReviewsForRestaurant(
 
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles!user_id(username, avatar_url)')
     .eq('restaurant_id', restaurantId)
     .in('user_id', userIds)
     .eq('is_private', false);
@@ -598,6 +605,11 @@ export async function fetchActiveGroupsReviewsForRestaurant(
 
 /**
  * Bulk fetches reviews for an array of restaurants to prevent N+1 DB flooding.
+ *
+ * @param restaurantIds An array of restaurant IDs to fetch reviews for.
+ * @param activeGroupIds An array of group IDs to filter members by.
+ * @returns A promise resolving to a record where keys are restaurant IDs and
+ *          values are arrays of `GroupFeedReview` objects.
  */
 export async function fetchActiveGroupsReviewsForRestaurantsBulk(
   restaurantIds: string[],
@@ -624,7 +636,7 @@ export async function fetchActiveGroupsReviewsForRestaurantsBulk(
 
   const { data: reviews, error: reviewsError } = await supabase
     .from('reviews')
-    .select('*, profiles(username, avatar_url)')
+    .select('*, profiles!user_id(username, avatar_url)')
     .in('restaurant_id', restaurantIds)
     .in('user_id', userIds)
     .eq('is_private', false);

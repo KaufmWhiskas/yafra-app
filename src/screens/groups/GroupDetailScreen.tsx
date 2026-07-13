@@ -90,6 +90,22 @@ type ListItem =
       };
     };
 
+/**
+ * Renders the detailed view for a specific group.
+ *
+ * This "smart" screen is responsible for orchestrating multiple data fetches and user interactions
+ * related to a group. It includes functionality for:
+ * - Displaying group information (name, avatar).
+ * - Managing permanent and temporary invite codes.
+ * - Listing group members and providing social actions (e.g., add friend).
+ * - Showing a feed of recent reviews from group members.
+ * - Displaying an aggregated score distribution chart for restaurants rated by the group.
+ * - Providing administrative controls for group owners (e.g., edit name, manage members, delete group).
+ *
+ * To enhance performance, it employs a split data-fetching strategy:
+ * 1. A fast initial fetch for core group details and members to render the header quickly.
+ * 2. Slower, subsequent fetches for restaurant and feed data that populate the list below the fold.
+ */
 export default function GroupDetailScreen() {
   const route = useRoute<GroupDetailScreenRouteProp>();
   const navigation =
@@ -137,7 +153,6 @@ export default function GroupDetailScreen() {
     () => new Set(pendingIncoming.map((r) => r.requester_id)),
     [pendingIncoming],
   );
-
   const insets = useSafeAreaInsets();
   const [isQrModalVisible, setQrModalVisible] = useState(false);
   const [activeQrCode, setActiveQrCode] = useState<string | null>(null);
@@ -159,7 +174,10 @@ export default function GroupDetailScreen() {
     }
   };
 
-  // FIX: Only fetch the core group details and members here (extremely fast query)
+  /**
+   * Fetches the core group details and its members. This is a fast query
+   * designed to populate the screen header quickly.
+   */
   const loadGroupDetails = useCallback(async () => {
     try {
       const data = await fetchGroupDetails(groupId);
@@ -176,7 +194,10 @@ export default function GroupDetailScreen() {
     }
   }, [groupId, user?.id]);
 
-  // FIX: Isolate the heavy 3-step restaurant database join into its own background thread
+  /**
+   * Fetches the full restaurant objects that have been reviewed by group members.
+   * This is a potentially slow, multi-step query and is run in the background.
+   */
   const loadGroupRestaurants = useCallback(async () => {
     setIsRestaurantsLoading(true);
     try {
@@ -460,7 +481,8 @@ export default function GroupDetailScreen() {
 
   const restaurantItems: ListItem[] = [];
 
-  // FIX: Inject the isolated restaurant loading spinner into the FlatList sequence
+  // Inject the isolated restaurant loading spinner into the FlatList sequence
+  // while the heavier restaurant data is being fetched in the background.
   if (isRestaurantsLoading) {
     restaurantItems.push({
       type: 'section_title',
