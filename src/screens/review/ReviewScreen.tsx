@@ -466,30 +466,40 @@ export default function ReviewScreen() {
               testID="tag-selector"
             />
 
-            <Text style={styles.sectionTitle}>Tag Friends</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {friends.map((friend) => {
-                const isTagged = taggedUserIds.includes(friend.id);
-                return (
-                  <TouchableOpacity
-                    key={friend.id}
-                    style={styles.friendAvatarContainer}
-                    onPress={() => handleToggleFriendTag(friend.id)}
-                  >
-                    <Avatar url={friend.avatar_url} size={50} />
-                    {isTagged && (
-                      <View style={styles.friendCheckmark}>
-                        <MaterialCommunityIcons
-                          name="check-circle"
-                          size={20}
-                          color={COLORS.primary}
-                        />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            {/* Only display the Tag Friends section if the user actually has friends in their graph */}
+            {friends.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Tag Friends</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.friendScrollContent}
+                >
+                  {friends.map((friend) => {
+                    const isTagged = taggedUserIds.includes(friend.id);
+                    return (
+                      <TouchableOpacity
+                        key={friend.id}
+                        style={styles.friendAvatarContainer}
+                        onPress={() => handleToggleFriendTag(friend.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Avatar url={friend.avatar_url} size={50} />
+                        {isTagged && (
+                          <View style={styles.friendCheckmark}>
+                            <MaterialCommunityIcons
+                              name="check-circle"
+                              size={20}
+                              color={COLORS.primary}
+                            />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
 
             <View style={styles.privacyRow}>
               <View style={{ flex: 1 }}>
@@ -727,8 +737,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  friendScrollContent: {
+    paddingVertical: SIZES.base / 2,
+    gap: 12, // Keeps your item distribution matching your layout definitions
+  },
   friendAvatarContainer: {
-    marginRight: 12,
     position: 'relative',
   },
   friendCheckmark: {

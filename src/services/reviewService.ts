@@ -225,7 +225,7 @@ export async function fetchReviewsForRestaurant(
       `*,
        profiles!user_id(username, avatar_url),
        restaurant:restaurants(id, name, cuisine),
-       review_tagged_users(profiles!user_id(id, username, avatar_url))`,
+       review_tagged_users(profiles!tagged_user_id(id, username, avatar_url))`,
     )
     .eq('restaurant_id', restaurantId);
 
