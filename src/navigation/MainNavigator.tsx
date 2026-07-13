@@ -27,6 +27,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import AccessibilitySettingsScreen from '../screens/profile/AccessibilitySettingsScreen';
 import FriendsHubScreen from '../screens/profile/FriendsHubScreen';
 import PublicProfileScreen from '../screens/profile/PublicProfileScreen';
+import AchievementsScreen from '../screens/profile/AchievementsScreen';
 
 const linkingConfiguration = {
   prefixes: [Linking.createURL('/'), 'yafra://'],
@@ -143,6 +144,11 @@ export default function MainNavigator() {
                 name="PublicProfileScreen"
                 component={PublicProfileScreen}
                 options={{ headerShown: true, title: 'Profile' }}
+              />
+              <Stack.Screen
+                name="AchievementsScreen"
+                component={AchievementsScreen}
+                options={{ headerShown: true, title: 'Achievements' }}
               />
             </Stack.Group>
           )

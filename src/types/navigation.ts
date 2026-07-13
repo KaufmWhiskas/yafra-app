@@ -24,6 +24,7 @@ export type RootStackParamList = {
   AccessibilitySettingsScreen: undefined;
   FriendsHubScreen: undefined;
   PublicProfileScreen: { userId: string };
+  AchievementsScreen: undefined;
 };
 
 export type TabParamList = {

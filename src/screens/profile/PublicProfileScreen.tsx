@@ -12,10 +12,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { fetchUserStats } from '../../services/profileService';
 import { fetchUserPublicReviews } from '../../services/reviewService';
+import {
+  fetchAchievementCatalog,
+  fetchUserAchievements,
+} from '../../services/achievementService';
 import { Avatar } from '../../components/Avatar';
 import { COLORS, SIZES } from '../../constants/theme';
-import { GroupFeedReview, Review, Restaurant } from '../../types';
+import { GroupFeedReview, Restaurant, Review } from '../../types';
+import { Achievement, UserAchievement } from '../../types/achievements';
 import FeedCard from '../../components/groups/FeedCard';
+import AchievementBadge from '../../components/achievements/AchievementBadge';
 
 type PublicProfileScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -40,6 +46,12 @@ export default function PublicProfileScreen() {
 
   const [stats, setStats] = useState<UserStats | null>(null);
   const [reviews, setReviews] = useState<GroupFeedReview[]>([]);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<
+    UserAchievement[]
+  >([]);
+  const [achievementCatalog, setAchievementCatalog] = useState<Achievement[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,12 +59,16 @@ export default function PublicProfileScreen() {
     const loadProfileData = async () => {
       try {
         setIsLoading(true);
-        const [userStats, userReviews] = await Promise.all([
+        const [userStats, userReviews, unlocked, catalog] = await Promise.all([
           fetchUserStats(userId),
           fetchUserPublicReviews(userId),
+          fetchUserAchievements(userId),
+          fetchAchievementCatalog(),
         ]);
 
         setStats(userStats);
+        setUnlockedAchievements(unlocked);
+        setAchievementCatalog(catalog);
 
         // Inject the known profile metadata into each review row
         const mappedReviews = (
@@ -81,28 +97,73 @@ export default function PublicProfileScreen() {
   const renderHeader = () => {
     if (!stats) return null;
 
+    const unlockedAchievementIds = new Set(
+      unlockedAchievements.map((a) => a.achievement_id),
+    );
+
+    const unlockedCodes = new Set<string>();
+    achievementCatalog.forEach((ach) => {
+      if (unlockedAchievementIds.has(ach.id)) unlockedCodes.add(ach.code);
+    });
+
     return (
-      <View style={styles.headerContainer}>
-        <Avatar url={stats.avatar_url} size={80} name={stats.username} />
-        <Text style={styles.username}>{stats.username}</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.reviewCount}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {stats.uniqueRestaurantsVisited}
-            </Text>
-            <Text style={styles.statLabel}>Visited</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.bookmarkCount}</Text>
-            <Text style={styles.statLabel}>Bookmarks</Text>
+      <>
+        <View style={styles.headerContainer}>
+          <Avatar url={stats.avatar_url} size={80} name={stats.username} />
+          <Text style={styles.username}>{stats.username}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.reviewCount}</Text>
+              <Text style={styles.statLabel}>Reviews</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {stats.uniqueRestaurantsVisited}
+              </Text>
+              <Text style={styles.statLabel}>Visited</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.bookmarkCount}</Text>
+              <Text style={styles.statLabel}>Bookmarks</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.sectionTitle}>Public Reviews</Text>
-      </View>
+
+        {achievementCatalog.length > 0 && (
+          <View style={styles.achievementsSection}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { paddingHorizontal: SIZES.padding },
+              ]}
+            >
+              Achievements
+            </Text>
+            <FlatList
+              horizontal
+              data={achievementCatalog}
+              renderItem={({ item }) => (
+                <AchievementBadge
+                  achievement={item}
+                  isUnlocked={unlockedCodes.has(item.code)}
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.achievementsList}
+            />
+          </View>
+        )}
+
+        <Text
+          style={[
+            styles.sectionTitle,
+            { paddingHorizontal: SIZES.padding, marginTop: SIZES.padding },
+          ]}
+        >
+          Public Reviews
+        </Text>
+      </>
     );
   };
 
@@ -202,9 +263,19 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: SIZES.padding * 2,
     alignSelf: 'flex-start',
+    marginBottom: SIZES.base,
   },
   listContent: {
     paddingBottom: SIZES.padding,
+  },
+  achievementsSection: {
+    paddingVertical: SIZES.padding,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  achievementsList: {
+    paddingHorizontal: SIZES.padding,
   },
   errorText: {
     color: COLORS.danger,

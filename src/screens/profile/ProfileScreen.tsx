@@ -142,12 +142,10 @@ export default function ProfileScreen() {
 
         <View style={styles.gridRow}>
           <TouchableOpacity
-            style={[
-              styles.gridCard,
-              styles.gridCardLeft,
-              styles.disabledFeature,
-            ]}
-            onPress={() => handlePlaceholder('Achievements')}
+            style={[styles.gridCard, styles.gridCardLeft]}
+            onPress={() => {
+              navigation.navigate('AchievementsScreen');
+            }}
           >
             <MaterialCommunityIcons
               name="trophy-outline"
@@ -156,7 +154,7 @@ export default function ProfileScreen() {
               style={styles.gridIcon}
             />
             <Text style={styles.gridCardTitle}>Achievements</Text>
-            <Text style={styles.gridCardSub}>Coming soon</Text>
+            <Text style={styles.gridCardSub}>View My Badges</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

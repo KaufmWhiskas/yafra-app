@@ -19,6 +19,7 @@ import {
   updateReview,
   fetchUserTags,
 } from '../../services/reviewService';
+import { processReviewAchievements } from '../../services/achievementService';
 import ScoreSelector from '../../components/review/ScoreSelector';
 import { useFriends } from '../../context/FriendsContext';
 import { Avatar } from '../../components/Avatar';
@@ -220,6 +221,30 @@ export default function ReviewScreen() {
 
       if (result.success) {
         hapticNotification(Haptics.NotificationFeedbackType.Success);
+
+        // 1. Process achievements first so we capture the return array before unmounting the screen context
+        if (user?.id) {
+          processReviewAchievements(payload, user.id)
+            .then((newlyUnlocked) => {
+              if (newlyUnlocked && newlyUnlocked.length > 0) {
+                // Trigger a noticeable haptic signal pattern
+                hapticNotification(Haptics.NotificationFeedbackType.Warning);
+
+                newlyUnlocked.forEach((achievement) => {
+                  Alert.alert(
+                    '🏆 Achievement Unlocked!',
+                    `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
+                    [{ text: 'Awesome!', style: 'default' }],
+                  );
+                });
+              }
+            })
+            .catch((err) =>
+              console.error('Achievement processing error:', err),
+            );
+        }
+
+        // 2. Alert and head back safely
         Alert.alert(
           'Success',
           `Your review has been ${isEditing ? 'updated' : 'submitted'}!`,
