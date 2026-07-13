@@ -73,6 +73,16 @@ jest.mock('../../../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('../../../context/FriendsContext', () => ({
+  useFriends: () => ({
+    friends: [],
+    pendingIncoming: [],
+    pendingOutgoing: [],
+    isLoading: false,
+    refetch: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../hooks/useGroupFeed');
 
 const flushMicrotasks = async (): Promise<void> => {

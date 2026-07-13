@@ -52,6 +52,16 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+jest.mock('../../../context/FriendsContext', () => ({
+  useFriends: () => ({
+    friends: [],
+    pendingIncoming: [],
+    pendingOutgoing: [],
+    isLoading: false,
+    refetch: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
     session: { user: { id: 'test-user-id' } },
@@ -114,6 +124,7 @@ describe('ReviewScreen', () => {
         tags: [],
         description: '',
         isPrivate: false,
+        taggedUserIds: [],
         visitDate: '2024-07-15',
         priceTier: 2,
       });
@@ -160,6 +171,7 @@ describe('ReviewScreen', () => {
         tags: ['Hidden Gem'],
         description: 'Amazing burgers!',
         isPrivate: false,
+        taggedUserIds: [],
         visitDate: '2024-07-15',
         priceTier: 2,
       });

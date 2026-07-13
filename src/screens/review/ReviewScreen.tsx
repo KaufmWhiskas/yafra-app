@@ -20,6 +20,8 @@ import {
   fetchUserTags,
 } from '../../services/reviewService';
 import ScoreSelector from '../../components/review/ScoreSelector';
+import { useFriends } from '../../context/FriendsContext';
+import { Avatar } from '../../components/Avatar';
 import TagSelector from '../../components/review/TagSelector';
 import ExperienceToggle, {
   ExperienceType,
@@ -45,6 +47,7 @@ interface ReviewState {
   isPrivate: boolean;
   selectedTags: string[];
   isAdvanced: boolean;
+  taggedUserIds: string[];
   priceTier: number;
 }
 
@@ -56,6 +59,7 @@ type ReviewAction =
     }
   | { type: 'TOGGLE_TAG'; tag: string }
   | { type: 'ADD_CUSTOM_TAG'; tag: string }
+  | { type: 'TOGGLE_FRIEND_TAG'; userId: string }
   | { type: 'TOGGLE_ADVANCED' };
 
 function reviewReducer(state: ReviewState, action: ReviewAction): ReviewState {
@@ -73,6 +77,13 @@ function reviewReducer(state: ReviewState, action: ReviewAction): ReviewState {
       return {
         ...state,
         selectedTags: [...new Set([...state.selectedTags, action.tag])],
+      };
+    case 'TOGGLE_FRIEND_TAG':
+      return {
+        ...state,
+        taggedUserIds: state.taggedUserIds.includes(action.userId)
+          ? state.taggedUserIds.filter((id) => id !== action.userId)
+          : [...state.taggedUserIds, action.userId],
       };
     case 'TOGGLE_ADVANCED':
       return { ...state, isAdvanced: !state.isAdvanced };
@@ -95,13 +106,15 @@ export default function ReviewScreen() {
     | Record<string, unknown>
     | undefined;
   const initialTags = (metadata?.tags as string[]) || [];
+  const initialTaggedUsers = (metadata?.tagged_user_ids as string[]) || [];
 
   const isEditing = !!editReviewId;
   const initialAdvanced = !!(
     isEditing &&
     (existingReviewData?.price_value_rating ||
       existingReviewData?.review_text ||
-      initialTags.length > 0)
+      initialTags.length > 0 ||
+      initialTaggedUsers.length > 0)
   );
 
   const initialState: ReviewState = {
@@ -114,6 +127,7 @@ export default function ReviewScreen() {
     isPrivate: (existingReviewData?.is_private as boolean | undefined) || false,
     selectedTags: initialTags,
     isAdvanced: initialAdvanced,
+    taggedUserIds: initialTaggedUsers,
     priceTier: (metadata?.price_tier as number | undefined) || 2,
     visitDate: (() => {
       if (isEditing) {
@@ -135,9 +149,11 @@ export default function ReviewScreen() {
     isPrivate,
     selectedTags,
     isAdvanced,
+    taggedUserIds,
     priceTier,
   } = state;
 
+  const { friends } = useFriends();
   const scrollViewRef = useRef<ScrollView>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -191,6 +207,7 @@ export default function ReviewScreen() {
         description: isAdvanced ? description : '',
         visitDate: finalVisitDate,
         isPrivate: isAdvanced ? isPrivate : false,
+        taggedUserIds: isAdvanced ? taggedUserIds : [],
         priceTier: priceTier, // Evaporates advanced restriction dependency completely
       };
 
@@ -247,6 +264,11 @@ export default function ReviewScreen() {
       dispatch({ type: 'ADD_CUSTOM_TAG', tag });
     }
     if (!showAllTags) setShowAllTags(true);
+  };
+
+  const handleToggleFriendTag = (userId: string) => {
+    hapticSelection();
+    dispatch({ type: 'TOGGLE_FRIEND_TAG', userId });
   };
 
   return (
@@ -443,6 +465,31 @@ export default function ReviewScreen() {
               onAddCustom={handleAddCustomTag}
               testID="tag-selector"
             />
+
+            <Text style={styles.sectionTitle}>Tag Friends</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {friends.map((friend) => {
+                const isTagged = taggedUserIds.includes(friend.id);
+                return (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={styles.friendAvatarContainer}
+                    onPress={() => handleToggleFriendTag(friend.id)}
+                  >
+                    <Avatar url={friend.avatar_url} size={50} />
+                    {isTagged && (
+                      <View style={styles.friendCheckmark}>
+                        <MaterialCommunityIcons
+                          name="check-circle"
+                          size={20}
+                          color={COLORS.primary}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
             <View style={styles.privacyRow}>
               <View style={{ flex: 1 }}>
@@ -679,5 +726,25 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontSize: 16,
     fontWeight: '600',
+  },
+  friendAvatarContainer: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  friendCheckmark: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
 });

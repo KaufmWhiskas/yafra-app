@@ -31,6 +31,7 @@ import {
   fetchGroupRestaurants,
   uploadGroupAvatar,
 } from '../../services/groupService';
+import { sendFriendRequest } from '../../services/friendService';
 import {
   Group,
   GroupMember,
@@ -40,6 +41,7 @@ import {
 } from '../../types';
 import { useGroupFeed } from '../../hooks/useGroupFeed';
 import { useAuth } from '../../context/AuthContext';
+import { useFriends } from '../../context/FriendsContext';
 import { COLORS, SIZES } from '../../constants/theme';
 import { RootStackParamList } from '../../types/navigation';
 import ScoreDistributionChart from '../../components/groups/ScoreDistributionChart';
@@ -97,6 +99,13 @@ export default function GroupDetailScreen() {
   const { session } = useAuth();
   const user = session?.user;
 
+  const {
+    friends,
+    pendingIncoming,
+    pendingOutgoing,
+    refetch: refetchFriends,
+  } = useFriends();
+
   const [group, setGroup] = useState<GroupWithMembers | null>(null);
 
   // FIX: Separate loading states for the fast header vs the slow data
@@ -117,6 +126,16 @@ export default function GroupDetailScreen() {
   const scoreDistribution = useMemo(
     () => calculateScoreDistribution(groupRestaurants),
     [groupRestaurants],
+  );
+
+  const friendIds = useMemo(() => new Set(friends.map((f) => f.id)), [friends]);
+  const pendingOutgoingIds = useMemo(
+    () => new Set(pendingOutgoing.map((r) => r.addressee_id)),
+    [pendingOutgoing],
+  );
+  const pendingIncomingIds = useMemo(
+    () => new Set(pendingIncoming.map((r) => r.requester_id)),
+    [pendingIncoming],
   );
 
   const insets = useSafeAreaInsets();
@@ -591,6 +610,36 @@ export default function GroupDetailScreen() {
                 Role: {item.member.role} (Weight: {item.member.weight})
               </Text>
             </View>
+            <View style={styles.memberActions}>
+              {user && user.id !== item.member.user_id && (
+                <>
+                  {pendingOutgoingIds.has(item.member.user_id) ||
+                  pendingIncomingIds.has(item.member.user_id) ? (
+                    <View style={styles.pendingIndicator}>
+                      <MaterialCommunityIcons
+                        name="clock-outline"
+                        size={20}
+                        color={COLORS.textLight}
+                      />
+                      <Text style={styles.pendingText}>Pending</Text>
+                    </View>
+                  ) : !friendIds.has(item.member.user_id) ? (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await sendFriendRequest(user.id, item.member.user_id);
+                        refetchFriends();
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="account-plus-outline"
+                        size={24}
+                        color={COLORS.primary}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              )}
+            </View>
           </TouchableOpacity>
         );
       }
@@ -988,6 +1037,10 @@ const styles = StyleSheet.create({
   memberInfo: {
     marginLeft: SIZES.padding,
   },
+  memberActions: {
+    marginLeft: 'auto',
+    paddingLeft: SIZES.padding,
+  },
   memberText: { fontSize: 16, fontWeight: 'bold' },
   memberRole: { fontSize: 14, color: COLORS.textLight },
   errorText: {
@@ -1269,5 +1322,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+  },
+  pendingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pendingText: {
+    color: COLORS.textLight,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });

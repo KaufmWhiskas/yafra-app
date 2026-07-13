@@ -77,6 +77,7 @@ export interface GroupFeedReview extends Review {
     cuisine?: string;
     google_place_id?: string;
   };
+  tagged_friends?: UserProfile[];
 }
 
 export interface Prediction {

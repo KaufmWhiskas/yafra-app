@@ -1,5 +1,11 @@
 import { supabase } from './supabase';
-import { GroupFeedReview } from '../types';
+import { GroupFeedReview, UserProfile } from '../types';
+
+type ReviewWithNestedTaggedUsers = Omit<GroupFeedReview, 'tagged_friends'> & {
+  review_tagged_users: {
+    profiles: UserProfile;
+  }[];
+};
 
 /**
  * Adds reviews to the Supabase database
@@ -15,6 +21,7 @@ export const submitReview = async (review: {
   visitDate?: string | null;
   isPrivate?: boolean;
   priceTier: number;
+  taggedUserIds?: string[];
 }) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -38,16 +45,35 @@ export const submitReview = async (review: {
           experience_type: review.experienceType,
           tags: review.tags || [],
           price_tier: review.priceTier,
+          tagged_user_ids: review.taggedUserIds || [],
         },
         is_private: review.isPrivate || false,
         user_id: user.id,
       },
     ])
-    .select();
+    .select()
+    .single();
 
   if (insertError) {
     throw insertError;
   }
+
+  const newReviewId = insertData.id;
+
+  if (review.taggedUserIds && review.taggedUserIds.length > 0) {
+    const taggedUsers = review.taggedUserIds.map((userId) => ({
+      review_id: newReviewId,
+      user_id: userId,
+    }));
+    const { error: tagError } = await supabase
+      .from('review_tagged_users')
+      .insert(taggedUsers);
+
+    if (tagError) {
+      console.error('Failed to tag users in review:', tagError);
+    }
+  }
+
   return { success: true, data: insertData };
 };
 
@@ -173,7 +199,10 @@ export async function fetchReviewsForRestaurant(
   let query = supabase
     .from('reviews')
     .select(
-      `*, profiles(username, avatar_url), restaurant:restaurants(id, name, cuisine)`,
+      `*,
+       profiles(username, avatar_url),
+       restaurant:restaurants(id, name, cuisine),
+       review_tagged_users(profiles(id, username, avatar_url))`,
     )
     .eq('restaurant_id', restaurantId);
 
@@ -192,7 +221,16 @@ export async function fetchReviewsForRestaurant(
     // Force a standard Error object so the hook can read the message
     throw new Error(error.message);
   }
-  return data as GroupFeedReview[];
+
+  // Manually map the nested tagged user profiles into a clean array
+  const mappedData = (data as ReviewWithNestedTaggedUsers[]).map((review) => {
+    const { review_tagged_users, ...rest } = review;
+    const tagged_friends =
+      review_tagged_users?.map((rtu) => rtu.profiles) || [];
+    return { ...rest, tagged_friends };
+  });
+
+  return mappedData as GroupFeedReview[];
 }
 
 /**
@@ -209,9 +247,10 @@ export const updateReview = async (
     visitDate?: string | null;
     isPrivate?: boolean;
     priceTier: number;
+    taggedUserIds?: string[];
   },
 ) => {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('reviews')
     .update({
       rating: review.rating,
@@ -222,12 +261,37 @@ export const updateReview = async (
         experience_type: review.experienceType,
         tags: review.tags || [],
         price_tier: review.priceTier,
+        tagged_user_ids: review.taggedUserIds || [],
       },
       is_private: review.isPrivate || false,
     })
     .eq('id', reviewId)
-    .select();
+    .select()
+    .single();
 
   if (error) throw error;
-  return { success: true, data };
+
+  const { error: deleteError } = await supabase
+    .from('review_tagged_users')
+    .delete()
+    .eq('review_id', reviewId);
+
+  if (deleteError) {
+    console.error('Failed to clear old tagged users:', deleteError);
+  }
+
+  if (review.taggedUserIds && review.taggedUserIds.length > 0) {
+    const taggedUsers = review.taggedUserIds.map((userId) => ({
+      review_id: reviewId,
+      user_id: userId,
+    }));
+    const { error: insertError } = await supabase
+      .from('review_tagged_users')
+      .insert(taggedUsers);
+    if (insertError) {
+      console.error('Failed to insert new tagged users:', insertError);
+    }
+  }
+
+  return { success: true };
 };
