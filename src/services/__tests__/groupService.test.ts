@@ -15,6 +15,8 @@ import {
 } from '../groupService';
 import { supabase } from '../supabase';
 
+jest.mock('../achievementService');
+
 jest.mock('expo-crypto', () => ({
   getRandomBytes: jest.fn().mockImplementation((length: number) => {
     // Return a dummy array of bytes for testing

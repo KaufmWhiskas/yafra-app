@@ -22,9 +22,18 @@ export function getDistanceKM(
 }
 
 serve(async (req) => {
+  // 1. Extract the Authorization header from the incoming client request
+  const authHeader = req.headers.get('Authorization');
+
+  // 2. Pass the header into the client so RLS knows EXACTLY who is making the request
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    {
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : {},
+      },
+    },
   );
 
   const { payload, userId } = await req.json();
@@ -71,7 +80,23 @@ serve(async (req) => {
     const friendReviews = friendsReviewsRes.data || [];
     const totalGlobalReviews = globalReviewsCountRes.count || 0;
 
-    // Append the newly submitted review mock to history to evaluate accurately
+    // Fix: If the client payload is missing internal database geometry columns,
+    // fetch the true restaurant coordinates directly from Postgres to prevent NaN math errors.
+    let currentRestaurantDetails = payload.restaurant;
+    if (
+      !currentRestaurantDetails?.latitude ||
+      !currentRestaurantDetails?.cuisine
+    ) {
+      const { data: dbRest } = await supabaseClient
+        .from('restaurants')
+        .select('id, latitude, longitude, cuisine')
+        .eq('id', payload.restaurantId || payload.restaurant?.id)
+        .maybeSingle();
+      if (dbRest) {
+        currentRestaurantDetails = dbRest;
+      }
+    }
+
     const currentReview = {
       rating: payload.rating,
       review_text: payload.description || '',
@@ -81,13 +106,12 @@ serve(async (req) => {
         tags: payload.tags,
         price_tier: payload.priceTier,
       },
-      restaurant: payload.restaurant, // Ensure details (latitude, longitude, cuisine) are sent from client
+      restaurant: currentRestaurantDetails,
     };
 
     const fullHistory = [...history, currentReview];
     const unlockedAchievements = [];
 
-    // 2. Pre-calculate metrics to avoid recalculating in loop
     const totalReviews = fullHistory.length;
     const uniqueRestaurants = new Set(fullHistory.map((r) => r.restaurant?.id))
       .size;
@@ -112,10 +136,13 @@ serve(async (req) => {
         if (subject === 'CUISINETYPE' && cuisinesTried >= target)
           shouldUnlock = true;
 
-        // Experience types (COUNT_EXP_EATIN5, etc.)
+        // Experience types FIX: Handles un-prefixed splits like COUNT_EXP_TAKEAWAY5 matching payload types
         if (subject === 'EXP') {
-          const expType = parts[2].toLowerCase(); // e.g. EATIN
-          const matchType = expType === 'eatin' ? 'eat-in' : expType;
+          const rawType = parts[2]; // E.g., "EATIN5" or "TAKEAWAY25"
+          let matchType = 'eat-in';
+          if (rawType.startsWith('TAKEAWAY')) matchType = 'takeaway';
+          if (rawType.startsWith('ORDER')) matchType = 'order';
+
           const count = fullHistory.filter(
             (r) => r.metadata?.experience_type === matchType,
           ).length;
@@ -125,33 +152,27 @@ serve(async (req) => {
 
       // --- STREAK LOGIC ---
       if (category === 'STREAK') {
-        // Calculate consecutive weeks
-        const visitDates = fullHistory
-          .map((r) => (r.visit_date ? new Date(r.visit_date) : null))
-          .filter((d): d is Date => d !== null)
-          .sort((a, b) => a.getTime() - b.getTime());
+        // FIX: Replaced simple division with accurate absolute epoch week mappings
+        // to handle year transitions (Dec -> Jan) perfectly
+        const visitWeeks = fullHistory
+          .map((r) => {
+            if (!r.visit_date) return null;
+            const d = new Date(r.visit_date);
+            // Calculate absolute weeks since epoch Unix timestamp
+            return Math.floor(d.getTime() / (7 * 24 * 60 * 60 * 1000));
+          })
+          .filter((w): w is number => w !== null)
+          .sort((a, b) => a - b);
 
-        // Group into week numbers
-        const weeks = new Set(
-          visitDates.map((d) => {
-            const startOfYear = new Date(d.getFullYear(), 0, 1);
-            return Math.ceil(
-              ((d.getTime() - startOfYear.getTime()) / 86400000 +
-                startOfYear.getDay() +
-                1) /
-                7,
-            );
-          }),
-        );
-
+        const uniqueWeeks = Array.from(new Set(visitWeeks));
         let longestStreak = 0;
         let currentStreak = 0;
         let lastWeek = -1;
 
-        Array.from(weeks).forEach((w) => {
+        uniqueWeeks.forEach((w) => {
           if (lastWeek === -1 || w === lastWeek + 1) {
             currentStreak++;
-          } else if (w !== lastWeek) {
+          } else {
             currentStreak = 1;
           }
           longestStreak = Math.max(longestStreak, currentStreak);
@@ -165,7 +186,6 @@ serve(async (req) => {
       if (category === 'SPATIAL') {
         const subject = parts[1];
 
-        // SPATIAL_DELTA_500KM -> Max distance delta
         if (subject === 'DELTA') {
           let maxDist = 0;
           for (let i = 0; i < fullHistory.length; i++) {
@@ -186,10 +206,7 @@ serve(async (req) => {
           if (maxDist >= target) shouldUnlock = true;
         }
 
-        // SPATIAL_CLUSTER_5 -> Radius clusters
         if (subject === 'CLUSTER') {
-          // Check if there's a subset where each restaurant is within 50m (0.05km) of at least one other
-          // Simple graph connectivity components
           let maxCluster = 0;
           fullHistory.forEach((pivot) => {
             const cluster = fullHistory.filter((other) => {
@@ -210,7 +227,7 @@ serve(async (req) => {
 
       // --- STAPLE LOGIC ---
       if (category === 'STAPLE') {
-        const cuisine = parts[1].toLowerCase(); // PIZZA, TURKISH, SUSHI
+        const cuisine = parts[1].toLowerCase();
         const count = fullHistory.filter(
           (r) => r.restaurant?.cuisine?.toLowerCase() === cuisine,
         ).length;
@@ -222,30 +239,24 @@ serve(async (req) => {
         if (
           ach.code === 'EVENT_CRITIC_DETAILED' &&
           currentReview.review_text.length >= 25
-        ) {
+        )
           shouldUnlock = true;
-        }
-        if (ach.code === 'EVENT_SCORE_MIN' && currentReview.rating === 1.0) {
+        if (ach.code === 'EVENT_SCORE_MIN' && currentReview.rating === 1.0)
           shouldUnlock = true;
-        }
-        if (ach.code === 'EVENT_SCORE_MAX' && currentReview.rating === 5.0) {
+        if (ach.code === 'EVENT_SCORE_MAX' && currentReview.rating === 5.0)
           shouldUnlock = true;
-        }
         if (
           ach.code === 'EVENT_BUDGET_MIN' &&
           currentReview.metadata?.price_tier === 1
-        ) {
+        )
           shouldUnlock = true;
-        }
         if (
           ach.code === 'EVENT_BUDGET_MAX' &&
           currentReview.metadata?.price_tier === 4
-        ) {
+        )
           shouldUnlock = true;
-        }
 
         if (ach.code === 'EVENT_SOCIAL_MATCH') {
-          // Friend reviewed the same restaurant and gave it the exact same score
           const matchingScore = friendReviews.some(
             (fr: { rating: number }) => fr.rating === currentReview.rating,
           );
@@ -253,7 +264,6 @@ serve(async (req) => {
         }
 
         if (ach.code === 'EVENT_SOCIAL_FOLLOWHIGH') {
-          // Friend rated it > 4.5 and user rated it > 4.5
           const friendHighlyRated = friendReviews.some(
             (fr: { rating: number }) => fr.rating >= 4.5,
           );
@@ -262,7 +272,6 @@ serve(async (req) => {
         }
 
         if (ach.code === 'EVENT_RESTAURANT_POPULAR') {
-          // The restaurant has at least 3 other reviews in the database
           if (totalGlobalReviews >= 3) shouldUnlock = true;
         }
 
@@ -279,8 +288,6 @@ serve(async (req) => {
         }
 
         if (ach.code === 'EVENT_RESTAURANT_FIRST') {
-          // If the global count is 1, the review they just submitted is the only one in existence.
-          // Note: The count includes the review being submitted if it's already in the DB, so <= 1 is safest.
           if (totalGlobalReviews <= 1) shouldUnlock = true;
         }
       }
@@ -296,7 +303,12 @@ serve(async (req) => {
         user_id: userId,
         achievement_id: ach.id,
       }));
-      await supabaseClient.from('user_achievements').insert(inserts);
+      const { error: insertError } = await supabaseClient
+        .from('user_achievements')
+        .insert(inserts);
+
+      // Throw the error so the mobile app console catches and prints it!
+      if (insertError) throw insertError;
     }
 
     return new Response(JSON.stringify(unlockedAchievements), {

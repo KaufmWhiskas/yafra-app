@@ -1,5 +1,9 @@
-import { supabase } from "./supabase";
-import { Restaurant } from "../types";
+import { supabase } from './supabase';
+import { Restaurant } from '../types';
+import { unlockDirectEvent } from './achievementService';
+import { Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { hapticNotification } from '../utils/haptics';
 
 export interface BookmarkCollection {
   id: string;
@@ -14,15 +18,15 @@ export async function fetchCollections(
   userId: string,
 ): Promise<BookmarkCollection[]> {
   const { data, error } = await supabase
-    .from("bookmark_collections")
-    .select("id, name")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+    .from('bookmark_collections')
+    .select('id, name')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
 
   if (error) throw error;
 
   if (!data || data.length === 0) {
-    const wishlist = await createCollection(userId, "Wishlist");
+    const wishlist = await createCollection(userId, 'Wishlist');
     return [wishlist];
   }
 
@@ -36,10 +40,10 @@ export async function fetchCollectionSummaries(
   userId: string,
 ): Promise<(BookmarkCollection & { count: number })[]> {
   const { data, error } = await supabase
-    .from("bookmark_collections")
-    .select("id, name, bookmarks(id)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+    .from('bookmark_collections')
+    .select('id, name, bookmarks(id)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
 
   if (error) throw error;
 
@@ -59,9 +63,9 @@ export async function fetchCollectionRestaurants(
   collectionId: string,
 ): Promise<Restaurant[]> {
   const { data, error } = await supabase
-    .from("bookmarks")
-    .select("*, restaurants(*)")
-    .eq("collection_id", collectionId);
+    .from('bookmarks')
+    .select('*, restaurants(*)')
+    .eq('collection_id', collectionId);
 
   if (error) throw error;
 
@@ -83,12 +87,16 @@ export async function fetchCollectionRestaurants(
         details,
         rating: google_rating
           ? parseFloat(google_rating as string)
-          : (parsedDetails?.rating ? Number(parsedDetails.rating) : undefined),
+          : parsedDetails?.rating
+            ? Number(parsedDetails.rating)
+            : undefined,
         app_rating: app_rating ? parseFloat(app_rating as string) : undefined,
-        user_ratings_total: Number(
-          user_ratings_total || parsedDetails?.user_ratings_total ||
-            parsedDetails?.userRatingCount,
-        ) || 0,
+        user_ratings_total:
+          Number(
+            user_ratings_total ||
+              parsedDetails?.user_ratings_total ||
+              parsedDetails?.userRatingCount,
+          ) || 0,
       } as unknown as Restaurant;
     })
     .filter((r): r is Restaurant => r != null);
@@ -102,7 +110,7 @@ export async function createCollection(
   name: string,
 ): Promise<BookmarkCollection> {
   const { data, error } = await supabase
-    .from("bookmark_collections")
+    .from('bookmark_collections')
     .insert([{ user_id: userId, name }])
     .select()
     .single();
@@ -122,29 +130,43 @@ export async function toggleBookmarkInCollection(
 ): Promise<void> {
   if (isCurrentlySaved) {
     const { error } = await supabase
-      .from("bookmarks")
+      .from('bookmarks')
       .delete()
-      .eq("user_id", userId)
-      .eq("restaurant_id", restaurantId.toString())
-      .eq("collection_id", collectionId);
+      .eq('user_id', userId)
+      .eq('restaurant_id', restaurantId.toString())
+      .eq('collection_id', collectionId);
     if (error) throw error;
   } else {
     let targetCollectionId = collectionId;
 
     if (!targetCollectionId) {
       const collections = await fetchCollections(userId);
-      const wishlist = collections.find((c) => c.name === "Wishlist");
+      const wishlist = collections.find((c) => c.name === 'Wishlist');
       if (wishlist) {
         targetCollectionId = wishlist.id;
       }
     }
 
-    const { error } = await supabase.from("bookmarks").insert([{
-      user_id: userId,
-      restaurant_id: restaurantId.toString(),
-      collection_id: targetCollectionId,
-    }]);
-    if (error && error.code !== "23505") throw error;
+    const { error } = await supabase.from('bookmarks').insert([
+      {
+        user_id: userId,
+        restaurant_id: restaurantId.toString(),
+        collection_id: targetCollectionId,
+      },
+    ]);
+    if (error && error.code !== '23505') throw error;
+    if (userId && !error) {
+      unlockDirectEvent('EVENT_WISHLIST_ADD', userId).then((achievement) => {
+        if (achievement) {
+          hapticNotification(Haptics.NotificationFeedbackType.Warning);
+          Alert.alert(
+            '🏆 Achievement Unlocked!',
+            `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
+            [{ text: 'Awesome!', style: 'default' }],
+          );
+        }
+      });
+    }
   }
 }
 
@@ -156,9 +178,9 @@ export async function fetchUserBookmarkedRestaurantIds(
   userId: string,
 ): Promise<Set<string>> {
   const { data, error } = await supabase
-    .from("bookmarks")
-    .select("restaurant_id")
-    .eq("user_id", userId);
+    .from('bookmarks')
+    .select('restaurant_id')
+    .eq('user_id', userId);
 
   if (error) throw error;
 
@@ -177,10 +199,10 @@ export async function fetchRestaurantSavedCollectionIds(
   restaurantId: string | number,
 ): Promise<Set<string>> {
   const { data, error } = await supabase
-    .from("bookmarks")
-    .select("collection_id")
-    .eq("user_id", userId)
-    .eq("restaurant_id", restaurantId.toString());
+    .from('bookmarks')
+    .select('collection_id')
+    .eq('user_id', userId)
+    .eq('restaurant_id', restaurantId.toString());
 
   if (error) throw error;
 
@@ -206,12 +228,12 @@ export async function toggleBookmark(
 
   if (isCurrentlySaved) {
     const { error } = await supabase
-      .from("bookmarks")
+      .from('bookmarks')
       .delete()
-      .eq("user_id", userId)
-      .eq("restaurant_id", restaurantId.toString());
+      .eq('user_id', userId)
+      .eq('restaurant_id', restaurantId.toString());
     if (error) throw error;
   } else {
-    await toggleBookmarkInCollection(userId, restaurantId, "", false);
+    await toggleBookmarkInCollection(userId, restaurantId, '', false);
   }
 }

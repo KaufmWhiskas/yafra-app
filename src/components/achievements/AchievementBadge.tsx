@@ -1,6 +1,11 @@
-import React from 'react';
+import React, { ComponentProps } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  MaterialCommunityIcons,
+  FontAwesome5,
+  Ionicons,
+} from '@expo/vector-icons';
+import Lucide from '@react-native-vector-icons/lucide';
 import { Achievement } from '../../types/achievements';
 import { COLORS, SIZES } from '../../constants/theme';
 
@@ -9,37 +14,61 @@ interface AchievementBadgeProps {
   isUnlocked: boolean;
 }
 
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
+type LucideName = ComponentProps<typeof Lucide>['name'];
+type MaterialCommunityIconsName = ComponentProps<
+  typeof MaterialCommunityIcons
+>['name'];
+
 const AchievementBadge: React.FC<AchievementBadgeProps> = ({
   achievement,
   isUnlocked,
 }) => {
   const isSecretAndLocked = achievement.is_secret && !isUnlocked;
+  const color = isUnlocked ? COLORS.primary : COLORS.textLight;
 
-  if (isSecretAndLocked) {
-    return (
-      <View style={[styles.container, styles.lockedContainer]}>
-        <MaterialCommunityIcons
-          name="lock-question"
-          size={32}
-          color={COLORS.textLight}
-        />
-        <Text style={styles.lockedTitle}>???</Text>
-      </View>
-    );
-  }
+  const renderIcon = () => {
+    if (isSecretAndLocked) {
+      return (
+        <MaterialCommunityIcons name="lock-question" size={32} color={color} />
+      );
+    }
+
+    // Split the string. E.g. "fa5:utensils" -> family: "fa5", iconName: "utensils"
+    // Default to 'mci' if no prefix is found for backwards compatibility.
+    const [family, iconName] = achievement.icon_name.includes(':')
+      ? achievement.icon_name.split(':')
+      : ['mci', achievement.icon_name];
+
+    switch (family) {
+      case 'fa5':
+        return <FontAwesome5 name={iconName} size={28} color={color} />;
+      case 'ion':
+        return (
+          <Ionicons name={iconName as IoniconsName} size={32} color={color} />
+        );
+      case 'lucide':
+        return <Lucide name={iconName as LucideName} size={32} color={color} />;
+      case 'mci':
+      default:
+        return (
+          <MaterialCommunityIcons
+            name={iconName as MaterialCommunityIconsName}
+            size={32}
+            color={color}
+          />
+        );
+    }
+  };
 
   return (
     <View style={[styles.container, !isUnlocked && styles.lockedContainer]}>
-      <MaterialCommunityIcons
-        name={achievement.icon_name}
-        size={32}
-        color={isUnlocked ? COLORS.primary : COLORS.textLight}
-      />
+      {renderIcon()}
       <Text
         style={[styles.title, !isUnlocked && styles.lockedTitle]}
         numberOfLines={2}
       >
-        {achievement.title}
+        {isSecretAndLocked ? '???' : achievement.title}
       </Text>
     </View>
   );

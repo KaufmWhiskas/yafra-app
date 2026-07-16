@@ -6,9 +6,11 @@ import {
   searchUsersByUsername,
 } from '../friendService';
 import { supabase } from '../supabase';
+import { unlockDirectEvent } from '../achievementService';
 
 // Mock the entire supabase module.
 jest.mock('../supabase');
+jest.mock('../achievementService');
 
 // Cast the imported supabase object to its mocked type to get type safety.
 const mockedSupabase = supabase as jest.Mocked<typeof supabase>;
@@ -32,6 +34,7 @@ describe('friendService', () => {
     // Restore the chaining behavior for .eq() before each test
     mockImplementation.eq.mockReturnThis();
     mockImplementation.ilike.mockResolvedValue({ data: [], error: null });
+    (unlockDirectEvent as jest.Mock).mockClear();
   });
 
   describe('sendFriendRequest', () => {
@@ -51,7 +54,9 @@ describe('friendService', () => {
 
     it('should throw an error if supabase insert fails', async () => {
       const dbError = new Error('DB insert failed');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       mockImplementation.insert.mockResolvedValueOnce({ error: dbError });
 
       await expect(sendFriendRequest('user-1', 'user-2')).rejects.toThrow(
@@ -63,27 +68,69 @@ describe('friendService', () => {
   });
 
   describe('acceptFriendRequest', () => {
-    it('should call update with status: "accepted" for the given relationship ID', async () => {
-      mockImplementation.eq.mockResolvedValue({ error: null });
+    it('should update status to "accepted" and grant achievements on success', async () => {
       const relationshipId = 'rel-123';
+      const mockRelationship = {
+        requester_id: 'user-1',
+        addressee_id: 'user-2',
+      };
+
+      (mockedSupabase.from as jest.Mock)
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: mockRelationship,
+            error: null,
+          }),
+        })
+        .mockReturnValueOnce({
+          update: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockResolvedValue({ error: null }),
+        });
 
       await acceptFriendRequest(relationshipId);
 
-      expect(mockedSupabase.from).toHaveBeenCalledWith('user_relationships');
-      expect(mockImplementation.update).toHaveBeenCalledWith({
-        status: 'accepted',
-      });
-      expect(mockImplementation.eq).toHaveBeenCalledWith('id', relationshipId);
+      expect(unlockDirectEvent).toHaveBeenCalledWith(
+        'EVENT_SOCIAL_FRIEND',
+        'user-1',
+      );
+      expect(unlockDirectEvent).toHaveBeenCalledWith(
+        'EVENT_SOCIAL_FRIEND',
+        'user-2',
+      );
     });
 
-    it('should throw an error if supabase update fails', async () => {
+    it('should throw an error if fetching the relationship fails', async () => {
+      const dbError = new Error('DB fetch failed');
+      (mockedSupabase.from as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: dbError }),
+      });
+
+      await expect(acceptFriendRequest('rel-123')).rejects.toThrow(
+        'Failed to find friend request to accept.',
+      );
+    });
+
+    it('should throw an error if the update fails', async () => {
       const dbError = new Error('DB update failed');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-      mockImplementation.eq.mockResolvedValue({ error: dbError });
+      (mockedSupabase.from as jest.Mock)
+        .mockReturnValueOnce({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { requester_id: 'user-1', addressee_id: 'user-2' },
+            error: null,
+          }),
+        })
+        .mockReturnValueOnce({
+          update: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockResolvedValue({ error: dbError }),
+        });
 
       await expect(acceptFriendRequest('rel-123')).rejects.toThrow(dbError);
-
-      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -101,7 +148,9 @@ describe('friendService', () => {
 
     it('should throw an error if supabase delete fails', async () => {
       const dbError = new Error('DB delete failed');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       mockImplementation.eq.mockResolvedValue({ error: dbError });
 
       await expect(rejectFriendRequest('rel-123')).rejects.toThrow(dbError);
@@ -132,7 +181,9 @@ describe('friendService', () => {
 
     it('should throw an error if supabase select fails', async () => {
       const dbError = new Error('DB select failed');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       mockImplementation.or.mockResolvedValue({ data: null, error: dbError });
 
       await expect(getFriends('user-me')).rejects.toThrow(dbError);
@@ -158,7 +209,9 @@ describe('friendService', () => {
 
     it('should throw an error if supabase select with ilike fails', async () => {
       const dbError = new Error('DB search failed');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       mockImplementation.ilike.mockResolvedValueOnce({
         data: null,
         error: dbError,

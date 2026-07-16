@@ -1,5 +1,9 @@
 import { supabase } from './supabase';
 import * as Crypto from 'expo-crypto';
+import { unlockDirectEvent } from './achievementService';
+import { Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { hapticNotification } from '../utils/haptics';
 import {
   Group,
   GroupFeedReview,
@@ -88,6 +92,18 @@ export async function createGroup(
     .single();
 
   if (error) throw error;
+  if (userId) {
+    unlockDirectEvent('EVENT_GROUP_ENGAGE', userId).then((achievement) => {
+      if (achievement) {
+        hapticNotification(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+          '🏆 Achievement Unlocked!',
+          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
+          [{ text: 'Awesome!', style: 'default' }],
+        );
+      }
+    });
+  }
   return data as Group;
 }
 
@@ -142,6 +158,19 @@ export async function joinGroupWithCode(
     .insert([{ group_id: targetGroupId, user_id: userId, role: 'member' }]);
 
   if (insertError) throw insertError;
+
+  if (userId) {
+    unlockDirectEvent('EVENT_GROUP_ENGAGE', userId).then((achievement) => {
+      if (achievement) {
+        hapticNotification(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+          '🏆 Achievement Unlocked!',
+          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
+          [{ text: 'Awesome!', style: 'default' }],
+        );
+      }
+    });
+  }
 
   if (inviteIdToUpdate) {
     const { error: updateError } = await supabase

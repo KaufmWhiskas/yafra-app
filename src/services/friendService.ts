@@ -1,4 +1,8 @@
 import { supabase } from './supabase';
+import { unlockDirectEvent } from './achievementService';
+import { Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { hapticNotification } from '../utils/haptics';
 import {
   GroupFeedReview,
   UserProfile,
@@ -37,15 +41,45 @@ export async function sendFriendRequest(
 export async function acceptFriendRequest(
   relationshipId: string,
 ): Promise<void> {
-  const { error } = await supabase
+  // Fetch the relationship to get both user IDs before updating
+  const { data: relationship, error: fetchError } = await supabase
+    .from('user_relationships')
+    .select('requester_id, addressee_id')
+    .eq('id', relationshipId)
+    .single();
+
+  if (fetchError || !relationship) {
+    const errorMessage = 'Failed to find friend request to accept.';
+    console.error(errorMessage, fetchError);
+    throw new Error(errorMessage);
+  }
+
+  const { error: updateError } = await supabase
     .from('user_relationships')
     .update({ status: 'accepted' })
     .eq('id', relationshipId);
 
-  if (error) {
-    console.error('Error accepting friend request:', error);
-    throw error;
+  if (updateError) {
+    console.error('Error accepting friend request:', updateError);
+    throw updateError;
   }
+
+  // Grant the achievement to both users now that they are friends.
+  // The user accepting the request is the addressee.
+  // We grant the achievement to both, but only show the alert to the current user.
+  unlockDirectEvent('EVENT_SOCIAL_FRIEND', relationship.requester_id);
+  unlockDirectEvent('EVENT_SOCIAL_FRIEND', relationship.addressee_id).then(
+    (achievement) => {
+      if (achievement) {
+        hapticNotification(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+          '🏆 Achievement Unlocked!',
+          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
+          [{ text: 'Awesome!', style: 'default' }],
+        );
+      }
+    },
+  );
 }
 
 /**

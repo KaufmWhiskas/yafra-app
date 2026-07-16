@@ -125,3 +125,85 @@ export async function fetchAchievementsWithProgress(
     };
   });
 }
+
+/**
+ * Directly unlocks an event-based achievement from the client side.
+ * Returns the Achievement object if newly unlocked so the UI can trigger an Alert.
+ */
+export async function unlockDirectEvent(
+  code: AchievementCode,
+  userId: string,
+): Promise<Achievement | null> {
+  console.log(
+    `[Achievement Engine] Attempting to unlock: ${code} for user: ${userId}`,
+  );
+
+  try {
+    // 1. Fetch catalog item ID
+    const { data: catalogItem, error: catalogError } = await supabase
+      .from('achievements_catalog')
+      .select('*')
+      .eq('code', code)
+      .single();
+
+    if (catalogError || !catalogItem) {
+      console.error(
+        `[Achievement Engine] Catalog look-up failed for code ${code}:`,
+        catalogError,
+      );
+      return null;
+    }
+
+    console.log(
+      `[Achievement Engine] Found catalog item: ${catalogItem.title} (${catalogItem.id})`,
+    );
+
+    // 2. Check if already unlocked
+    const { data: existing, error: checkError } = await supabase
+      .from('user_achievements')
+      .select('achievement_id')
+      .eq('user_id', userId)
+      .eq('achievement_id', catalogItem.id);
+
+    if (checkError) {
+      console.error('[Achievement Engine] Validation check error:', checkError);
+    }
+
+    if (existing && existing.length > 0) {
+      console.log(
+        `[Achievement Engine] Achievement already unlocked for this user. Aborting silently.`,
+      );
+      return null; // Already unlocked! This is likely what is happening.
+    }
+
+    // 3. Perform insert transaction
+    console.log(
+      `[Achievement Engine] Inserting new row into user_achievements...`,
+    );
+    const { error: insertError } = await supabase
+      .from('user_achievements')
+      .insert({
+        user_id: userId,
+        achievement_id: catalogItem.id,
+      });
+
+    if (insertError) {
+      console.error(
+        `[Achievement Engine] Postgres insertion rejected for ${code}:`,
+        insertError,
+      );
+      return null;
+    }
+
+    console.log(
+      `[Achievement Engine] Successfully unlocked ${code}! Firing UI Alert.`,
+    );
+    return catalogItem as Achievement;
+  } catch (error) {
+    console.error(
+      `[Achievement Engine] Fatal exception in direct unlock for ${code}:`,
+      error,
+    );
+    return null;
+  }
+}

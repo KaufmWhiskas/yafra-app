@@ -1,8 +1,3 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-type MaterialCommunityIconName = React.ComponentProps<
-  typeof MaterialCommunityIcons
->['name'];
 /**
  * Represents the static definition of an achievement from the catalog.
  */
@@ -13,7 +8,7 @@ export interface Achievement {
   description: string;
   secret_description: string | null;
   is_secret: boolean;
-  icon_name: MaterialCommunityIconName;
+  icon_name: string;
   target: number;
 }
 
