@@ -19,7 +19,6 @@ import {
   updateReview,
   fetchUserTags,
 } from '../../services/reviewService';
-import { processReviewAchievements } from '../../services/achievementService';
 import ScoreSelector from '../../components/review/ScoreSelector';
 import { useFriends } from '../../context/FriendsContext';
 import { Avatar } from '../../components/Avatar';
@@ -29,6 +28,7 @@ import ExperienceToggle, {
 } from '../../components/review/ExperienceToggle';
 import { DEFAULT_TAGS } from '../../constants/tags';
 import PriceTierSelector from '../../components/review/PriceTierSelector';
+import { supabase } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
@@ -38,6 +38,12 @@ import {
 } from '../../utils/haptics';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+interface Achievement {
+  id: number;
+  title: string;
+  description: string;
+}
 
 interface ReviewState {
   rating: number;
@@ -210,6 +216,7 @@ export default function ReviewScreen() {
         isPrivate: isAdvanced ? isPrivate : false,
         taggedUserIds: isAdvanced ? taggedUserIds : [],
         priceTier: priceTier, // Evaporates advanced restriction dependency completely
+        restaurant,
       };
 
       let result;
@@ -222,14 +229,21 @@ export default function ReviewScreen() {
       if (result.success) {
         hapticNotification(Haptics.NotificationFeedbackType.Success);
 
-        // 1. Process achievements first so we capture the return array before unmounting the screen context
+        // Fire and forget achievement processing in the background.
+        // The user gets their success message and navigates away immediately.
+        // Achievement alerts will pop up globally whenever they are ready.
         if (user?.id) {
-          processReviewAchievements(payload, user.id)
-            .then((newlyUnlocked) => {
+          supabase.functions
+            .invoke<Achievement[]>('process-achievements', {
+              body: { payload, userId: user.id },
+            })
+            .then(({ data: newlyUnlocked, error: invokeError }) => {
+              if (invokeError) {
+                console.error('Achievement processing error:', invokeError);
+                return;
+              }
               if (newlyUnlocked && newlyUnlocked.length > 0) {
-                // Trigger a noticeable haptic signal pattern
                 hapticNotification(Haptics.NotificationFeedbackType.Warning);
-
                 newlyUnlocked.forEach((achievement) => {
                   Alert.alert(
                     '🏆 Achievement Unlocked!',
@@ -238,18 +252,14 @@ export default function ReviewScreen() {
                   );
                 });
               }
-            })
-            .catch((err) =>
-              console.error('Achievement processing error:', err),
-            );
+            });
         }
 
-        // 2. Alert and head back safely
         Alert.alert(
           'Success',
           `Your review has been ${isEditing ? 'updated' : 'submitted'}!`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
         );
-        navigation.goBack();
       }
     } catch (err) {
       const error = err as { code?: string; message?: string };

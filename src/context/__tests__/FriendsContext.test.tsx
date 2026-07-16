@@ -59,13 +59,11 @@ describe('FriendsProvider', () => {
       requester: {
         id: currentUserId,
         username: 'Me',
-        display_name: 'Me',
         avatar_url: null,
       },
       addressee: {
         id: 'friend_1',
         username: 'Friend One',
-        display_name: 'Friend One',
         avatar_url: null,
       },
     },
@@ -80,13 +78,11 @@ describe('FriendsProvider', () => {
       requester: {
         id: 'friend_2',
         username: 'Friend Two',
-        display_name: 'Friend Two',
         avatar_url: null,
       },
       addressee: {
         id: currentUserId,
         username: 'Me',
-        display_name: 'Me',
         avatar_url: null,
       },
     },
@@ -101,13 +97,11 @@ describe('FriendsProvider', () => {
       requester: {
         id: 'pending_1',
         username: 'Pending One',
-        display_name: 'Pending One',
         avatar_url: null,
       },
       addressee: {
         id: currentUserId,
         username: 'Me',
-        display_name: 'Me',
         avatar_url: null,
       },
     },
@@ -122,13 +116,11 @@ describe('FriendsProvider', () => {
       requester: {
         id: currentUserId,
         username: 'Me',
-        display_name: 'Me',
         avatar_url: null,
       },
       addressee: {
         id: 'pending_2',
         username: 'Pending Two',
-        display_name: 'Pending Two',
         avatar_url: null,
       },
     },
@@ -159,6 +151,10 @@ describe('FriendsProvider', () => {
   it('handles API errors gracefully', async () => {
     mockUseAuth.mockReturnValue({ session: { user: { id: currentUserId } } });
     mockGetFriends.mockRejectedValue(new Error('API Error'));
+    // Suppress the expected console.error from appearing in the test output
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
     const { getByTestId, queryByText } = render(
       <FriendsProvider>
@@ -172,6 +168,9 @@ describe('FriendsProvider', () => {
     expect(getByTestId('friends-count').props.children).toBe(0);
     expect(getByTestId('incoming-count').props.children).toBe(0);
     expect(getByTestId('outgoing-count').props.children).toBe(0);
+
+    // Restore the original console.error function
+    consoleErrorSpy.mockRestore();
   });
 
   it('provides empty arrays when no user is authenticated', async () => {

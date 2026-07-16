@@ -1,5 +1,9 @@
 module.exports = {
   preset: 'jest-expo',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/supabase/', // Ignore Deno tests
+  ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   // This tells Jest: "Whenever you see these imports, use these mocks instead."
   moduleNameMapper: {

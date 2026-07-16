@@ -51,11 +51,14 @@ describe('friendService', () => {
 
     it('should throw an error if supabase insert fails', async () => {
       const dbError = new Error('DB insert failed');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockImplementation.insert.mockResolvedValueOnce({ error: dbError });
 
       await expect(sendFriendRequest('user-1', 'user-2')).rejects.toThrow(
         dbError,
       );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -75,9 +78,12 @@ describe('friendService', () => {
 
     it('should throw an error if supabase update fails', async () => {
       const dbError = new Error('DB update failed');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockImplementation.eq.mockResolvedValue({ error: dbError });
 
       await expect(acceptFriendRequest('rel-123')).rejects.toThrow(dbError);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -95,9 +101,12 @@ describe('friendService', () => {
 
     it('should throw an error if supabase delete fails', async () => {
       const dbError = new Error('DB delete failed');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockImplementation.eq.mockResolvedValue({ error: dbError });
 
       await expect(rejectFriendRequest('rel-123')).rejects.toThrow(dbError);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -123,9 +132,12 @@ describe('friendService', () => {
 
     it('should throw an error if supabase select fails', async () => {
       const dbError = new Error('DB select failed');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockImplementation.or.mockResolvedValue({ data: null, error: dbError });
 
       await expect(getFriends('user-me')).rejects.toThrow(dbError);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -146,12 +158,15 @@ describe('friendService', () => {
 
     it('should throw an error if supabase select with ilike fails', async () => {
       const dbError = new Error('DB search failed');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       mockImplementation.ilike.mockResolvedValueOnce({
         data: null,
         error: dbError,
       });
 
       await expect(searchUsersByUsername('test')).rejects.toThrow(dbError);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });
