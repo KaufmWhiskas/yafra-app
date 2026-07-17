@@ -207,3 +207,43 @@ export async function unlockDirectEvent(
     return null;
   }
 }
+
+/**
+ * Forces a manual recalculation pass on the server by running a
+ * synchronization cycle using the user's running historical profile data.
+ * Returns an array of achievements that were newly unlocked during the sync pass.
+ */
+export async function syncHistoricalAchievements(
+  userId: string,
+): Promise<Achievement[]> {
+  // Pass a neutral mock payload that safely fulfills validation variables
+  // while allowing the engine to calculate historic arrays cleanly.
+  const mockPayload = {
+    rating: 3.0,
+    description: '',
+    visitDate: new Date().toISOString().split('T')[0],
+    experienceType: 'eat-in',
+    tags: [],
+    priceTier: 2,
+    restaurantId: '1', // Fix: Pass a standard bigint string representation
+    restaurant: {
+      id: 1, // Fix: Use integer matching your bigint schema archetype
+      google_place_id: 'sync_engine_fallback_pivot',
+      name: 'Sync Engine Pivot',
+    },
+  };
+
+  const { data, error } = await supabase.functions.invoke(
+    'process-achievements',
+    {
+      body: { payload: mockPayload, userId },
+    },
+  );
+
+  if (error) {
+    console.error('[Sync Engine] Recalculation pass rejected:', error);
+    throw error;
+  }
+
+  return (data || []) as Achievement[];
+}

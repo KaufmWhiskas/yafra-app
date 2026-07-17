@@ -4,17 +4,21 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  Alert,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import {
   fetchAchievementsWithProgress,
+  syncHistoricalAchievements,
   AchievementWithProgress,
 } from '../../services/achievementService';
 import AchievementBadge from '../../components/achievements/AchievementBadge';
 import { COLORS, SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { hapticNotification } from '../../utils/haptics';
 
 type FilterType = 'ALL' | 'LOCKED' | 'UNLOCKED';
 type SortType = 'RARITY' | 'PROGRESS' | 'ALPHABETICAL';
@@ -27,6 +31,7 @@ export default function AchievementsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('ALL');
   const [sortBy, setSortBy] = useState<SortType>('RARITY');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -35,6 +40,39 @@ export default function AchievementsScreen() {
         .finally(() => setIsLoading(false));
     }
   }, [session?.user?.id]);
+
+  const handleManualSync = async () => {
+    if (!session?.user?.id || isSyncing) return;
+
+    setIsSyncing(true);
+    try {
+      const freshlyUnlocked = await syncHistoricalAchievements(session.user.id);
+
+      // Refresh the list immediately to show new completions
+      const updatedList = await fetchAchievementsWithProgress(session.user.id);
+      setAchievements(updatedList);
+
+      hapticNotification(Haptics.NotificationFeedbackType.Success);
+
+      if (freshlyUnlocked.length > 0) {
+        Alert.alert(
+          '🏆 Sync Complete!',
+          `We scanned your history and unlocked ${freshlyUnlocked.length} new achievement${freshlyUnlocked.length > 1 ? 's' : ''}!\n\nCheck your updated catalog.`,
+          [{ text: 'Awesome!', style: 'default' }],
+        );
+      } else {
+        Alert.alert(
+          'Up to Date',
+          'Your achievement catalog is already completely synchronized with your review history.',
+        );
+      }
+    } catch (err) {
+      console.error('Failed to manually sync achievements:', err);
+      Alert.alert('Sync Failed', 'Could not sync achievements. Please check your network connection.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const processedList = useMemo(() => {
     let result = [...achievements];
@@ -157,6 +195,21 @@ export default function AchievementsScreen() {
         ))}
       </View>
 
+      <TouchableOpacity
+        style={styles.syncBanner}
+        onPress={handleManualSync}
+        disabled={isSyncing}
+      >
+        {isSyncing ? (
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        ) : (
+          <MaterialCommunityIcons name="cached" size={18} color={COLORS.primary} />
+        )}
+        <Text style={styles.syncBannerText}>
+          {isSyncing ? 'Scanning Review History...' : 'Check & Sync Missing Progress'}
+        </Text>
+      </TouchableOpacity>
+
       <FlatList
         data={processedList}
         renderItem={renderAchievementItem}
@@ -198,6 +251,21 @@ const styles = StyleSheet.create({
   sortText: { fontSize: 12, color: COLORS.textLight, fontWeight: '500' },
   activeSortText: { color: COLORS.primary, fontWeight: '700' },
   listContainer: { padding: SIZES.padding },
+  syncBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary + '10', // Subtle tint
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  syncBannerText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
   card: {
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
