@@ -1,6 +1,7 @@
 export interface Prediction {
   description: string;
   placeId: string;
+  types: string[];
 }
 
 interface GoogleSuggestion {
@@ -9,6 +10,7 @@ interface GoogleSuggestion {
     text: {
       text: string;
     };
+    types?: string[];
   };
 }
 
@@ -81,6 +83,7 @@ export function createSearchFetcher(apiKey: string): SearchFetcher {
       return (data.suggestions || []).map((suggestion: GoogleSuggestion) => ({
         description: suggestion?.placePrediction?.text?.text ?? "",
         placeId: suggestion?.placePrediction?.place ?? "",
+        types: suggestion?.placePrediction?.types ?? [],
       }));
     },
   };
