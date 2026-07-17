@@ -2,7 +2,6 @@ import { BoundingBox, shouldSkipGridTile } from './scanner.ts';
 import { RestaurantRecord } from './parser.ts';
 import { getIntersectingTiles, getSubTiles, GRID_STEP } from './grid.ts';
 
-/** Strict interface for the Supabase client used in the orchestrator. */
 export interface OrchestratorDatabaseClient {
   from: (table: string) => {
     select: (columns: string) => {
@@ -34,19 +33,12 @@ export interface OrchestratorDatabaseClient {
   }>;
 }
 
-/** Interface for any service that provides restaurant data. */
 export interface RestaurantFetcher {
   fetchData: (bbox: BoundingBox) => Promise<RestaurantRecord[]>;
 }
 
 const MAX_RECURSION_DEPTH = 2; // Max depth for quadtree subdivision. Level 0 -> 1 -> 2.
 
-/**
- * Converts a tile ID (e.g., "49471_8452" or "49471_8452_3") into a precise
- * geographic bounding box.
- * @param tileId The ID of the tile.
- * @returns A BoundingBox object.
- */
 function tileIdToBoundingBox(tileId: string): BoundingBox {
   const parts = tileId.split('_');
   const baseLatIndex = Number(parts[0]);
@@ -56,20 +48,12 @@ function tileIdToBoundingBox(tileId: string): BoundingBox {
   let minLon = baseLonIndex * GRID_STEP;
   let currentStep = GRID_STEP;
 
-  // Handle sub-tiles by refining the bounding box for each quadrant level
   for (let i = 2; i < parts.length; i++) {
     const quadrant = Number(parts[i]);
     const halfStep = currentStep / 2;
 
-    // Quadrant logic: 0=BL, 1=BR, 2=TL, 3=TR
-    if (quadrant === 1 || quadrant === 3) {
-      // Right side
-      minLon += halfStep;
-    }
-    if (quadrant === 2 || quadrant === 3) {
-      // Top side
-      minLat += halfStep;
-    }
+    if (quadrant === 1 || quadrant === 3) minLon += halfStep;
+    if (quadrant === 2 || quadrant === 3) minLat += halfStep;
     currentStep = halfStep;
   }
 
@@ -81,10 +65,6 @@ function tileIdToBoundingBox(tileId: string): BoundingBox {
   };
 }
 
-/**
- * Recursively scans a tile, subdividing it if the result set from the fetcher
- * is at the maximum limit, indicating more data may be available.
- */
 async function scanTileRecursively(
   tileId: string,
   level: number,
@@ -94,7 +74,7 @@ async function scanTileRecursively(
   const tileBbox = tileIdToBoundingBox(tileId);
   const restaurants = await fetcher.fetchData(tileBbox);
 
-  // If we get 20 results, it's a sign Google cut us off. Subdivide.
+  // If we get 20 results, Google capped us. Subdivide to get the hidden ones.
   if (restaurants.length === 20 && level < MAX_RECURSION_DEPTH) {
     const subTiles = getSubTiles(tileId);
     await Promise.all(
@@ -102,16 +82,18 @@ async function scanTileRecursively(
         scanTileRecursively(subTileId, level + 1, supabase, fetcher),
       ),
     );
-    return; // IMPORTANT: Do not mark the parent tile as scanned
-  }
 
-  if (restaurants.length > 0) {
+    // FIX: We removed the early `return;` here.
+    // We MUST allow the code to proceed downward to log this parent tile in grid_history!
+  } else if (restaurants.length > 0) {
+    // Only upsert if we didn't subdivide (the children will handle their own upserts)
     const { error: upsertError } = await supabase
       .from('restaurants')
       .upsert(restaurants, { onConflict: 'google_place_id' });
     if (upsertError) throw upsertError;
   }
 
+  // FIX: Always mark the tile as scanned so we don't repeat this costly recursion!
   const { error: historyError } = await supabase
     .from('grid_history')
     .upsert(
@@ -121,10 +103,6 @@ async function scanTileRecursively(
   if (historyError) throw historyError;
 }
 
-/**
- * Orchestrates the fetching of data by breaking the viewport down into
- * distinct fixed grid tiles, skipping cached ones automatically.
- */
 export async function fetchAndStoreRestaurants(
   bbox: BoundingBox,
   supabase: OrchestratorDatabaseClient,
@@ -141,9 +119,7 @@ export async function fetchAndStoreRestaurants(
     }
   }
 
-  if (tilesToScan.length === 0) {
-    return;
-  }
+  if (tilesToScan.length === 0) return;
 
   const { data: allowed, error: rpcError } = await supabase.rpc(
     'check_and_log_rate_limit',
