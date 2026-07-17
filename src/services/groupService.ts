@@ -1,9 +1,6 @@
 import { supabase } from './supabase';
 import * as Crypto from 'expo-crypto';
 import { unlockDirectEvent } from './achievementService';
-import { Alert } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { hapticNotification } from '../utils/haptics';
 import {
   Group,
   GroupFeedReview,
@@ -12,6 +9,8 @@ import {
   GroupRole,
   Restaurant,
 } from '../types';
+
+import { Achievement } from '../types/achievements';
 
 // Define a more specific type for the feed review to include the google_place_id
 // This avoids having to modify the global types file, which might be out of scope.
@@ -73,12 +72,12 @@ export async function fetchMyGroups(userId: string): Promise<Group[]> {
 
 /**
  * Creates a new group.
- * The database trigger `trigger_auto_add_owner` automatically adds the creator as a group_member.
+ * Returns any newly unlocked Achievement triggered by the creation event.
  */
 export async function createGroup(
   userId: string,
   name: string,
-): Promise<Group> {
+): Promise<{ group: Group; achievement: Achievement | null }> {
   const inviteCode = generateSecureInviteCode();
 
   const { data, error } = await supabase
@@ -92,19 +91,8 @@ export async function createGroup(
     .single();
 
   if (error) throw error;
-  if (userId) {
-    unlockDirectEvent('EVENT_GROUP_ENGAGE', userId).then((achievement) => {
-      if (achievement) {
-        hapticNotification(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-          '🏆 Achievement Unlocked!',
-          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
-          [{ text: 'Awesome!', style: 'default' }],
-        );
-      }
-    });
-  }
-  return data as Group;
+  const achievement = await unlockDirectEvent('EVENT_GROUP_ENGAGE', userId);
+  return { group: data as Group, achievement };
 }
 
 /**
@@ -114,7 +102,7 @@ export async function createGroup(
 export async function joinGroupWithCode(
   userId: string,
   inviteCode: string,
-): Promise<void> {
+): Promise<Achievement | null> {
   let targetGroupId: string | null = null;
   let inviteIdToUpdate: string | null = null;
   let currentUsedCount: number = 0;
@@ -159,17 +147,9 @@ export async function joinGroupWithCode(
 
   if (insertError) throw insertError;
 
+  let achievement: Achievement | null = null;
   if (userId) {
-    unlockDirectEvent('EVENT_GROUP_ENGAGE', userId).then((achievement) => {
-      if (achievement) {
-        hapticNotification(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-          '🏆 Achievement Unlocked!',
-          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
-          [{ text: 'Awesome!', style: 'default' }],
-        );
-      }
-    });
+    achievement = await unlockDirectEvent('EVENT_GROUP_ENGAGE', userId);
   }
 
   if (inviteIdToUpdate) {
@@ -180,6 +160,8 @@ export async function joinGroupWithCode(
 
     if (updateError) throw updateError;
   }
+
+  return achievement;
 }
 
 /**

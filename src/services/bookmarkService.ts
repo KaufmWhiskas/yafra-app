@@ -1,9 +1,7 @@
 import { supabase } from './supabase';
 import { Restaurant } from '../types';
 import { unlockDirectEvent } from './achievementService';
-import { Alert } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { hapticNotification } from '../utils/haptics';
+import { Achievement } from '../types/achievements';
 
 export interface BookmarkCollection {
   id: string;
@@ -127,7 +125,7 @@ export async function toggleBookmarkInCollection(
   restaurantId: string | number,
   collectionId: string,
   isCurrentlySaved: boolean,
-): Promise<void> {
+): Promise<Achievement | null> {
   if (isCurrentlySaved) {
     const { error } = await supabase
       .from('bookmarks')
@@ -136,6 +134,7 @@ export async function toggleBookmarkInCollection(
       .eq('restaurant_id', restaurantId.toString())
       .eq('collection_id', collectionId);
     if (error) throw error;
+    return null;
   } else {
     let targetCollectionId = collectionId;
 
@@ -156,18 +155,10 @@ export async function toggleBookmarkInCollection(
     ]);
     if (error && error.code !== '23505') throw error;
     if (userId && !error) {
-      unlockDirectEvent('EVENT_WISHLIST_ADD', userId).then((achievement) => {
-        if (achievement) {
-          hapticNotification(Haptics.NotificationFeedbackType.Warning);
-          Alert.alert(
-            '🏆 Achievement Unlocked!',
-            `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
-            [{ text: 'Awesome!', style: 'default' }],
-          );
-        }
-      });
+      return unlockDirectEvent('EVENT_WISHLIST_ADD', userId);
     }
   }
+  return null;
 }
 
 /**

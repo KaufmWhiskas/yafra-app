@@ -17,8 +17,7 @@ import {
 import AchievementBadge from '../../components/achievements/AchievementBadge';
 import { COLORS, SIZES } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { hapticNotification } from '../../utils/haptics';
+import { useSequentialAlerts } from '../../hooks/useSequentialAlerts';
 
 type FilterType = 'ALL' | 'LOCKED' | 'UNLOCKED';
 type SortType = 'RARITY' | 'PROGRESS' | 'ALPHABETICAL';
@@ -32,6 +31,7 @@ export default function AchievementsScreen() {
   const [filter, setFilter] = useState<FilterType>('ALL');
   const [sortBy, setSortBy] = useState<SortType>('RARITY');
   const [isSyncing, setIsSyncing] = useState(false);
+  const { presentUnlocks } = useSequentialAlerts();
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -48,27 +48,21 @@ export default function AchievementsScreen() {
     try {
       const freshlyUnlocked = await syncHistoricalAchievements(session.user.id);
 
-      // Refresh the list immediately to show new completions
+      // Refresh state list
       const updatedList = await fetchAchievementsWithProgress(session.user.id);
       setAchievements(updatedList);
 
-      hapticNotification(Haptics.NotificationFeedbackType.Success);
-
       if (freshlyUnlocked.length > 0) {
-        Alert.alert(
-          '🏆 Sync Complete!',
-          `We scanned your history and unlocked ${freshlyUnlocked.length} new achievement${freshlyUnlocked.length > 1 ? 's' : ''}!\n\nCheck your updated catalog.`,
-          [{ text: 'Awesome!', style: 'default' }],
-        );
+        // 🎉 Fire the sequential alert cascade!
+        await presentUnlocks(freshlyUnlocked);
       } else {
         Alert.alert(
           'Up to Date',
-          'Your achievement catalog is already completely synchronized with your review history.',
+          'Your achievement catalog is already completely synchronized.',
         );
       }
     } catch (err) {
-      console.error('Failed to manually sync achievements:', err);
-      Alert.alert('Sync Failed', 'Could not sync achievements. Please check your network connection.');
+      console.error(err);
     } finally {
       setIsSyncing(false);
     }
@@ -203,10 +197,16 @@ export default function AchievementsScreen() {
         {isSyncing ? (
           <ActivityIndicator size="small" color={COLORS.primary} />
         ) : (
-          <MaterialCommunityIcons name="cached" size={18} color={COLORS.primary} />
+          <MaterialCommunityIcons
+            name="cached"
+            size={18}
+            color={COLORS.primary}
+          />
         )}
         <Text style={styles.syncBannerText}>
-          {isSyncing ? 'Scanning Review History...' : 'Check & Sync Missing Progress'}
+          {isSyncing
+            ? 'Scanning Review History...'
+            : 'Check & Sync Missing Progress'}
         </Text>
       </TouchableOpacity>
 

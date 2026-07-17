@@ -1,13 +1,11 @@
 import { supabase } from './supabase';
 import { unlockDirectEvent } from './achievementService';
-import { Alert } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { hapticNotification } from '../utils/haptics';
 import {
   GroupFeedReview,
   UserProfile,
   UserRelationshipWithProfiles,
 } from '../types';
+import { Achievement } from '../types/achievements';
 
 /**
  * Sends a friend request from one user to another.
@@ -34,13 +32,14 @@ export async function sendFriendRequest(
 
 /**
  * Accepts a pending friend request.
+ * Returns any newly unlocked Achievement for the accepting user.
  *
  * @param relationshipId The unique ID of the friend request relationship.
  * @throws Will throw an error if the database operation fails.
  */
 export async function acceptFriendRequest(
   relationshipId: string,
-): Promise<void> {
+): Promise<Achievement | null> {
   // Fetch the relationship to get both user IDs before updating
   const { data: relationship, error: fetchError } = await supabase
     .from('user_relationships')
@@ -64,21 +63,13 @@ export async function acceptFriendRequest(
     throw updateError;
   }
 
-  // Grant the achievement to both users now that they are friends.
-  // The user accepting the request is the addressee.
-  // We grant the achievement to both, but only show the alert to the current user.
+  // Silently trigger the requester's achievement allocation background pass
   unlockDirectEvent('EVENT_SOCIAL_FRIEND', relationship.requester_id);
-  unlockDirectEvent('EVENT_SOCIAL_FRIEND', relationship.addressee_id).then(
-    (achievement) => {
-      if (achievement) {
-        hapticNotification(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-          '🏆 Achievement Unlocked!',
-          `Congratulations! You've earned the "${achievement.title}" badge.\n\n${achievement.description}`,
-          [{ text: 'Awesome!', style: 'default' }],
-        );
-      }
-    },
+
+  // Return the active user's achievement resolution to the UI
+  return await unlockDirectEvent(
+    'EVENT_SOCIAL_FRIEND',
+    relationship.addressee_id,
   );
 }
 
