@@ -9,6 +9,7 @@ import {
   fetchAndStoreRestaurants,
   OrchestratorDatabaseClient,
 } from './service.ts';
+import { getIntersectingTiles } from './grid.ts';
 import { BoundingBox } from './scanner.ts';
 import { createGoogleFetcher } from './googleFetcher.ts';
 import { requireUser } from '../_shared/auth.ts';
@@ -75,17 +76,54 @@ Deno.serve(async (req: Request) => {
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
     const googleFetcher = createGoogleFetcher(googleApiKey);
 
-    await fetchAndStoreRestaurants(
+    // 1. Run the ingestion and capture returned apiCallsCount metrics
+    const metrics = await fetchAndStoreRestaurants(
       bbox,
       supabaseClient as unknown as OrchestratorDatabaseClient,
       googleFetcher,
       user!.id,
     );
 
-    return new Response(JSON.stringify({ message: 'Scan complete' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // 2. Find the log that the RPC JUST created, and UPDATE it with our metadata
+    const { data: latestLog } = await supabaseClient
+      .from('user_action_logs')
+      .select('id')
+      .eq('user_id', user!.id)
+      .eq('action_name', 'ingest_restaurants')
+      .order('executed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latestLog) {
+      const { error: logError } = await supabaseClient
+        .from('user_action_logs')
+        .update({
+          metadata: {
+            google_api_calls: metrics.apiCallsCount,
+            tiles_requested: getIntersectingTiles(bbox).length,
+            bbox: bbox,
+          },
+        })
+        .eq('id', latestLog.id);
+
+      if (logError) {
+        console.error(
+          '[Ingestion Logger] Failed to update action logs:',
+          logError,
+        );
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        message: 'Scan complete',
+        api_calls_made: metrics.apiCallsCount,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   } catch (error) {
     if (error instanceof Error && error.name === 'RateLimitError') {
       return new Response(JSON.stringify({ error: error.message }), {

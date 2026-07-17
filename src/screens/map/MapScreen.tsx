@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ADDED
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchMapRestaurants,
   fetchRestaurantDetails,
@@ -44,6 +50,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CollectionModal from '../../components/ui/CollectionModal';
 import { useActiveGroupFilters } from '../../hooks/useActiveGroupFilters';
+import { supabase } from '../../services/supabase';
 import { calculateGroupMapScore } from '../../utils/groupMath';
 
 type RestaurantWithDistance = Restaurant & {
@@ -51,7 +58,7 @@ type RestaurantWithDistance = Restaurant & {
   sortingDistance: number;
 };
 
-const LAST_REGION_CACHE_KEY = '@yafra_last_map_region'; // ADDED
+const LAST_REGION_CACHE_KEY = '@yafra_last_map_region';
 
 export default function MapScreen() {
   const isFocused = useIsFocused();
@@ -86,10 +93,7 @@ export default function MapScreen() {
   });
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
-  // Suppress unused variable warning as hasLocationPermission is reserved for future fallback triggers.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { hasLocationPermission, userLocation } = useLocation();
-
+  const { userLocation } = useLocation();
   const { session } = useAuth();
   const user = session?.user;
 
@@ -157,9 +161,26 @@ export default function MapScreen() {
   }, [restaurants, activeGroupIds, isGroupFilterLoading]);
 
   const loadData = useCallback(
-    async (bbox?: BoundingBox) => {
+    async (bbox?: BoundingBox, forceRemote: boolean = false) => {
       try {
         if (!mapRegionRef.current) return;
+
+        // 1. Only call the Edge Function if the user pressed the manual button!
+        if (bbox && forceRemote) {
+          try {
+            // Invoke your ingestion backend function mapping securely
+            await supabase.functions.invoke('ingest-restaurants', {
+              body: { bbox },
+            });
+          } catch (ingestErr) {
+            console.warn(
+              '[MapScreen] Google API remote ingestion bypassed/failed:',
+              ingestErr,
+            );
+          }
+        }
+
+        // 2. ALWAYS fetch local cached restaurants from your table schema (FREE)
         const data = await fetchMapRestaurants(
           mapRegionRef.current.latitude,
           mapRegionRef.current.longitude,
@@ -221,7 +242,6 @@ export default function MapScreen() {
     return list.sort((a, b) => a.sortingDistance - b.sortingDistance);
   }, [restaurantsWithDistance, filters, bookmarkedIds, groupRestaurantIds]);
 
-  // ADDED: Initialize from Cache Instantly
   useEffect(() => {
     const loadCachedRegion = async () => {
       try {
@@ -232,9 +252,8 @@ export default function MapScreen() {
           mapRegionRef.current = region;
           loadData(getRegionBBox(region));
         } else if (!cached && !mapRegionRef.current) {
-          // Absolute fallback if it is a brand new install so the map mounts instantly
           const fallbackRegion = {
-            latitude: 49.4816, // Default Ludwigshafen fallback
+            latitude: 49.4816,
             longitude: 8.465,
             latitudeDelta: 0.1,
             longitudeDelta: 0.1,
@@ -250,7 +269,6 @@ export default function MapScreen() {
     loadCachedRegion();
   }, [loadData]);
 
-  // CHANGED: Wait for GPS, then smoothly fly to it
   const [hasSnappedToGPS, setHasSnappedToGPS] = useState(false);
 
   useEffect(() => {
@@ -349,6 +367,7 @@ export default function MapScreen() {
     [mapRegion],
   );
 
+  // FIX: Guarded search select prevents writing city names to your restaurant list
   const handleSearchSelect = async (place: Prediction) => {
     if (isScanning) return;
 
@@ -362,28 +381,37 @@ export default function MapScreen() {
         return;
       }
 
-      const isEstablishment = place.types?.some((t) =>
-        [
-          'restaurant',
-          'cafe',
-          'bar',
-          'bakery',
-          'meal_takeaway',
-          'food',
-          'establishment',
-          'point_of_interest',
-        ].includes(t),
-      );
-
+      // Check if target is explicitly a geopolitical region or boundary
       const isCityOrRegion = place.types?.some((t) =>
         [
           'locality',
           'sublocality',
+          'sublocality_level_1',
           'administrative_area_level_1',
           'administrative_area_level_2',
           'country',
+          'political',
+          'postal_code',
+          'neighborhood',
+          'colloquial_area',
         ].includes(t),
       );
+
+      // Verify it's not a city, and matches food/beverage establishment tags
+      const isEstablishment =
+        !isCityOrRegion &&
+        place.types?.some((t) =>
+          [
+            'restaurant',
+            'cafe',
+            'bar',
+            'bakery',
+            'meal_takeaway',
+            'food',
+            'establishment',
+            'point_of_interest',
+          ].includes(t),
+        );
 
       let latDelta = 0.01;
       let lonDelta = 0.01;
@@ -442,21 +470,14 @@ export default function MapScreen() {
     }
   };
 
-  const { scanRegion, scanUserRadius, showScanButton, isScanning } =
-    useMapScanner(loadData);
-
-  useEffect(() => {
-    if (userLocation) {
-      scanUserRadius(userLocation);
-    }
-  }, [userLocation, scanUserRadius]);
+  // FIX: Grab showScanButton back from scanner hooks
+  const { scanRegion, isScanning, showScanButton } = useMapScanner(loadData);
 
   const handleRegionChangeComplete = async (region: Region) => {
     setMapRegion(region);
     mapRegionRef.current = region;
     scanRegion(region);
 
-    // ADDED: Write the last looked-at region to cache silently in the background
     AsyncStorage.setItem(LAST_REGION_CACHE_KEY, JSON.stringify(region)).catch(
       () => {},
     );
@@ -560,6 +581,7 @@ export default function MapScreen() {
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
+      {/* FIX: Manual Search Button with active loading states and transparency indicators */}
       {showScanButton && (
         <View
           style={[
@@ -569,7 +591,10 @@ export default function MapScreen() {
           pointerEvents="box-none"
         >
           <TouchableOpacity
-            style={[styles.scanButton, isScanning && styles.disabledButton]}
+            style={[
+              styles.scanButton,
+              isScanning && { opacity: 0.6, backgroundColor: '#F5F5F5' }, // Makes button background transparent/muted
+            ]}
             activeOpacity={0.85}
             disabled={isScanning}
             onPress={() => {
@@ -578,9 +603,18 @@ export default function MapScreen() {
               }
             }}
           >
-            <Text style={styles.scanButtonText}>
-              {isScanning ? 'Scanning area...' : 'Search this area'}
-            </Text>
+            {isScanning ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ActivityIndicator
+                  size="small"
+                  color={COLORS.primary}
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.scanButtonText}>Scanning area...</Text>
+              </View>
+            ) : (
+              <Text style={styles.scanButtonText}>Search this area</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}

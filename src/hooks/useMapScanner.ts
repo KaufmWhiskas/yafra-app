@@ -1,130 +1,99 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { Region } from 'react-native-maps';
-import { triggerIngest } from '../services/restaurantService';
-import {
-  BoundingBox,
-  calculateDistance,
-  Coordinate,
-  getRegionBBox,
-} from '../utils/geo';
+import { BoundingBox, calculateDistance } from '../utils/geo';
 
-const GRID_STEP = 0.005;
+function debounce<A extends unknown[], R>(
+  func: (...args: A) => R,
+  delay: number,
+): (...args: A) => void {
+  let timeoutId: number;
+  return (...args: A) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay) as unknown as number;
+  };
+}
 
-export function useMapScanner(loadData: (bbox: BoundingBox) => Promise<void>) {
-  const lastScannedLocation = useRef<Coordinate | null>(null);
-  const lastLoadedLocation = useRef<Coordinate | null>(null);
-  const lastUserLocation = useRef<Coordinate | null>(null);
-  const debounceTimer = useRef<number | null>(null); // Guard reference for transient camera movements
-
-  const [showScanButton, setShowScanButton] = useState(false);
+export function useMapScanner(
+  loadData: (bbox: BoundingBox, forceRemote: boolean) => Promise<void>,
+) {
+  const lastScannedRegionRef = useRef<Region | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [showScanButton, setShowScanButton] = useState(false);
+  const isScanningRef = useRef(false);
 
-  const scanUserRadius = useCallback(
-    async (userCoord: Coordinate) => {
-      if (isScanning) return;
-      if (lastUserLocation.current) {
-        const movement = calculateDistance(lastUserLocation.current, userCoord);
-        if (movement < 0.2) return;
-      }
-      lastUserLocation.current = userCoord;
+  const executeScan = useCallback(
+    async (region: Region, force: boolean = false) => {
+      // Guard against double clicks during ongoing remote ingestion loops
+      if (isScanningRef.current && force) return;
 
-      const userBbox: BoundingBox = {
-        minLat: userCoord.latitude - GRID_STEP * 1.5,
-        maxLat: userCoord.latitude + GRID_STEP * 1.5,
-        minLon: userCoord.longitude - GRID_STEP * 1.5,
-        maxLon: userCoord.longitude + GRID_STEP * 1.5,
+      const bbox: BoundingBox = {
+        minLat: region.latitude - region.latitudeDelta / 2,
+        maxLat: region.latitude + region.latitudeDelta / 2,
+        minLon: region.longitude - region.longitudeDelta / 2,
+        maxLon: region.longitude + region.longitudeDelta / 2,
       };
+
+      // --- MODE A: STANDARD BACKGROUND MAP PAN (force === false) ---
+      if (!force) {
+        if (lastScannedRegionRef.current) {
+          const distanceMoved = calculateDistance(
+            {
+              latitude: lastScannedRegionRef.current.latitude,
+              longitude: lastScannedRegionRef.current.longitude,
+            },
+            { latitude: region.latitude, longitude: region.longitude },
+          );
+
+          // If user panned past 400m, keep the button alive to prompt ingestion
+          if (distanceMoved > 0.4) {
+            setShowScanButton(true);
+          }
+
+          // Anti-spam guard: skip drawing update queries if delta is under 200m
+          if (distanceMoved < 0.2) {
+            return;
+          }
+        } else {
+          // Keep button visible on fresh cold app boots
+          setShowScanButton(true);
+        }
+
+        // Fetch local database elements ONLY (100% Free)
+        await loadData(bbox, false);
+        return; // <-- CRITICAL: Stops waterfall from leaking into remote ingestion code blocks!
+      }
+
+      // --- MODE B: EXPLICIT CTA RE-SCAN BUTTON PRESS (force === true) ---
+      isScanningRef.current = true;
+      setIsScanning(true);
 
       try {
-        await triggerIngest(userBbox);
-      } catch (e) {
-        console.error('Failed to update user rolling grid cache:', e);
-      }
-    },
-    [isScanning],
-  );
+        // Lock this current coordinate boundary group as our fresh tracking reference
+        lastScannedRegionRef.current = region;
 
-  const scanRegion = useCallback(
-    async (region: Region, forceManualSearch = false) => {
-      const bbox = getRegionBBox(region);
+        // Fire full database ingestion routine from remote endpoints
+        await loadData(bbox, true);
 
-      const latSpan = Math.ceil(region.latitudeDelta / GRID_STEP);
-      const lonSpan = Math.ceil(region.longitudeDelta / GRID_STEP);
-      const tileCount = latSpan * lonSpan;
-
-      const isTightZoom = tileCount <= 9;
-      const isCityScale = tileCount >= 1 && tileCount <= 49;
-
-      const currentCoord = {
-        latitude: region.latitude,
-        longitude: region.longitude,
-      };
-
-      const apiDistance = lastScannedLocation.current
-        ? calculateDistance(lastScannedLocation.current, currentCoord)
-        : Infinity;
-
-      const dbDistance = lastLoadedLocation.current
-        ? calculateDistance(lastLoadedLocation.current, currentCoord)
-        : Infinity;
-
-      const willAutoScanExecute = isTightZoom && apiDistance >= 0.5;
-
-      setTimeout(() => {
-        setShowScanButton(
-          isCityScale && !willAutoScanExecute && !forceManualSearch,
+        // Scan succeeded! NOW we can hide the manual prompt button container layout safely
+        setShowScanButton(false);
+      } catch (err) {
+        console.error(
+          '[MapScanner] Remote database scanning pipeline failed:',
+          err,
         );
-      }, 0);
-
-      // Guard 1: Ignore micro-movements to prevent DB flooding (Threshold: ~100m)
-      if (dbDistance < 0.1 && !forceManualSearch) {
-        return;
-      }
-
-      // Clear any pending debounced animation handlers to absorb ongoing drags smoothly
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-        debounceTimer.current = null;
-      }
-
-      // Wrapper handler function to execute database load queries safely
-      const executeScanLifecycle = async () => {
-        try {
-          // STEP 1: Fire off the database select pass immediately.
-          await loadData(bbox);
-          lastLoadedLocation.current = currentCoord;
-
-          const shouldIngest = willAutoScanExecute || forceManualSearch;
-          if (!shouldIngest) return;
-
-          // STEP 2: Fire the heavy edge function ingestion completely in the background.
-          setIsScanning(true);
-          lastScannedLocation.current = currentCoord;
-          triggerIngest(bbox)
-            .then(() => loadData(bbox))
-            .catch((err) =>
-              console.error('Background ingest sync failed:', err),
-            )
-            .finally(() => {
-              setIsScanning(false);
-            });
-        } catch (error) {
-          console.error('Map loading error:', error);
-        }
-      };
-
-      if (forceManualSearch) {
-        // Run immediately if button is pressed
-        await executeScanLifecycle();
-      } else {
-        // Debounce automatic panning checks by 400ms to filter momentum flings safely
-        debounceTimer.current = setTimeout(() => {
-          executeScanLifecycle();
-        }, 400) as unknown as number;
+      } finally {
+        isScanningRef.current = false;
+        setIsScanning(false);
       }
     },
     [loadData],
   );
 
-  return { scanRegion, scanUserRadius, showScanButton, isScanning };
+  const scanRegion = useMemo(() => debounce(executeScan, 600), [executeScan]);
+
+  return {
+    scanRegion,
+    isScanning,
+    showScanButton,
+  };
 }

@@ -4,7 +4,7 @@ import { BoundingBox } from './scanner.ts';
  * The fixed step size for the geographic grid, in degrees.
  * Approximately 550 meters.
  */
-export const GRID_STEP = 0.005;
+export const GRID_STEP = 0.02;
 
 /**
  * Snaps a geographic coordinate to a standardized tile ID string.
