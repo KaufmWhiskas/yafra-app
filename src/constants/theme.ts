@@ -1,4 +1,6 @@
-export const CURRENT_VERSION = '1.0.0';
+import Constants from 'expo-constants';
+
+export const CURRENT_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export const COLORS = {
   // Some default colors as placeholders, will change later
