@@ -20,9 +20,18 @@ import { COLORS, SIZES } from './src/constants/theme';
 import { initHapticsConfig } from './src/utils/haptics';
 
 function VersionLockView({ downloadUrl }: { downloadUrl: string | null }) {
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (downloadUrl) {
-      Linking.openURL(downloadUrl);
+      try {
+        const supported = await Linking.canOpenURL(downloadUrl);
+        if (supported) {
+          await Linking.openURL(downloadUrl);
+        } else {
+          console.error("Don't know how to open URL: ", downloadUrl);
+        }
+      } catch (error) {
+        console.error('Failed to open download URL:', error);
+      }
     }
   };
 
