@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react-native';
 import App from '../App';
 
 jest.mock('../src/services/versionService', () => ({
-  checkVersionIsSupported: jest.fn().mockResolvedValue(true),
+  getAppVersionConfig: jest
+    .fn()
+    .mockResolvedValue({ isSupported: true, downloadUrl: null }),
 }));
 
 jest.mock('../src/hooks/useActiveGroupFilters', () => ({
