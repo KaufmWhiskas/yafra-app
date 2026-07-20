@@ -163,6 +163,7 @@ const ReviewListItem = ({
               <TouchableOpacity
                 onPress={handleDelete}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                testID={`delete-review-button-${item.id}`}
               >
                 <MaterialCommunityIcons
                   name="trash-can-outline"

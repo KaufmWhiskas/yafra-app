@@ -113,6 +113,29 @@ export const fetchPersonalRating = async (
 };
 
 /**
+ * Fetches a user's review history for a specific restaurant.
+ *
+ * @param userId The ID of the user.
+ * @param restaurantId The ID of the restaurant.
+ * @returns A promise resolving to an array of the user's reviews for that restaurant.
+ * @throws Will throw an error if the database query fails.
+ */
+export async function fetchUserRestaurantHistory(
+  userId: string,
+  restaurantId: string,
+) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('restaurant_id', restaurantId)
+    .order('visit_date', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * Fetches all reviews made by a specific user, including the joined restaurant data.
  *
  * @param userId The ID of the user whose reviews are to be fetched.

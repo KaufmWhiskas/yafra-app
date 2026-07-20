@@ -124,7 +124,6 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<GroupWithMembers | null>(null);
 
-  // FIX: Separate loading states for the fast header vs the slow data
   const [isLoading, setIsLoading] = useState(true);
   const [isRestaurantsLoading, setIsRestaurantsLoading] = useState(true);
 

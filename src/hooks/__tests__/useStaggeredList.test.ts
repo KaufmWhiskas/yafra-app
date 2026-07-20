@@ -52,8 +52,6 @@ describe('useStaggeredList', () => {
   it('returns an empty array on the first render frame', () => {
     const items = createDummyRestaurants(10);
     const { result } = renderHook(() => useStaggeredList(items, 5));
-
-    // On the first render, no items should be mounted yet.
     expect(result.current.length).toBe(0);
   });
 
@@ -102,10 +100,8 @@ describe('useStaggeredList', () => {
     }));
     rerender({ items: items2 });
 
-    // After rerender, old items are gone, and new items haven't been staggered in yet.
     expect(result.current.length).toBe(0);
 
-    // After one frame, the first batch of new items should appear.
     act(() => {
       jest.advanceTimersByTime(16);
     });
@@ -173,13 +169,10 @@ describe('useStaggeredList Performance Safety', () => {
       { id: '2', name: 'Bistro B' } as Restaurant,
     ];
 
-    // Mount with initial array reference
     const { result, rerender } = renderHook(
       ({ items }: { items: Restaurant[] }) => useStaggeredList(items, 5),
       { initialProps: { items: mockRestaurants } },
     );
-
-    // Re-render with a completely brand new array reference containing the exact same data
     rerender({ items: [...mockRestaurants] });
 
     act(() => {

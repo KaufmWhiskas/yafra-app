@@ -58,7 +58,6 @@ describe('UpdatePasswordScreen', () => {
       expect(updateUserPassword).toHaveBeenCalledWith('newPassword123');
     });
 
-    // Find the 'OK' button in the alert and press it
     const alertArgs = (Alert.alert as jest.Mock).mock.calls[0];
     expect(alertArgs[0]).toBe('Success');
     const okButton = alertArgs[2].find(
@@ -85,7 +84,6 @@ describe('UpdatePasswordScreen', () => {
       expect(updateUserPassword).toHaveBeenCalledWith('newPassword123');
     });
 
-    // Find the 'OK' button in the alert and press it
     const alertArgs = (Alert.alert as jest.Mock).mock.calls[0];
     expect(alertArgs[0]).toBe('Success');
     const okButton = alertArgs[2].find(

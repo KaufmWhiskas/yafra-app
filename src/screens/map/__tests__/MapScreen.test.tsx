@@ -165,16 +165,19 @@ describe('MapScreen Toggle Feature', () => {
 
   it('calls fetchMapRestaurants when the component mounts', async () => {
     render(<MapScreen />);
+    await flushMicrotasks();
     await waitFor(() => expect(fetchMapRestaurants).toHaveBeenCalled());
   });
 
   it('renders the map by default after loading', async () => {
     const { findByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
     expect(await findByTestId('mock-map')).toBeTruthy();
   });
 
   it('toggles between Map and List view when buttons are pressed', async () => {
     const { getByText, getByTestId, queryByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
 
     fireEvent.press(getByText('List View'));
     await flushMicrotasks();
@@ -196,8 +199,8 @@ describe('MapScreen Toggle Feature', () => {
     ] as Restaurant[]);
 
     const { getByText, findByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
 
-    // Wait for the component to stabilize after effects
     await waitFor(async () => {
       const listButton = getByText('List View');
       fireEvent.press(listButton);
@@ -227,6 +230,7 @@ describe('MapScreen Toggle Feature', () => {
 
   it('renders markers on the map for each restaurant from fetchRestaurants', async () => {
     const { findAllByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
     expect((await findAllByTestId('restaurant-marker')).length).toBeGreaterThan(
       0,
     );
@@ -251,6 +255,7 @@ describe('MapScreen Toggle Feature', () => {
     ] as Restaurant[]);
 
     const { getByText, getAllByTestId, getByTestId } = render(<MapScreen />);
+    await flushMicrotasks();
 
     await waitFor(() =>
       expect(getAllByTestId('restaurant-marker')).toHaveLength(2),
@@ -269,6 +274,7 @@ describe('MapScreen Toggle Feature', () => {
 
   it('requests location permissions', async () => {
     render(<MapScreen />);
+    await flushMicrotasks();
     await waitFor(() =>
       expect(requestForegroundPermissionsAsync).toHaveBeenCalled(),
     );
@@ -278,6 +284,7 @@ describe('MapScreen Toggle Feature', () => {
     const { getAllByTestId, getByTestId, queryAllByTestId } = render(
       <MapScreen />,
     );
+    await flushMicrotasks();
     await waitFor(() =>
       expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
     );
@@ -296,6 +303,7 @@ describe('MapScreen Toggle Feature', () => {
 
   it('passes bookmark toggle down to the floating preview card and opens CollectionModal', async () => {
     const { getAllByTestId, findByText } = render(<MapScreen />);
+    await flushMicrotasks();
     await waitFor(() =>
       expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
     );
@@ -315,6 +323,7 @@ describe('MapScreen Toggle Feature', () => {
 
   it('navigates to ReviewScreen when Add Review button is pressed', async () => {
     const { getAllByTestId, getAllByText } = render(<MapScreen />);
+    await flushMicrotasks();
     await waitFor(() =>
       expect(getAllByTestId('restaurant-marker').length).toBeGreaterThan(0),
     );
@@ -367,6 +376,7 @@ describe('MapScreen Toggle Feature', () => {
 
     it('passes the map region coordinates to SearchBar as userLocation', async () => {
       const { getByTestId } = render(<MapScreen />);
+      await flushMicrotasks();
 
       await waitFor(() => {
         const searchBar = getByTestId('mock-search-bar');
@@ -421,7 +431,6 @@ describe('MapScreen Toggle Feature', () => {
 describe('MapScreen Tab Navigation Override', () => {
   it('should reset viewMode back to map when the tab icon is clicked twice', () => {
     render(<MapScreen />);
-    // Test logic maps the navigation listener execution
     expect(mockAddListener).toHaveBeenCalledWith(
       'tabPress',
       expect.any(Function),

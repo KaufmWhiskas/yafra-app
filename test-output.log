@@ -1,0 +1,1224 @@
+
+> yafra-app@1.0.0 test
+> jest
+
+PASS src/components/map/__tests__/FilterModal.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+      2 | import { Session } from '@supabase/supabase-js';
+      3 | import { supabase } from '../services/supabase';
+    > 4 | import * as Linking from 'expo-linking';
+        | ^
+      5 |
+      6 | type AuthContextType = {
+      7 |   session: Session | null;
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-linking/src/Linking.ts:1:1)
+      at Object.require (src/context/AuthContext.tsx:4:1)
+      at Object.require (src/components/map/FilterModal.tsx:16:1)
+      at Object.require (src/components/map/__tests__/FilterModal.test.tsx:3:1)
+
+PASS src/screens/groups/__tests__/GroupsScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import { Image } from 'expo-image';
+        | ^
+      2 | import { StyleSheet, StyleProp, ImageStyle } from 'react-native';
+      3 |
+      4 | export function Avatar({
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-image/src/Image.tsx:3:1)
+      at Object.require (node_modules/expo-image/src/index.ts:2:1)
+      at Object.require (src/components/Avatar.tsx:1:1)
+      at Object.require (src/screens/groups/GroupsScreen.tsx:25:1)
+      at Object.require (src/screens/groups/__tests__/GroupsScreen.test.tsx:9:1)
+
+PASS src/screens/auth/__tests__/ForgotPasswordScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as WebBrowser from 'expo-web-browser';
+        | ^
+      2 | import { makeRedirectUri } from 'expo-auth-session';
+      3 | import { supabase } from './supabase';
+      4 | import * as FileSystem from 'expo-file-system/legacy';
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-web-browser/src/WebBrowser.ts:1:1)
+      at Object.require (src/services/authService.ts:1:1)
+      at Object.require (src/screens/auth/ForgotPasswordScreen.tsx:12:1)
+      at Object.require (src/screens/auth/__tests__/ForgotPasswordScreen.test.tsx:4:1)
+
+PASS src/components/review/__tests__/ScoreSelector.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/review/ScoreSelector.tsx:14:1)
+      at Object.require (src/components/review/__tests__/ScoreSelector.test.tsx:3:1)
+
+PASS src/context/__tests__/FriendsContext.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+      2 | import { Session } from '@supabase/supabase-js';
+      3 | import { supabase } from '../services/supabase';
+    > 4 | import * as Linking from 'expo-linking';
+        | ^
+      5 |
+      6 | type AuthContextType = {
+      7 |   session: Session | null;
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-linking/src/Linking.ts:1:1)
+      at Object.require (src/context/AuthContext.tsx:4:1)
+      at Object.require (src/context/FriendsContext.tsx:11:1)
+      at Object.require (src/context/__tests__/FriendsContext.test.tsx:4:1)
+
+PASS src/components/ui/__tests__/SearchBar.test.tsx
+PASS src/navigation/__tests__/MainNavigator.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/review/ScoreSelector.tsx:14:1)
+      at Object.require (src/screens/review/ReviewScreen.tsx:22:1)
+      at Object.require (src/navigation/MainNavigator.tsx:12:1)
+      at Object.require (src/navigation/__tests__/MainNavigator.test.tsx:3:1)
+
+PASS src/screens/review/__tests__/ReviewScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/review/ScoreSelector.tsx:14:1)
+      at Object.require (src/screens/review/ReviewScreen.tsx:22:1)
+      at Object.require (src/screens/review/__tests__/ReviewScreen.test.tsx:9:1)
+
+    console.error
+      An update to ReviewScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      180 |       fetchUserTags(user.id).then((userTags) => {
+      181 |         const merged = [...new Set([...userTags, ...DEFAULT_TAGS])];
+    > 182 |         setAvailableTags(merged);
+          |         ^
+      183 |       });
+      184 |     } else {
+      185 |       setAvailableTags(DEFAULT_TAGS);
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setAvailableTags (src/screens/review/ReviewScreen.tsx:182:9)
+
+    console.error
+      An update to ReviewScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      180 |       fetchUserTags(user.id).then((userTags) => {
+      181 |         const merged = [...new Set([...userTags, ...DEFAULT_TAGS])];
+    > 182 |         setAvailableTags(merged);
+          |         ^
+      183 |       });
+      184 |     } else {
+      185 |       setAvailableTags(DEFAULT_TAGS);
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setAvailableTags (src/screens/review/ReviewScreen.tsx:182:9)
+
+PASS __tests__/App.test.js
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/map/RestaurantMap.tsx:5:1)
+      at Object.require (src/screens/map/MapScreen.tsx:18:1)
+      at Object.require (src/navigation/TabNavigator.tsx:4:1)
+      at Object.require (src/navigation/MainNavigator.tsx:11:1)
+      at Object.require (App.tsx:7:1)
+      at Object.require (__tests__/App.test.js:3:1)
+
+PASS src/screens/map/__tests__/MapScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/map/RestaurantMap.tsx:5:1)
+      at Object.require (src/screens/map/MapScreen.tsx:18:1)
+      at Object.require (src/screens/map/__tests__/MapScreen.test.tsx:3:1)
+
+    console.error
+      An update to MapScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      34 |
+      35 |       if (status === "granted") {
+    > 36 |         setHasLocationPermission(true);
+         |         ^
+      37 |
+      38 |         try {
+      39 |           const location = await Location.getCurrentPositionAsync({
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setHasLocationPermission (src/hooks/useLocation.ts:36:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      An update to MapScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      256 |             longitudeDelta: 0.1,
+      257 |           };
+    > 258 |           setMapRegion(fallbackRegion);
+          |           ^
+      259 |           mapRegionRef.current = fallbackRegion;
+      260 |           loadData(getRegionBBox(fallbackRegion));
+      261 |         }
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setMapRegion (src/screens/map/MapScreen.tsx:258:11)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      An update to MapScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      294 |         fetchUserBookmarkedRestaurantIds(user.id)
+      295 |           .then((ids) => {
+    > 296 |             setBookmarkedIds(ids);
+          |             ^
+      297 |           })
+      298 |           .catch((error) => console.error('Failed to load bookmarks:', error));
+      299 |       }
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setBookmarkedIds (src/screens/map/MapScreen.tsx:296:13)
+
+    console.error
+      An update to MapScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      40 |             accuracy: Location.Accuracy.Balanced,
+      41 |           });
+    > 42 |           setUserLocation({
+         |           ^
+      43 |             latitude: location.coords.latitude,
+      44 |             longitude: location.coords.longitude,
+      45 |           });
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setUserLocation (src/hooks/useLocation.ts:42:11)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      An update to MapScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      186 |           activeGroupIds,
+      187 |         );
+    > 188 |         setRestaurants(data);
+          |         ^
+      189 |       } catch (error) {
+      190 |         console.error('Failed to fetch restaurants:', error);
+      191 |       }
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setRestaurants (src/screens/map/MapScreen.tsx:188:9)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+PASS src/screens/profile/__tests__/ProfileOtpScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as WebBrowser from 'expo-web-browser';
+        | ^
+      2 | import { makeRedirectUri } from 'expo-auth-session';
+      3 | import { supabase } from './supabase';
+      4 | import * as FileSystem from 'expo-file-system/legacy';
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-web-browser/src/WebBrowser.ts:1:1)
+      at Object.require (src/services/authService.ts:1:1)
+      at Object.require (src/screens/profile/ProfileOtpScreen.tsx:12:1)
+      at Object.require (src/screens/profile/__tests__/ProfileOtpScreen.test.tsx:4:1)
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/screens/profile/ProfileOtpScreen.tsx:13:1)
+      at Object.require (src/screens/profile/__tests__/ProfileOtpScreen.test.tsx:4:1)
+
+PASS src/screens/profile/__tests__/ProfileScreen.test.tsx
+PASS src/components/ui/__tests__/QuickAddModal.test.tsx
+PASS src/screens/auth/__tests__/RegisterScreen.test.tsx
+PASS src/screens/groups/__tests__/GroupDetailScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import { Image } from 'expo-image';
+        | ^
+      2 | import { StyleSheet, StyleProp, ImageStyle } from 'react-native';
+      3 |
+      4 | export function Avatar({
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-image/src/Image.tsx:3:1)
+      at Object.require (node_modules/expo-image/src/index.ts:2:1)
+      at Object.require (src/components/Avatar.tsx:1:1)
+      at Object.require (src/components/groups/FeedCard.tsx:6:1)
+      at Object.require (src/screens/groups/GroupDetailScreen.tsx:51:1)
+      at Object.require (src/screens/groups/__tests__/GroupDetailScreen.test.tsx:4:1)
+
+    console.error
+      An update to VirtualizedList inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at Object.enqueueSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:16926:13)
+      at VirtualizedList.Object.<anonymous>.process.env.NODE_ENV.Component.setState (node_modules/react/cjs/react.development.js:655:20)
+      at node_modules/@babel/runtime/helpers/superPropGet.js:6:14
+      at VirtualizedList.setState (node_modules/@react-native/virtualized-lists/Lists/StateSafePureComponent.js:39:7)
+      at VirtualizedList.setState [as _updateCellsToRender] (node_modules/@react-native/virtualized-lists/Lists/VirtualizedList.js:1909:10)
+      at Timeout._updateCellsToRender [as _onTimeout] (node_modules/@react-native/virtualized-lists/Lists/VirtualizedList.js:1806:16)
+
+PASS src/screens/auth/__tests__/LoginScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/screens/auth/LoginScreen.tsx:16:1)
+      at Object.require (src/screens/auth/__tests__/LoginScreen.test.tsx:3:1)
+
+PASS src/screens/profile/__tests__/UpdatePasswordScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as WebBrowser from 'expo-web-browser';
+        | ^
+      2 | import { makeRedirectUri } from 'expo-auth-session';
+      3 | import { supabase } from './supabase';
+      4 | import * as FileSystem from 'expo-file-system/legacy';
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-web-browser/src/WebBrowser.ts:1:1)
+      at Object.require (src/services/authService.ts:1:1)
+      at Object.require (src/screens/profile/UpdatePasswordScreen.tsx:13:1)
+      at Object.require (src/screens/profile/__tests__/UpdatePasswordScreen.test.tsx:4:1)
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/screens/profile/UpdatePasswordScreen.tsx:15:1)
+      at Object.require (src/screens/profile/__tests__/UpdatePasswordScreen.test.tsx:4:1)
+
+PASS src/components/ui/__tests__/RestaurantCard.test.tsx
+PASS src/screens/profile/__tests__/UserReviewsScreen.test.tsx
+PASS src/screens/restaurant/__tests__/RestaurantReviewsScreen.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+      2 | import { Session } from '@supabase/supabase-js';
+      3 | import { supabase } from '../services/supabase';
+    > 4 | import * as Linking from 'expo-linking';
+        | ^
+      5 |
+      6 | type AuthContextType = {
+      7 |   session: Session | null;
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-linking/src/Linking.ts:1:1)
+      at Object.require (src/context/AuthContext.tsx:4:1)
+      at Object.require (src/hooks/useRestaurantReviews.ts:2:1)
+      at Object.require (src/screens/restaurant/RestaurantReviewsScreen.tsx:13:1)
+      at Object.require (src/screens/restaurant/__tests__/RestaurantReviewsScreen.test.tsx:3:1)
+
+PASS src/components/map/__tests__/RestaurantMap.test.tsx
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as Haptics from 'expo-haptics';
+        | ^
+      2 | import { Platform } from 'react-native';
+      3 | import AsyncStorage from '@react-native-async-storage/async-storage';
+      4 |
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-haptics/src/Haptics.ts:1:1)
+      at Object.require (src/utils/haptics.ts:1:1)
+      at Object.require (src/components/map/RestaurantMap.tsx:5:1)
+      at Object.require (src/components/map/__tests__/RestaurantMap.test.tsx:3:1)
+
+PASS src/components/ui/__tests__/OtpInput.test.tsx
+PASS src/screens/profile/__tests__/WantToVisitScreen.test.tsx
+PASS src/services/__tests__/authOAuth.test.ts
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as WebBrowser from 'expo-web-browser';
+        | ^
+      2 | import { makeRedirectUri } from 'expo-auth-session';
+      3 | import { supabase } from './supabase';
+      4 | import * as FileSystem from 'expo-file-system/legacy';
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-web-browser/src/WebBrowser.ts:1:1)
+      at Object.require (src/services/authService.ts:1:1)
+      at Object.require (src/services/__tests__/authOAuth.test.ts:1:1)
+
+PASS src/screens/profile/__tests__/CollectionDetailScreen.test.tsx
+PASS src/services/__tests__/authService.test.ts
+  ● Console
+
+    console.warn
+      The global process.env.EXPO_OS is not defined. This should be inlined by babel-preset-expo during transformation.
+
+    > 1 | import * as WebBrowser from 'expo-web-browser';
+        | ^
+      2 | import { makeRedirectUri } from 'expo-auth-session';
+      3 | import { supabase } from './supabase';
+      4 | import * as FileSystem from 'expo-file-system/legacy';
+
+      at Object.warn (node_modules/expo-modules-core/src/Platform.ts:15:11)
+      at Object.require (node_modules/expo-modules-core/src/index.ts:11:1)
+      at node_modules/jest-expo/src/preset/setup.js:233:32
+      at Object.require (node_modules/expo-web-browser/src/WebBrowser.ts:1:1)
+      at Object.require (src/services/authService.ts:1:1)
+      at Object.require (src/services/__tests__/authService.test.ts:1:1)
+
+PASS src/context/GroupFilterContext.test.tsx
+PASS src/hooks/__tests__/useRestaurantReviews.test.ts
+PASS src/hooks/__tests__/useMapScanner.test.ts
+PASS src/services/__tests__/friendService.test.ts
+PASS src/components/ui/__tests__/RouteButton.test.tsx
+PASS src/screens/groups/__tests__/GroupFeedScreen.test.tsx
+PASS src/utils/__tests__/geo.test.ts
+PASS src/components/map/__tests__/RestaurantMarker.test.tsx
+PASS src/components/ui/__tests__/OpeningHours.test.tsx
+PASS src/components/ui/__tests__/RatingBadge.test.tsx
+PASS src/services/__tests__/searchService.test.ts
+PASS src/hooks/__tests__/useLocation.test.ts
+PASS src/services/__tests__/reviewService.test.ts
+PASS src/services/__tests__/groupServiceFeed.test.ts
+PASS src/services/__tests__/bookmarkService.test.ts
+PASS src/hooks/__tests__/useStaggeredList.test.ts
+PASS src/utils/__tests__/scoreEngine.test.ts
+PASS src/services/__tests__/profileService.test.ts
+PASS src/utils/__tests__/reviewSort.test.ts
+PASS src/services/__tests__/groupService.test.ts
+PASS src/services/__tests__/restaurantService.test.ts
+PASS src/constants/__tests__/categories.test.ts
+PASS src/utils/__tests__/displayState.test.ts
+PASS src/utils/__tests__/groupMath.test.ts
+PASS src/services/__tests__/versionService.test.ts
+PASS src/utils/__tests__/restaurantFilters.test.ts
+FAIL src/screens/map/__tests__/RestaurantDetailScreen.test.tsx
+  ● Console
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      80 |   useFocusEffect(
+      81 |     useCallback(() => {
+    > 82 |       if (!details) setIsLoading(true);
+         |                     ^
+      83 |       fetchRestaurantDetails(restaurantId)
+      84 |         .then(setDetails)
+      85 |         .catch((error) => {
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:82:21)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at commitHookEffectListMount (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)
+      at commitHookPassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11160:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11240:11)
+      at flushPendingEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14086:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2896:11)
+      at Immediate.performWorkUntilDeadline [as _onImmediate] (node_modules/scheduler/cjs/scheduler.native.development.js:45:48)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      91 |         })
+      92 |         .finally(() => {
+    > 93 |           setIsLoading(false);
+         |           ^
+      94 |         });
+      95 |       // eslint-disable-next-line react-hooks/exhaustive-deps
+      96 |     }, [restaurantId]),
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:93:11)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      80 |   useFocusEffect(
+      81 |     useCallback(() => {
+    > 82 |       if (!details) setIsLoading(true);
+         |                     ^
+      83 |       fetchRestaurantDetails(restaurantId)
+      84 |         .then(setDetails)
+      85 |         .catch((error) => {
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:82:21)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at commitHookEffectListMount (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)
+      at commitHookPassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11160:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11240:11)
+      at flushPendingEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14086:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2896:11)
+      at Immediate.performWorkUntilDeadline [as _onImmediate] (node_modules/scheduler/cjs/scheduler.native.development.js:45:48)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      91 |         })
+      92 |         .finally(() => {
+    > 93 |           setIsLoading(false);
+         |           ^
+      94 |         });
+      95 |       // eslint-disable-next-line react-hooks/exhaustive-deps
+      96 |     }, [restaurantId]),
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:93:11)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      80 |   useFocusEffect(
+      81 |     useCallback(() => {
+    > 82 |       if (!details) setIsLoading(true);
+         |                     ^
+      83 |       fetchRestaurantDetails(restaurantId)
+      84 |         .then(setDetails)
+      85 |         .catch((error) => {
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:82:21)
+      at Object.react_stack_bottom_frame (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at commitHookEffectListMount (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)
+      at commitHookPassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11160:11)
+      at commitPassiveMountOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11240:11)
+      at flushPendingEffects (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14086:11)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2896:11)
+      at Immediate.performWorkUntilDeadline [as _onImmediate] (node_modules/scheduler/cjs/scheduler.native.development.js:45:48)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+
+    console.error
+      An update to RestaurantDetailScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      91 |         })
+      92 |         .finally(() => {
+    > 93 |           setIsLoading(false);
+         |           ^
+      94 |         });
+      95 |       // eslint-disable-next-line react-hooks/exhaustive-deps
+      96 |     }, [restaurantId]),
+
+      at node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14402:19
+      at runWithFiberInDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:14401:9)
+      at scheduleUpdateOnFiber (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:12086:9)
+      at dispatchSetStateInternal (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6208:13)
+      at dispatchSetState (node_modules/react-test-renderer/cjs/react-test-renderer.development.js:6165:7)
+      at setIsLoading (src/screens/map/RestaurantDetailScreen.tsx:93:11)
+
+  ● RestaurantDetailScreen › opens the collection modal when the bookmark button is pressed
+
+    Unable to find an element with text: Mock Collection Modal
+
+    [36m<View>[39m
+      [36m<ActivityIndicator />[39m
+    [36m</View>[39m
+
+      153 |     fireEvent.press(bookmarkButton);
+      154 |
+    > 155 |     expect(await findByText('Mock Collection Modal')).toBeTruthy();
+          |                  ^
+      156 |   });
+      157 |
+      158 |   it('navigates to ReviewScreen when "Add Review" is pressed', async () => {
+
+      at Object.findByText (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:155:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● RestaurantDetailScreen › navigates to ReviewScreen when "Add Review" is pressed
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "ReviewScreen", {"restaurant": ObjectContaining {"id": "1", "name": "Test Restaurant"}}
+
+    Number of calls: 0
+
+      164 |     fireEvent.press(reviewButton);
+      165 |
+    > 166 |     await waitFor(() => {
+          |                  ^
+      167 |       expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
+      168 |         restaurant: expect.objectContaining({
+      169 |           id: '1',
+
+      at Object.<anonymous> (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:166:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● RestaurantDetailScreen › Review Deletion › allows user to delete a review from the history overlay list modal context
+
+    Unable to find an element with text: Yours
+
+    [36m<View>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<MaterialCommunityIcons />[39m
+        [36m</View>[39m
+        [36m<Text>[39m
+          [0mTest Restaurant[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+          [33mtestID[39m=[32m"bookmark-header-button"[39m
+        [36m>[39m
+          [36m<MaterialCommunityIcons />[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<Text>[39m
+                [0mTest Restaurant[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<Text>[39m
+                [0mAddress not available[0m
+              [36m</Text>[39m
+              [36m<View>[39m
+                [36m<RatingBadge[39m
+                  [33mvalue[39m=[32m{4.5}[39m
+                [36m/>[39m
+                [36m<RatingBadge />[39m
+                [36m<RatingBadge />[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mOpening Hours[0m
+                [36m</Text>[39m
+                [36m<OpeningHours />[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mRelevant Reviews[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0mNo reviews for this restaurant yet. Be the first![0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mAdd Review[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RouteButton />[39m
+    [36m</View>[39m
+
+      199 |       await findByText('Address not available');
+      200 |
+    > 201 |       const personalRatingBadge = await findByText('Yours');
+          |                                         ^
+      202 |       fireEvent.press(personalRatingBadge);
+      203 |
+      204 |       expect(await findByText('"TDD Delicious!"')).toBeTruthy();
+
+      at Object.findByText (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:201:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Summary of all failing tests
+FAIL src/screens/map/__tests__/RestaurantDetailScreen.test.tsx
+  ● RestaurantDetailScreen › opens the collection modal when the bookmark button is pressed
+
+    Unable to find an element with text: Mock Collection Modal
+
+    [36m<View>[39m
+      [36m<ActivityIndicator />[39m
+    [36m</View>[39m
+
+      153 |     fireEvent.press(bookmarkButton);
+      154 |
+    > 155 |     expect(await findByText('Mock Collection Modal')).toBeTruthy();
+          |                  ^
+      156 |   });
+      157 |
+      158 |   it('navigates to ReviewScreen when "Add Review" is pressed', async () => {
+
+      at Object.findByText (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:155:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● RestaurantDetailScreen › navigates to ReviewScreen when "Add Review" is pressed
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "ReviewScreen", {"restaurant": ObjectContaining {"id": "1", "name": "Test Restaurant"}}
+
+    Number of calls: 0
+
+      164 |     fireEvent.press(reviewButton);
+      165 |
+    > 166 |     await waitFor(() => {
+          |                  ^
+      167 |       expect(mockNavigate).toHaveBeenCalledWith('ReviewScreen', {
+      168 |         restaurant: expect.objectContaining({
+      169 |           id: '1',
+
+      at Object.<anonymous> (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:166:18)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● RestaurantDetailScreen › Review Deletion › allows user to delete a review from the history overlay list modal context
+
+    Unable to find an element with text: Yours
+
+    [36m<View>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<MaterialCommunityIcons />[39m
+        [36m</View>[39m
+        [36m<Text>[39m
+          [0mTest Restaurant[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+          [33mtestID[39m=[32m"bookmark-header-button"[39m
+        [36m>[39m
+          [36m<MaterialCommunityIcons />[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<Text>[39m
+                [0mTest Restaurant[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<Text>[39m
+                [0mAddress not available[0m
+              [36m</Text>[39m
+              [36m<View>[39m
+                [36m<RatingBadge[39m
+                  [33mvalue[39m=[32m{4.5}[39m
+                [36m/>[39m
+                [36m<RatingBadge />[39m
+                [36m<RatingBadge />[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mOpening Hours[0m
+                [36m</Text>[39m
+                [36m<OpeningHours />[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mRelevant Reviews[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0mNo reviews for this restaurant yet. Be the first![0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mAdd Review[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RouteButton />[39m
+    [36m</View>[39m
+
+      199 |       await findByText('Address not available');
+      200 |
+    > 201 |       const personalRatingBadge = await findByText('Yours');
+          |                                         ^
+      202 |       fireEvent.press(personalRatingBadge);
+      203 |
+      204 |       expect(await findByText('"TDD Delicious!"')).toBeTruthy();
+
+      at Object.findByText (src/screens/map/__tests__/RestaurantDetailScreen.test.tsx:201:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+
+Test Suites: 1 failed, 52 passed, 53 total
+Tests:       3 failed, 245 passed, 248 total
+Snapshots:   0 total
+Time:        5.349 s, estimated 6 s
+Ran all test suites.

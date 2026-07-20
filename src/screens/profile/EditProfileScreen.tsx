@@ -100,23 +100,15 @@ export default function EditProfileScreen() {
       setIsUploadingImage(true);
       const selectedUri = pickerResult.assets[0].uri;
 
-      // 3. Aggressive Downsizing & Quality Compression (Protects Free Storage Bucket Capacity)
       const manipulatedImage = await ImageManipulator.manipulateAsync(
         selectedUri,
-        [{ resize: { width: 300 } }], // Shrinks dimensions to standard avatar size
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }, // Compress to ~40KB
+        [{ resize: { width: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
       );
 
-      // 4. Fire the stream upload using verified session parameters
       const publicUrl = await uploadAvatar(manipulatedImage.uri);
-
-      // Create the cache-busted URL FIRST
       const cacheBustedUrl = `${publicUrl}?t=${new Date().getTime()}`;
-
-      // 5. Update the profiles data table row WITH the timestamped URL
       await updateProfileAvatar(cacheBustedUrl);
-
-      // Update local state for immediate feedback
       setProfile((prevProfile) =>
         prevProfile ? { ...prevProfile, avatar_url: cacheBustedUrl } : null,
       );

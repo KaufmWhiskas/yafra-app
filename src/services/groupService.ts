@@ -62,9 +62,6 @@ export async function fetchMyGroups(userId: string): Promise<Group[]> {
 
   if (error) throw error;
 
-  // Map the nested PostgREST response back into a clean flat array of Groups
-  // The Supabase client types may incorrectly infer `groups` as an array.
-  // We cast it to the correct shape, as a many-to-one join returns an object.
   return (data || []).map(
     (row) => (row as unknown as { groups: Group }).groups,
   );

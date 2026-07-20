@@ -108,7 +108,6 @@ describe('CollectionDetailScreen', () => {
     (toggleBookmarkInCollection as jest.Mock).mockResolvedValue(undefined);
 
     const { getByTestId } = render(<CollectionDetailScreen />);
-    // Allow the useEffect lifecycle queue to drain the initial data load
     await act(async () => {
       await Promise.resolve();
     });
@@ -116,14 +115,11 @@ describe('CollectionDetailScreen', () => {
     const bookmarkBtn = getByTestId('bookmark-button');
     fireEvent.press(bookmarkBtn);
 
-    // Verify double-safety dialog assertion bounds
     expect(Alert.alert).toHaveBeenCalledWith(
       'Remove Restaurant',
       expect.any(String),
       expect.any(Array),
     );
-
-    // Extract and invoke the destructive removal action trigger callback
     const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
     const removeAction = alertButtons.find(
       (b: { text: string }) => b.text === 'Remove',
@@ -134,7 +130,7 @@ describe('CollectionDetailScreen', () => {
     });
 
     expect(toggleBookmarkInCollection).toHaveBeenCalledWith(
-      expect.any(String), // userId string bound checked from user context or empty fallback handler
+      expect.any(String),
       '1',
       'coll_1',
       true,

@@ -30,7 +30,11 @@ import { resolveRestaurantDisplay } from '../../utils/displayState';
 import { COLORS } from '../../constants/theme';
 import { Restaurant, GroupFeedReview } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { fetchPersonalRating } from '../../services/reviewService';
+import {
+  deleteReview,
+  fetchPersonalRating,
+  fetchUserRestaurantHistory,
+} from '../../services/reviewService';
 import { supabase } from '../../services/supabase';
 import CollectionModal from '../../components/ui/CollectionModal';
 import FeedCard from '../../components/groups/FeedCard';
@@ -178,12 +182,10 @@ export default function RestaurantDetailScreen() {
   const handleViewHistory = async () => {
     if (!user?.id || !details?.id) return;
 
-    const { data } = await supabase
-      .from('reviews')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('restaurant_id', details.id.toString())
-      .order('visit_date', { ascending: false, nullsFirst: false });
+    const data = await fetchUserRestaurantHistory(
+      user.id,
+      details.id.toString(),
+    );
 
     if (data) {
       setUserRestaurantHistory(data as Record<string, unknown>[]);
@@ -191,10 +193,44 @@ export default function RestaurantDetailScreen() {
     }
   };
 
+  const handleDeleteReview = (reviewId: number) => {
+    Alert.alert(
+      'Delete Review',
+      'Are you sure you want to delete this review?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteReview(reviewId);
+              setUserRestaurantHistory((prev) =>
+                prev.filter((r) => r.id !== reviewId),
+              );
+              if (user?.id && details?.id) {
+                fetchPersonalRating(user.id, details.id).then(
+                  setPersonalRating,
+                );
+              }
+            } catch (error) {
+              console.error('Failed to delete review:', error);
+              Alert.alert('Error', 'Could not delete the review.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator
+          testID="activity-indicator"
+          size="large"
+          color={COLORS.primary}
+        />
       </View>
     );
   }
@@ -402,37 +438,55 @@ export default function RestaurantDetailScreen() {
                 return (
                   <View style={styles.historyCard}>
                     <View style={styles.historyCardHeader}>
-                      <Text style={styles.historyDate}>{displayDate}</Text>
-                      <Text style={styles.historyRating}>
-                        {Number(item.rating).toFixed(1)} ★
-                      </Text>
+                      <View>
+                        <Text style={styles.historyDate}>{displayDate}</Text>
+                        <Text style={styles.historyRating}>
+                          {Number(item.rating).toFixed(1)} ★
+                        </Text>
+                      </View>
+                      <View style={styles.historyActions}>
+                        <TouchableOpacity
+                          style={styles.editHistoryButton}
+                          onPress={() => {
+                            setHistoryModalVisible(false);
+                            const restaurantForReview: Restaurant = {
+                              ...details,
+                              id: details.id || restaurantId,
+                              name: restaurantName,
+                              cuisine: details.cuisine || 'unknown',
+                              latitude: details.latitude || 0,
+                              longitude: details.longitude || 0,
+                            };
+                            navigation.navigate('ReviewScreen', {
+                              restaurant: restaurantForReview,
+                              editReviewId: item.id as number | string,
+                              existingReviewData: item,
+                            });
+                          }}
+                        >
+                          <MaterialCommunityIcons
+                            name="pencil-outline"
+                            size={22}
+                            color={COLORS.primary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          testID={`delete-history-review-button-${item.id}`}
+                          onPress={() => handleDeleteReview(item.id as number)}
+                        >
+                          <MaterialCommunityIcons
+                            name="trash-can-outline"
+                            size={22}
+                            color={COLORS.danger}
+                          />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     {item.review_text ? (
                       <Text style={styles.historyText}>
                         "{String(item.review_text)}"
                       </Text>
                     ) : null}
-                    <TouchableOpacity
-                      style={styles.editHistoryButton}
-                      onPress={() => {
-                        setHistoryModalVisible(false);
-                        const restaurantForReview: Restaurant = {
-                          ...details,
-                          id: details.id || restaurantId,
-                          name: restaurantName,
-                          cuisine: details.cuisine || 'unknown',
-                          latitude: details.latitude || 0,
-                          longitude: details.longitude || 0,
-                        };
-                        navigation.navigate('ReviewScreen', {
-                          restaurant: restaurantForReview,
-                          editReviewId: item.id as number | string,
-                          existingReviewData: item,
-                        });
-                      }}
-                    >
-                      <Text style={styles.editHistoryText}>Edit Review</Text>
-                    </TouchableOpacity>
                   </View>
                 );
               }}
@@ -598,9 +652,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontStyle: 'italic',
   },
+  historyActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
   editHistoryButton: {
-    marginTop: 12,
-    alignSelf: 'flex-end',
+    // No specific styles needed now, but kept for hitSlop area
   },
   editHistoryText: {
     color: COLORS.primary,

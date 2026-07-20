@@ -164,11 +164,9 @@ export default function MapScreen() {
     async (bbox?: BoundingBox, forceRemote: boolean = false) => {
       try {
         if (!mapRegionRef.current) return;
-
         // 1. Only call the Edge Function if the user pressed the manual button!
         if (bbox && forceRemote) {
           try {
-            // Invoke your ingestion backend function mapping securely
             await supabase.functions.invoke('ingest-restaurants', {
               body: { bbox },
             });
@@ -180,7 +178,6 @@ export default function MapScreen() {
           }
         }
 
-        // 2. ALWAYS fetch local cached restaurants from your table schema (FREE)
         const data = await fetchMapRestaurants(
           mapRegionRef.current.latitude,
           mapRegionRef.current.longitude,
@@ -366,7 +363,6 @@ export default function MapScreen() {
     },
     [mapRegion],
   );
-
   // FIX: Guarded search select prevents writing city names to your restaurant list
   const handleSearchSelect = async (place: Prediction) => {
     if (isScanning) return;
@@ -381,7 +377,6 @@ export default function MapScreen() {
         return;
       }
 
-      // Check if target is explicitly a geopolitical region or boundary
       const isCityOrRegion = place.types?.some((t) =>
         [
           'locality',
@@ -397,7 +392,6 @@ export default function MapScreen() {
         ].includes(t),
       );
 
-      // Verify it's not a city, and matches food/beverage establishment tags
       const isEstablishment =
         !isCityOrRegion &&
         place.types?.some((t) =>
@@ -470,7 +464,6 @@ export default function MapScreen() {
     }
   };
 
-  // FIX: Grab showScanButton back from scanner hooks
   const { scanRegion, isScanning, showScanButton } = useMapScanner(loadData);
 
   const handleRegionChangeComplete = async (region: Region) => {
@@ -581,7 +574,6 @@ export default function MapScreen() {
         <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
       </View>
 
-      {/* FIX: Manual Search Button with active loading states and transparency indicators */}
       {showScanButton && (
         <View
           style={[
@@ -593,7 +585,7 @@ export default function MapScreen() {
           <TouchableOpacity
             style={[
               styles.scanButton,
-              isScanning && { opacity: 0.6, backgroundColor: '#F5F5F5' }, // Makes button background transparent/muted
+              isScanning && { opacity: 0.6, backgroundColor: '#F5F5F5' },
             ]}
             activeOpacity={0.85}
             disabled={isScanning}

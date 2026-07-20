@@ -5,8 +5,6 @@ import { FriendsProvider, useFriends } from '../FriendsContext';
 import { getFriends } from '../../services/friendService';
 import { useAuth } from '../AuthContext';
 import { UserRelationshipWithProfiles } from '../../types';
-
-// Mock dependencies
 jest.mock('../../services/friendService');
 jest.mock('../AuthContext');
 
@@ -164,17 +162,14 @@ describe('FriendsProvider', () => {
 
     await waitFor(() => expect(queryByText('Loading...')).toBeNull());
 
-    // State should be empty after an error
     expect(getByTestId('friends-count').props.children).toBe(0);
     expect(getByTestId('incoming-count').props.children).toBe(0);
     expect(getByTestId('outgoing-count').props.children).toBe(0);
 
-    // Restore the original console.error function
     consoleErrorSpy.mockRestore();
   });
 
   it('provides empty arrays when no user is authenticated', async () => {
-    mockUseAuth.mockReturnValue({ session: null }); // No user session
     mockGetFriends.mockResolvedValue([]);
 
     const { getByTestId, queryByText } = render(

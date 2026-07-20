@@ -86,12 +86,9 @@ describe('RestaurantMap', () => {
       />,
     );
 
-    // Advance the timer to let the Stagger hook flush its queue
     await act(async () => {
       jest.advanceTimersByTime(100);
     });
-
-    // Verify that the rating text is rendered inside the selected animated marker
     expect(getAllByText('4.8')[0]).toBeTruthy();
   });
 
@@ -113,12 +110,9 @@ describe('RestaurantMap', () => {
       />,
     );
 
-    // Advance the timer to let the Stagger hook flush its queue
     await act(async () => {
       jest.advanceTimersByTime(100);
     });
-
-    // Verify all markers are rendered (2 components per restaurant: visual layer + touch shield)
     expect(getAllByTestId('restaurant-marker').length).toBe(4);
   });
 });

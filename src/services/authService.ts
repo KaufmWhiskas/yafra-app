@@ -24,7 +24,7 @@ export async function register(
     options: {
       data: {
         display_name: displayName,
-        username: displayName, // FIX: Match database trigger parameter expectations
+        username: displayName,
       },
     },
   });

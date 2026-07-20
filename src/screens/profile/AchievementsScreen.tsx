@@ -71,14 +71,12 @@ export default function AchievementsScreen() {
   const processedList = useMemo(() => {
     let result = [...achievements];
 
-    // 1. Filtering
     if (filter === 'LOCKED') result = result.filter((a) => !a.isUnlocked);
     if (filter === 'UNLOCKED') result = result.filter((a) => a.isUnlocked);
 
-    // 2. Sorting
     result.sort((a, b) => {
       if (sortBy === 'RARITY')
-        return b.globalUnlockPercentage - a.globalUnlockPercentage; // Common first
+        return b.globalUnlockPercentage - a.globalUnlockPercentage;
       if (sortBy === 'ALPHABETICAL') return a.title.localeCompare(b.title);
       if (sortBy === 'PROGRESS') {
         const aRatio = a.currentProgress / (a.target || 1);

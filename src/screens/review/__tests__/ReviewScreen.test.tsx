@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ReviewScreen from '../ReviewScreen';
-import { submitReview, fetchUserTags } from '../../../services/reviewService';
+import { submitReview } from '../../../services/reviewService';
 
 jest.mock('../../../services/reviewService', () => ({
   submitReview: jest.fn(),
@@ -116,6 +116,11 @@ describe('ReviewScreen', () => {
 
   it('renders the restaurant name and default tags', async () => {
     const { getByText, findByText } = render(<ReviewScreen />);
+    await waitFor(() =>
+      expect(
+        jest.requireMock('../../../services/reviewService').fetchUserTags,
+      ).toHaveBeenCalled(),
+    );
     expect(await findByText(/Test Burger Joint/i)).toBeTruthy();
 
     fireEvent.press(getByText('Add Detailed Highlights (Optional)'));
@@ -127,8 +132,11 @@ describe('ReviewScreen', () => {
     (submitReview as jest.Mock).mockResolvedValueOnce({ success: true });
     const { findByText } = render(<ReviewScreen />);
 
-    await waitFor(() => expect(fetchUserTags).toHaveBeenCalled());
-
+    await waitFor(() =>
+      expect(
+        jest.requireMock('../../../services/reviewService').fetchUserTags,
+      ).toHaveBeenCalled(),
+    );
     const submitButton = await findByText('Submit Review');
     fireEvent.press(submitButton);
 

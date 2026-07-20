@@ -119,6 +119,10 @@ describe('versionService', () => {
   });
 
   it('should return true if remote config is missing (fail-open)', async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
     const mockResponse: PostgrestSingleResponse<AppConfig> = {
       data: null,
       error: {
@@ -136,9 +140,14 @@ describe('versionService', () => {
 
     const isSupported = await checkVersionIsSupported('1.0.0');
     expect(isSupported).toBe(true);
+    consoleWarnSpy.mockRestore();
   });
 
   it('should return true on database error (fail-open)', async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
     const mockResponse: PostgrestSingleResponse<AppConfig> = {
       data: null,
       error: {
@@ -156,5 +165,6 @@ describe('versionService', () => {
 
     const isSupported = await checkVersionIsSupported('1.0.0');
     expect(isSupported).toBe(true);
+    consoleWarnSpy.mockRestore();
   });
 });

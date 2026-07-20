@@ -35,6 +35,8 @@ export function useMapScanner(
 
       // --- MODE A: STANDARD BACKGROUND MAP PAN (force === false) ---
       if (!force) {
+        const isRegionTooLarge = region.latitudeDelta > 0.05;
+
         if (lastScannedRegionRef.current) {
           const distanceMoved = calculateDistance(
             {
@@ -46,7 +48,7 @@ export function useMapScanner(
 
           // If user panned past 400m, keep the button alive to prompt ingestion
           if (distanceMoved > 0.4) {
-            setShowScanButton(true);
+            setShowScanButton(!isRegionTooLarge);
           }
 
           // Anti-spam guard: skip drawing update queries if delta is under 200m
@@ -55,7 +57,7 @@ export function useMapScanner(
           }
         } else {
           // Keep button visible on fresh cold app boots
-          setShowScanButton(true);
+          setShowScanButton(!isRegionTooLarge);
         }
 
         // Fetch local database elements ONLY (100% Free)

@@ -32,17 +32,14 @@ function HapticSettingRow() {
   }, []);
 
   const toggleHaptics = async (newValue: boolean) => {
-    // 1. Update the global config immediately so the next line actually fires
     globalHapticConfig.isEnabled = newValue;
     setHapticsEnabled(newValue);
 
-    // 2. Heavy impact ONLY when turning ON
     if (newValue) {
       hapticImpact(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
     try {
-      // Persist the change
       await AsyncStorage.setItem(HAPTICS_ENABLED_KEY, JSON.stringify(newValue));
     } catch (e) {
       console.error('Failed to save haptic setting', e);

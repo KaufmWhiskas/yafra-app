@@ -70,7 +70,6 @@ export default function PublicProfileScreen() {
         setUnlockedAchievements(unlocked);
         setAchievementCatalog(catalog);
 
-        // Inject the known profile metadata into each review row
         const mappedReviews = (
           userReviews as unknown as ReviewWithRestaurant[]
         ).map((review) => ({

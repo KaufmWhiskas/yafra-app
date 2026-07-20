@@ -72,7 +72,10 @@ describe('Group Service', () => {
     });
 
     const result = await createGroup('user_123', 'New Group');
-    expect(result).toEqual({ id: '2', name: 'New Group' });
+    expect(result).toEqual({
+      group: { id: '2', name: 'New Group' },
+      achievement: undefined,
+    });
     expect(supabase.from).toHaveBeenCalledWith('groups');
     // @ts-expect-error: custom mock property not on root client
     expect(supabase.insert).toHaveBeenCalledWith(

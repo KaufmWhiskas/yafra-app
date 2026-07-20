@@ -8,7 +8,6 @@ import {
 import { supabase } from '../supabase';
 import { unlockDirectEvent } from '../achievementService';
 
-// Mock the entire supabase module.
 jest.mock('../supabase');
 jest.mock('../achievementService');
 
@@ -16,7 +15,6 @@ jest.mock('../achievementService');
 const mockedSupabase = supabase as jest.Mocked<typeof supabase>;
 
 describe('friendService', () => {
-  // Define a reusable mock implementation for the Supabase client chain.
   const mockImplementation = {
     insert: jest.fn().mockResolvedValue({ error: null }),
     update: jest.fn().mockReturnThis(),
@@ -29,9 +27,7 @@ describe('friendService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Set the default mock implementation for `from` before each test.
     (mockedSupabase.from as jest.Mock).mockReturnValue(mockImplementation);
-    // Restore the chaining behavior for .eq() before each test
     mockImplementation.eq.mockReturnThis();
     mockImplementation.ilike.mockResolvedValue({ data: [], error: null });
     (unlockDirectEvent as jest.Mock).mockClear();
@@ -103,6 +99,9 @@ describe('friendService', () => {
 
     it('should throw an error if fetching the relationship fails', async () => {
       const dbError = new Error('DB fetch failed');
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (mockedSupabase.from as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -112,10 +111,14 @@ describe('friendService', () => {
       await expect(acceptFriendRequest('rel-123')).rejects.toThrow(
         'Failed to find friend request to accept.',
       );
+      consoleErrorSpy.mockRestore();
     });
 
     it('should throw an error if the update fails', async () => {
       const dbError = new Error('DB update failed');
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       (mockedSupabase.from as jest.Mock)
         .mockReturnValueOnce({
           select: jest.fn().mockReturnThis(),
@@ -131,6 +134,7 @@ describe('friendService', () => {
         });
 
       await expect(acceptFriendRequest('rel-123')).rejects.toThrow(dbError);
+      consoleErrorSpy.mockRestore();
     });
   });
 

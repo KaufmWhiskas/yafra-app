@@ -69,7 +69,6 @@ export default function CollectionDetailScreen() {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
-            // 1. Optimistic UI Update: Slice immediately from state
             const updatedRestaurants = restaurants.filter(
               (r) => r.id.toString() !== restaurantId.toString(),
             );

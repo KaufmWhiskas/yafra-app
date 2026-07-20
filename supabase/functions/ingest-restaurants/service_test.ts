@@ -161,14 +161,12 @@ Deno.test(
       MOCK_USER_ID,
     );
 
-    // It should skip 9894_1690 entirely and ONLY execute a data request for 9894_1691
     assertEquals(fetchCalledWithBboxes.length, 1);
     assertEquals(state.insertedHistory.length, 1);
     assertEquals(state.insertedHistory[0].tile_id, '9894_1691');
     assertEquals(state.upsertedRestaurants.length, 1);
   },
 );
-
 Deno.test(
   'fetchAndStoreRestaurants() recursively subdivides a tile if exactly 20 restaurants are returned',
   async () => {
@@ -178,7 +176,6 @@ Deno.test(
     const mockFetcher: RestaurantFetcher = {
       fetchData: (_bbox: BoundingBox) => {
         fetchCount++;
-        // First call (parent tile): simulate a full cutoff of 20 places
         if (fetchCount === 1) {
           return Promise.resolve(
             Array(20).fill({
@@ -188,7 +185,6 @@ Deno.test(
             }),
           );
         }
-        // Subsequent sub-quadrant calls: return low density to end recursion
         return Promise.resolve([
           {
             name: 'Sub-Quadrant Place',
@@ -199,7 +195,6 @@ Deno.test(
       },
     };
 
-    // Run on a single precise tile bbox bounds configuration
     await fetchAndStoreRestaurants(
       TEST_BBOX,
       client,
@@ -207,15 +202,11 @@ Deno.test(
       MOCK_USER_ID,
     );
 
-    // Expect 1 parent call + 4 sub-quadrant quadrant branch queries = 5 fetches total
     assertEquals(
       fetchCount,
       5,
       'Should have triggered recursive sub-quadrant scans',
     );
-
-    // The parent tile ID should NOT be marked complete because it was split!
-    // Instead, the 4 child tiles should be logged in history.
     const hasParent = state.insertedHistory.some(
       (h) => h.tile_id === '9894_1690',
     );
