@@ -1,5 +1,6 @@
 import {
   fetchRestaurantDetails,
+  enrichRestaurantDetails,
   fetchRestaurants,
   fetchMapRestaurants,
   triggerIngest,
@@ -165,5 +166,56 @@ describe('fetchRestaurantDetails', () => {
       app_rating: 4.2,
       app_review_count: 2,
     });
+  });
+});
+
+describe('enrichRestaurantDetails', () => {
+  it('should call the fetch-place-details edge function with the correct place ID', async () => {
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: { rating: 4.5 },
+      error: null,
+    });
+
+    await enrichRestaurantDetails('place_123');
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      'fetch-place-details',
+      {
+        body: { googlePlaceId: 'place_123' },
+      },
+    );
+  });
+
+  it('should return the data from the function invoke', async () => {
+    const mockDetails = { rating: 4.5, name: 'Test Cafe' };
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: mockDetails,
+      error: null,
+    });
+
+    const result = await enrichRestaurantDetails('place_123');
+
+    expect(result).toEqual(mockDetails);
+  });
+
+  it('should return null and log an error if the function invoke fails', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const mockError = new Error('Function invoke failed');
+    (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+      data: null,
+      error: mockError,
+    });
+
+    const result = await enrichRestaurantDetails('place_123');
+
+    expect(result).toBeNull();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to fetch place details:',
+      mockError,
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 });

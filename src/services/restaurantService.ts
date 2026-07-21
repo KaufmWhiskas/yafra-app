@@ -226,6 +226,29 @@ export async function triggerIngest(bbox: BoundingBox): Promise<unknown> {
   return data;
 }
 
+/**
+ * Fetches rich "Pro" details for a restaurant from Google Places on-demand.
+ * This is intended to be called when a user interacts with a specific restaurant,
+ * as it may incur higher API costs.
+ * @param googlePlaceId The Google Place ID of the restaurant.
+ * @returns A promise resolving to the detailed restaurant data, or null if an error occurs.
+ */
+export async function enrichRestaurantDetails(googlePlaceId: string) {
+  const { data, error } = await supabase.functions.invoke(
+    'fetch-place-details',
+    {
+      body: { googlePlaceId },
+    },
+  );
+
+  if (error) {
+    console.error('Failed to fetch place details:', error);
+    return null;
+  }
+
+  return data;
+}
+
 export async function fetchMapRestaurants(
   latitude: number,
   longitude: number,
