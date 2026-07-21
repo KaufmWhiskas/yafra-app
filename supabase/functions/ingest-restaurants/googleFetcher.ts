@@ -17,9 +17,7 @@ interface GooglePlace {
   displayName?: {
     text: string;
   };
-  rating?: number;
   primaryType?: string;
-  userRatingCount?: number;
 }
 
 export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
@@ -50,8 +48,9 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
+          // ONLY Essentials / Pro fields - NEVER ask for rating or reviews in grid search!
           'X-Goog-FieldMask':
-            'places.id,places.location,places.displayName.text,places.rating,places.primaryType,places.userRatingCount',
+            'places.id,places.location,places.displayName.text,places.primaryType',
         },
         body: JSON.stringify({
           includedTypes: ['restaurant'],
@@ -75,8 +74,6 @@ export function createGoogleFetcher(apiKey: string): RestaurantFetcher {
           google_place_id: place.id,
           location: `POINT(${place.location.longitude} ${place.location.latitude})`,
           cuisine: place.primaryType,
-          google_rating: place.rating,
-          details: { user_ratings_total: place.userRatingCount },
         }),
       );
     },
